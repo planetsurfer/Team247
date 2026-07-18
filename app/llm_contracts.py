@@ -15,7 +15,58 @@ import time
 import config  # root config.py — Alibaba LLM client (llm_json, _model_for)
 
 from app.logging_setup import log_llm
-from app.schemas import Brief, IntakeTurn, TeamRecommend
+from app.schemas import Brief, IntakeTurn, TeamRecommend, WireHandoffs
+
+CEREMONIES = (
+    "artifact handoff", "review gate", "sprint demo", "sign-off", "feedback loop",
+)
+
+
+def validate_handoff_graph(handoffs, agent_ids):
+    """Server-side graph check. `agent_ids` is the set of valid agent ids.
+
+    - from/to must be a real agent_id or 'external'.
+    - ceremony must be in the enum.
+    - >=1 handoff.
+    - The graph of NON-'feedback loop' edges must be acyclic (topological
+      sort). 'feedback loop' is the ONLY allowed back-edge and is excluded
+      from the sort (it renders as a curved return arc). Any other cycle → reject.
+    Returns the validated list of Handoff dicts.
+    """
+    if not handoffs:
+        raise ValueError("at least one handoff is required")
+    nodes = set(agent_ids) | {"external"}
+    for h in handoffs:
+        if h.get("from_agent") not in nodes or h.get("to_agent") not in nodes:
+            raise ValueError(f"handoff references unknown agent: {h}")
+        if h.get("ceremony") not in CEREMONIES:
+            raise ValueError(f"unknown ceremony: {h.get('ceremony')}")
+
+    # Topological sort over non-feedback edges; detect a cycle.
+    adj = {a: set() for a in agent_ids}
+    indeg = {a: 0 for a in agent_ids}
+    for h in handoffs:
+        f, t, c = h["from_agent"], h["to_agent"], h["ceremony"]
+        if c == "feedback loop":
+            continue  # allowed back-edge, excluded from the DAG
+        if f == "external" or t == "external":
+            continue
+        if t not in adj[f]:
+            adj[f].add(t)
+            indeg[t] += 1
+    # Kahn
+    queue = [a for a in agent_ids if indeg[a] == 0]
+    seen = 0
+    while queue:
+        n = queue.pop()
+        seen += 1
+        for m in adj[n]:
+            indeg[m] -= 1
+            if indeg[m] == 0:
+                queue.append(m)
+    if seen != len(agent_ids):
+        raise ValueError("non-feedback handoff graph has a cycle")
+    return handoffs
 
 
 # The 3 fixed seed questions (app constants — NOT LLM-generated).
@@ -149,3 +200,60 @@ def team_recommend(brief, candidates):
         max_tokens=2048,
     )
     return TeamRecommend.model_validate(raw)
+
+
+def _validate_wire_handoffs(o):
+    wh = WireHandoffs.model_validate(o)
+    # ceremony enum + from/to are strings (graph check is server-side in the service
+    # which knows the real agent_ids; here we only enforce the enum + non-empty).
+    for h in wh.handoffs:
+        if h.ceremony not in CEREMONIES:
+            raise ValueError(f"unknown ceremony: {h.ceremony}")
+    return True
+
+
+def wire_handoffs(composition, use_case, agent_ids):
+    """Phase 3: wire handoffs/ceremonies between the team's agents.
+
+    composition: list[{agent_id, role, stage, squad, produces, consumes}]
+    use_case: str. agent_ids: set of valid agent ids (for the graph check).
+    Returns WireHandoffs (validated + graph-acyclic-checked).
+    """
+    listing = "\n".join(
+        f"- {a['agent_id']} | stage {a['stage']} | {a['squad']} | {a['role']}"
+        f" | produces: {a.get('produces') or '-'} | consumes: {a.get('consumes') or '-'}"
+        for a in composition
+    )
+    prompt = (
+        "Team composition (after user edits):\n" + listing + "\n\n"
+        "Use case:\n" + (use_case or "(unspecified)") + "\n\n"
+        "Wire the seams between agents: for each meaningful producer→consumer pair "
+        "(including external input at stage 1 and final delivery at the last stage), "
+        "name the CEREMONY that connects them. Use exactly one of: "
+        + ", ".join(f'\"{c}\"' for c in CEREMONIES) + ".\n"
+        "- 'artifact handoff': one agent's produces feeds the next's consumes\n"
+        "- 'review gate': consumer reviews producer's artifact before continuing\n"
+        "- 'sprint demo': synchronous show-and-tell at a stage boundary\n"
+        "- 'sign-off': governance/approval gate\n"
+        "- 'feedback loop': consumer sends corrections back to producer (the ONLY\n"
+        "  allowed back-edge; everything else must form a DAG)\n\n"
+        'Return STRICT JSON: {"handoffs": [{"from": "<agent_id|external>", '
+        '"to": "<agent_id|external>", "ceremony": "<one of the above>", '
+        '"artifact": "<what flows>", "description": "<<=20 words>"}]}\n'
+        "Every (from,to,ceremony) must be unique; aim for 3-10 handoffs."
+    )
+    raw = call_llm_json(
+        "wire_handoffs",
+        [{"role": "user", "content": prompt}],
+        validate=_validate_wire_handoffs,
+        temperature=0.2,
+        max_tokens=2048,
+    )
+    wh = WireHandoffs.model_validate(raw)
+    handoff_dicts = [
+        {"from_agent": h.from_agent, "to_agent": h.to_agent, "ceremony": h.ceremony,
+         "artifact": h.artifact, "description": h.description}
+        for h in wh.handoffs
+    ]
+    validate_handoff_graph(handoff_dicts, agent_ids)  # raises on a non-feedback cycle
+    return wh

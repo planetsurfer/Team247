@@ -1,11 +1,12 @@
 """Team lifecycle + Phase 1-2 (recommend / edit) routes: /api/team/*."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from typing import Optional
 
 from app import db
 from app.ratelimit import llm_rate_limit
-from app.services import team_service
+from app.services import handoff_service, render_service, team_service
 from app.services.team_service import TeamNotFound
 
 router = APIRouter()
@@ -34,6 +35,10 @@ class UpdateAgentIn(BaseModel):
     anchor: Optional[int] = None
     skill_overrides: Optional[dict] = None
     skill_disabled: Optional[list] = None
+
+
+class WireIn(BaseModel):
+    use_case: Optional[str] = None
 
 
 @router.post("/api/team/recommend", dependencies=[Depends(llm_rate_limit)])
@@ -102,3 +107,54 @@ def skills(team_id: str, agent_id: str):
         return team_service.skills(team_id, agent_id)
     except TeamNotFound:
         raise HTTPException(status_code=404, detail="agent not found")
+
+
+# ── Phase 3: wire + deliver ────────────────────────────────────────────────
+@router.post("/api/team/{team_id}/wire", dependencies=[Depends(llm_rate_limit)])
+def wire(team_id: str, body: WireIn):
+    try:
+        return handoff_service.wire(team_id, body.use_case)
+    except TeamNotFound:
+        raise HTTPException(status_code=404, detail="team not found")
+
+
+@router.post("/api/team/{team_id}/render", dependencies=[Depends(llm_rate_limit)])
+def render_team(team_id: str, force: bool = False):
+    try:
+        return render_service.render(team_id, force=force)
+    except TeamNotFound:
+        raise HTTPException(status_code=404, detail="team not found")
+
+
+@router.get("/api/team/{team_id}/specs")
+def specs(team_id: str):
+    return render_service.specs_list(team_id)
+
+
+@router.get("/api/team/{team_id}/specs/{agent_id}", response_class=PlainTextResponse)
+def spec_md(team_id: str, agent_id: str):
+    s = render_service.get_spec(team_id, agent_id)
+    if s is None:
+        raise HTTPException(status_code=404, detail="spec not found")
+    return s["spec_md"]
+
+
+@router.get("/api/team/{team_id}/download.zip")
+def download(team_id: str):
+    try:
+        data = render_service.download_zip(team_id)
+    except TeamNotFound:
+        raise HTTPException(status_code=404, detail="team not found")
+    return Response(
+        content=data,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="team_{team_id[:8]}.zip"'},
+    )
+
+
+@router.get("/api/team/{team_id}/chart")
+def chart(team_id: str):
+    try:
+        return render_service.chart(team_id)
+    except TeamNotFound:
+        raise HTTPException(status_code=404, detail="team not found")
