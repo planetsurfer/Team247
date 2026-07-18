@@ -19,7 +19,7 @@ from fastapi.responses import HTMLResponse
 from app import settings, db
 from app.logging_setup import configure_logging
 from app.ratelimit import setup_ratelimit
-from app.routers import catalog, health
+from app.routers import catalog, health, intake, team
 
 # The SPA shell lives one directory up from this file (repo-root demo.html),
 # and still opens standalone when double-clicked. Serving it through the app
@@ -53,6 +53,8 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(catalog.router)
+    app.include_router(intake.router)
+    app.include_router(team.router)
 
     # Serve the SPA shell at `/`. demo.html stays a standalone-openable file;
     # this just exposes it through the running app so the API + SPA share one

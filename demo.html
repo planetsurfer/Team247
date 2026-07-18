@@ -112,7 +112,13 @@ const state={
   instr:'Focus on messy inputs; flag anything ambiguous.',
   targets:Object.fromEntries(S.map(s=>[s.id,REAL?s.off:({eng:2,dba:2,ana:4,viz:3,stk:2,eth:0}[s.id]??s.off)])),
   lit:{sf:true,oxy:false,kimi:false,day:false,nos:false},
-  runDone:false,copied:false,catalogEnabled:false
+  runDone:false,copied:false,catalogEnabled:false,serverEnabled:false,
+  /* live-server flows (intake → recommend → team editor). Populated only when
+     state.serverEnabled is true (the /health probe flips it). The scripted
+     demo and AP_REAL/dashboard modes never touch these. */
+  intake:{sessionId:null,transcript:[],questions:[],brief:null,ready:false,loading:false,error:null,_round:0},
+  team:{id:null,name:'',purpose:'',brief:null,agents:[],loading:false,error:null,
+        skills:{},skillsLoading:{},skillsErr:{},addingAgent:false,addRoleId:''}
 };
 let RUN=0;                       // run-id guard for stale async timelines
 const sp=()=>SIMSPEED;
@@ -138,17 +144,26 @@ const spent=()=>S.reduce((a,s)=>{const t=state.targets[s.id];return a+(t>0?Math.
 
 /* ============ header: rail + sponsor chips (built once, mutated in place) ============ */
 const RAILDEF=[['request','01','REQUEST'],['loadout','02','LOADOUT'],['prove','03','PROVE'],['deliver','04','DELIVER']];
+// Live-server flow screens (prepended onto the rail when state.serverEnabled flips
+// true after the /health probe). Distinct number prefixes (00/0R/0T) keep them
+// visually separated from the scripted-demo 01–04 entries, with a divider.
+const RAILDEF_LIVE=[['intake','00','INTAKE'],['recommend','0R','RECOMMEND'],['editor','0T','TEAM EDITOR']];
+const railDef=()=>state.serverEnabled
+  ? RAILDEF_LIVE.concat([['|','','']]).concat(RAILDEF.map(([s,n,l])=>[s,'D'+n.slice(1),l]))
+  : RAILDEF;
 const SPONSORS=[['sf','SkillsFuture'],['oxy','Oxylabs'],['kimi','Kimi'],['day','Daytona'],['nos','Nosana']];
 function buildHeader(){
-  document.getElementById('rail').innerHTML=RAILDEF.map(([sc,num,lb])=>
-    `<button id="rail-${sc}" onclick="app.nav('${sc}')" style="background:none;border:1px solid ${LINE};color:${DIM};font-family:${MONO};font-size:12px;letter-spacing:1px;padding:8px 14px;cursor:pointer">${num} ${lb}</button>`).join('');
+  document.getElementById('rail').innerHTML=railDef().map(([sc,num,lb])=>
+    sc==='|'?`<span style="width:1px;height:22px;background:${LINE};margin:0 4px;display:inline-block"></span>`
+    :`<button id="rail-${sc}" onclick="app.nav('${sc}')" style="background:none;border:1px solid ${LINE};color:${DIM};font-family:${MONO};font-size:12px;letter-spacing:1px;padding:8px 14px;cursor:pointer">${num} ${lb}</button>`).join('');
   document.getElementById('chips').innerHTML=SPONSORS.map(([k,nm])=>
     `<div id="chip-${k}" style="display:flex;align-items:center;gap:7px;padding:7px 12px;border:1px solid ${LINE};color:${DIM};font-family:${MONO};font-size:11.5px;border-radius:999px;background:${INSET};transition:all .4s">
        <span id="dot-${k}" style="width:6px;height:6px;border-radius:50%;background:#3A3A40;box-shadow:none;transition:all .4s"></span>${nm}</div>`).join('');
 }
 function updateHeader(){
-  const cur=RAILDEF.findIndex(r=>r[0]===state.screen);
-  RAILDEF.forEach(([sc],i)=>{const b=document.getElementById('rail-'+sc);
+  const def=railDef();
+  const cur=def.findIndex(r=>r[0]===state.screen);
+  def.forEach(([sc],i)=>{if(sc==='|')return;const b=document.getElementById('rail-'+sc);if(!b)return;
     b.style.borderColor=i===cur?LIME:LINE;
     b.style.color=i===cur?LIME:(i<cur?INK:DIM);});
   SPONSORS.forEach(([k])=>{const on=state.lit[k],c=document.getElementById('chip-'+k),d=document.getElementById('dot-'+k);
@@ -211,6 +226,7 @@ function renderRequest(){
       <textarea id="instr" rows="3" oninput="app.onInstr(this.value)" style="width:100%;box-sizing:border-box;background:${INSET};border:1px solid ${LINE};color:${INK};font-size:15px;padding:14px 16px;resize:vertical;outline:none;line-height:1.5">${esc(state.instr)}</textarea>
     </div>
     <button onclick="app.nav('loadout')" style="background:${LIME};color:#0A0A0C;border:none;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px;padding:17px;cursor:pointer;letter-spacing:.3px">Next · Skill loadout →</button>
+    ${state.serverEnabled?`<button id="intakeEntry" onclick="app.nav('intake')" class="hv" style="background:none;border:1px solid ${LIME};color:${LIME};font-family:${MONO};font-size:13px;letter-spacing:1px;padding:13px;cursor:pointer">▶ Start with intake interview</button>`:''}
     ${state.catalogEnabled?`<button id="catEntry" onclick="app.openCatalog()" class="hv" style="background:none;border:1px solid ${LINE};color:${MUT};font-family:${MONO};font-size:13px;letter-spacing:1px;padding:13px;cursor:pointer">⌕ Browse role catalog</button>`:''}
   </div>
 </section>`;
@@ -711,6 +727,7 @@ async function api(path,opts){
   try{
     const r=await fetch('/api'+path,opts||{});
     if(!r.ok)return {error:`${r.status} ${r.statusText}`};
+    if(r.status===204)return {ok:true};            // DELETE success — no body
     const ct=r.headers.get('content-type')||'';
     if(ct.includes('application/json'))return await r.json();
     return {error:'non-json response'};
@@ -809,13 +826,297 @@ function renderCatalog(){
   </div>`;
 }
 
+/* ============ live-server flows: intake · recommend · team editor ============ */
+// These three screens are ONLY surfaced when state.serverEnabled is true (the
+// /health probe flips it after /api is confirmed reachable). In standalone
+// file:// mode and AP_REAL/dashboard mode they stay hidden — the original
+// 01–04 scripted demo is the whole experience. All three reuse the existing
+// api() wrapper, the org-chart node idiom, and the per-skill pip pattern.
+
+// The 3 fixed seed questions are app constants (per the production plan);
+// the server returns them too, but we fall back to these if it doesn't.
+const SEED_QUESTIONS=[
+  'What kind of agentic team are you trying to build?',
+  'What are your main pain points / bottlenecks today?',
+  'What outcome or deliverable would define success?'
+];
+
+// Normalise an agent row from either /team/recommend or /team/{id}/agents into
+// the shape the editor + chart preview expect (mirrors dashboard.load_real()).
+function normTeamAgent(a){
+  return{
+    agent_id:a.agent_id||a.id||('a'+Math.random().toString(36).slice(2,7)),
+    role_id:a.role_id,role:a.role||a.role_id||'Agent',
+    stage:a.stage||1,squad:a.squad||'',
+    produces:a.produces||'',consumes:a.consumes||'',
+    anchor:!!a.anchor,
+    skill_overrides:a.skill_overrides||a.skill_level_overrides||{},
+    skill_disabled:Array.isArray(a.skill_disabled)?a.skill_disabled:[],
+    rationale:a.rationale||'',sk:a.sk||null
+  };
+}
+// effective level = override if present, else the official required level
+const effLevel=(a,n)=>{const c=n.code||n.nm;const o=a.skill_overrides;
+  return(o&&(c in o))?o[c]:(n.lvl||0);};
+const skillOff=(a,n)=>{const c=n.code||n.nm;return(a.skill_disabled||[]).includes(c);};
+
+/* ---- screen 00 · intake interview ---- */
+function intakeMsgHTML(m){
+  const isUser=m.role==='user',isFixed=m.role==='fixed';
+  const who=isUser?'YOU':(isFixed?'SEED Q':`Q · ROUND ${m.round||1}`);
+  const col=isUser?LIME:MUT;
+  return `<div style="display:flex;flex-direction:column;gap:5px;padding:6px 0">
+    <div style="font-family:${MONO};font-size:10.5px;letter-spacing:1.5px;color:${col}">${who}</div>
+    <div style="font-size:15px;color:${isUser?INK:MUT};line-height:1.55;white-space:pre-wrap">${esc(m.content)}</div>
+  </div>`;
+}
+function renderIntakeTranscript(){
+  const t=document.getElementById('intakeTranscript');
+  if(!t)return;
+  t.innerHTML=(state.intake.transcript||[]).map(intakeMsgHTML).join('');
+  t.scrollTop=t.scrollHeight;
+}
+function renderIntakeForm(){
+  const f=document.getElementById('intakeForm');if(!f)return;
+  const I=state.intake;
+  if(I.loading){
+    f.innerHTML=`<div style="display:flex;align-items:center;gap:10px;font-family:${MONO};font-size:13px;color:${LIME}">
+      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${LIME};animation:ap-pulse 1s infinite"></span>
+      thinking…</div>`;
+    return;
+  }
+  if(I.ready){f.innerHTML=renderIntakeBrief();return;}
+  if(I.error){
+    f.innerHTML=`<div style="padding:14px;border:1px solid ${RED};color:${RED};font-family:${MONO};font-size:12.5px;line-height:1.6">⚠ ${esc(I.error)}<br><span style="color:${DIM}">is the AgentProof server running on /api?</span></div>`;
+    return;
+  }
+  const qs=I.questions||[];
+  if(!qs.length){
+    f.innerHTML=`<div style="font-family:${MONO};font-size:12px;color:${DIM}">awaiting questions…</div>`;
+    return;
+  }
+  const inputs=qs.map((q,i)=>`<div style="margin-bottom:14px">
+    <div style="font-family:${MONO};font-size:11px;letter-spacing:1px;color:${LIME};margin-bottom:6px">Q${i+1}</div>
+    <div style="font-size:14.5px;color:${INK};margin-bottom:8px;line-height:1.5">${esc(q)}</div>
+    <textarea id="intakeAns-${i}" rows="3" placeholder="your answer…" style="width:100%;box-sizing:border-box;background:${INSET};border:1px solid ${LINE};color:${INK};font-size:14.5px;padding:12px 14px;resize:vertical;outline:none;line-height:1.5;min-height:60px"></textarea>
+  </div>`).join('');
+  f.innerHTML=`${inputs}
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:6px">
+      <button onclick="app.submitIntake()" style="background:${LIME};color:#0A0A0C;border:none;font-weight:700;font-size:15px;padding:12px 24px;cursor:pointer">Submit answers →</button>
+    </div>`;
+}
+function renderIntakeBrief(){
+  const b=state.intake.brief;
+  const fields=b&&typeof b==='object'?Object.entries(b):[];
+  const fieldRows=fields.length?fields.map(([k,v])=>`<div style="display:grid;grid-template-columns:170px 1fr;gap:14px;padding:9px 0;border-bottom:1px solid ${DIV}">
+    <div style="font-family:${MONO};font-size:11px;letter-spacing:1px;color:${DIM}">${esc(String(k).toUpperCase())}</div>
+    <div style="font-size:14.5px;color:${INK};line-height:1.5">${esc(typeof v==='object'?JSON.stringify(v):String(v))}</div>
+  </div>`).join(''):`<pre style="font-family:${MONO};font-size:12px;color:${MUT};white-space:pre-wrap">${esc(JSON.stringify(b,null,2))}</pre>`;
+  return `<div>
+    <div style="font-family:${MONO};font-size:11.5px;letter-spacing:2px;color:${LIME};margin-bottom:8px">✓ BRIEF READY</div>
+    <div style="font-family:${UNB};font-weight:700;font-size:20px;margin-bottom:14px">Your use-case brief</div>
+    ${fieldRows}
+    <div style="display:flex;justify-content:flex-end;margin-top:18px">
+      <button onclick="app.nav('recommend')" style="background:${LIME};color:#0A0A0C;border:none;font-weight:700;font-size:16px;padding:14px 28px;cursor:pointer;animation:ap-glow 2s infinite">Recommend team →</button>
+    </div>
+  </div>`;
+}
+function renderIntake(){
+  const enabled=state.serverEnabled;
+  return `<section style="max-width:920px;margin:0 auto;padding:48px 44px 80px">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:18px;flex-wrap:wrap">
+    <div>
+      <div style="font-family:${MONO};font-size:13px;letter-spacing:3px;color:${LIME};margin-bottom:10px">00 · INTAKE INTERVIEW</div>
+      <h1 style="font-family:${UNB};font-weight:900;font-size:40px;line-height:1.1;margin:0">Tell us about your team.</h1>
+      <p style="font-size:16px;line-height:1.55;color:${MUT};max-width:560px;margin:12px 0 0">Three seed questions, then the LLM asks tailored follow-ups until it has enough context to draft a structured brief.</p>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="hv" onclick="app.skipToIntakePaste()" style="background:none;border:1px solid ${LINE};color:${MUT};font-family:${MONO};font-size:12px;letter-spacing:1px;padding:10px 14px;cursor:pointer">⤺ paste a brief</button>
+      <button class="hv" onclick="app.resetIntake()" style="background:none;border:1px solid ${LINE};color:${MUT};font-family:${MONO};font-size:12px;letter-spacing:1px;padding:10px 14px;cursor:pointer">↻ restart</button>
+    </div>
+  </div>
+  <div id="intakeBox" style="background:${PANEL};border:1px solid ${LINE};padding:24px 28px;min-height:280px">
+    ${enabled?'':`<div style="padding:14px;border:1px solid ${RED};color:${RED};font-family:${MONO};font-size:12.5px;line-height:1.6;margin-bottom:16px">⚠ intake requires the live AgentProof server (/api). Standalone / AP_REAL mode keeps the original 4-screen demo.</div>`}
+    <div id="intakeTranscript" style="display:flex;flex-direction:column;gap:4px;max-height:40vh;overflow-y:auto"></div>
+    <div id="intakeForm" style="margin-top:18px;border-top:1px solid ${DIV};padding-top:18px"></div>
+  </div>
+</section>`;
+}
+
+/* ---- screen 01 · recommend ---- */
+function recommendNode(a,i){
+  const ov=a.skill_overrides||{};
+  const nOv=Object.keys(ov).length;
+  return `<div style="background:${INSET};border:1px solid ${a.anchor?LIME:LINE};padding:14px 18px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <span style="font-size:15.5px;font-weight:700">${esc(a.role)}</span>
+      <span style="font-family:${MONO};font-size:11px;color:${DIM};border:1px solid ${LINE};padding:2px 8px;white-space:nowrap">STAGE ${a.stage||i+1}</span>
+    </div>
+    ${a.rationale?`<div style="font-family:${MONO};font-size:11.5px;color:${MUT};margin-top:8px;line-height:1.5">${esc(a.rationale)}</div>`:''}
+    ${nOv?`<div style="font-family:${MONO};font-size:10.5px;color:${LIME};margin-top:6px">${nOv} skill override${nOv===1?'':'s'}</div>`:''}
+  </div>`;
+}
+function renderRecommendPreview(){
+  const T=state.team;
+  if(T.loading)return `<div style="display:flex;align-items:center;gap:10px;font-family:${MONO};font-size:13px;color:${LIME}">
+    <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${LIME};animation:ap-pulse 1s infinite"></span>
+    recommending team…</div>`;
+  if(T.error)return `<div style="padding:14px;border:1px solid ${RED};color:${RED};font-family:${MONO};font-size:12.5px;line-height:1.6">⚠ ${esc(T.error)}</div>`;
+  if(!T.id||!T.agents.length)return `<div style="font-family:${MONO};font-size:12.5px;color:${DIM};padding:8px 0;line-height:1.6">no team yet · click <b style="color:${INK}">Recommend team</b> to let the LLM draft one from the brief.</div>`;
+  const nodes=T.agents.map((a,i)=>recommendNode(a,i)).join('');
+  return `<div>
+    <div style="font-family:${MONO};font-size:11.5px;letter-spacing:2px;color:${DIM};margin-bottom:10px">RECOMMENDED · ${T.agents.length} AGENTS</div>
+    <div style="display:flex;flex-direction:column;gap:10px">${nodes}</div>
+    <div style="margin-top:18px;display:flex;justify-content:flex-end">
+      <button onclick="app.nav('editor')" style="background:${LIME};color:#0A0A0C;border:none;font-weight:700;font-size:15px;padding:12px 24px;cursor:pointer;animation:ap-glow 1.8s infinite">Edit team →</button>
+    </div>
+  </div>`;
+}
+function renderRecommend(){
+  const b=state.intake.brief;
+  const briefRows=b&&typeof b==='object'?Object.entries(b).map(([k,v])=>`<div style="display:grid;grid-template-columns:160px 1fr;gap:14px;padding:9px 0;border-bottom:1px solid ${DIV}">
+    <div style="font-family:${MONO};font-size:11px;letter-spacing:1px;color:${DIM}">${esc(String(k).toUpperCase())}</div>
+    <div style="font-size:14.5px;color:${INK};line-height:1.5">${esc(typeof v==='object'?JSON.stringify(v):String(v))}</div>
+  </div>`).join(''):'';
+  const briefPanel=briefRows
+    ?`<div style="font-family:${MONO};font-size:11.5px;letter-spacing:2px;color:${DIM};margin-bottom:12px">BRIEF</div>${briefRows}`
+    :`<div style="font-family:${MONO};font-size:12.5px;color:${DIM};padding:8px 0">no brief yet — start from <a href="#" onclick="app.nav('intake');return false">intake</a>.</div>`;
+  return `<section style="max-width:1100px;margin:0 auto;padding:48px 44px 64px">
+  <div style="font-family:${MONO};font-size:13px;letter-spacing:3px;color:${LIME};margin-bottom:10px">01 · RECOMMEND TEAM</div>
+  <h1 style="font-family:${UNB};font-weight:900;font-size:40px;line-height:1.1;margin:0 0 20px">LLM picks a team from your brief.</h1>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+    <div style="background:${PANEL};border:1px solid ${LINE};padding:24px 28px">
+      ${briefPanel}
+      <div style="margin-top:18px;display:flex;justify-content:flex-end">
+        <button onclick="app.recommendTeam()" style="background:${LIME};color:#0A0A0C;border:none;font-weight:700;font-size:16px;padding:14px 28px;cursor:pointer;animation:ap-glow 2s infinite">Recommend team →</button>
+      </div>
+    </div>
+    <div id="recommendPreview" style="background:${PANEL};border:1px solid ${LINE};padding:24px 28px;min-height:200px">
+      ${renderRecommendPreview()}
+    </div>
+  </div>
+</section>`;
+}
+
+/* ---- screen 02 · team editor ---- */
+function editorChartPreview(){
+  const ag=state.team.agents;if(!ag.length)return '';
+  const sep=`<div style="text-align:center;color:${DIM};font-family:${MONO};font-size:11px;line-height:1">↓</div>`;
+  const nodes=ag.map((a,i)=>`<div style="background:${a.anchor?'rgba(200,241,53,.06)':INSET};border:1px solid ${a.anchor?LIME:LINE};padding:10px 14px;text-align:center;min-width:200px">
+    <div style="font-size:13.5px;font-weight:700">${esc(a.role)}</div>
+    <div style="font-family:${MONO};font-size:10.5px;color:${DIM};margin-top:3px">STAGE ${a.stage}</div>
+  </div>`).join(sep);
+  return `<div style="background:${PANEL};border:1px solid ${LINE};padding:18px 22px;margin-bottom:14px">
+    <div style="font-family:${MONO};font-size:11px;letter-spacing:2px;color:${DIM};margin-bottom:12px">ORG CHART · LIVE · RE-RENDERS AFTER EACH EDIT</div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:3px">${nodes}</div>
+  </div>`;
+}
+function editorSkillRow(a,n,uid){
+  const lvl=effLevel(a,n),off=skillOff(a,n);
+  const pips=[1,2,3,4,5,6].map(l=>{
+    const on=!off&&l<=lvl,exe=n.exec;
+    const bdr=off?PIPB:(on?(exe?LIME:'#55555E'):PIPB);
+    const bg=off?'transparent':(on?(exe?LIME:'#55555E'):INSET);
+    return `<button onclick="app.teamSetLevel('${esc(a.agent_id)}','${esc(n.code||n.nm)}',${l})" title="L${l}" style="width:28px;height:21px;border:1px solid ${bdr};background:${bg};cursor:pointer;padding:0;transition:all .15s"></button>`;
+  }).join('');
+  return `<div style="display:grid;grid-template-columns:1fr auto 42px;gap:14px;align-items:center;padding:9px 0;border-bottom:1px solid ${DIV};opacity:${off?.4:1}">
+    <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;min-width:0">
+      <button onclick="app.teamToggle('${esc(a.agent_id)}','${esc(n.code||n.nm)}')" title="toggle on/off" style="width:22px;height:22px;border:1px solid ${PIPB};background:${off?'transparent':LIME};color:#0A0A0C;font-size:12px;font-weight:700;cursor:pointer;padding:0">${off?'':'✓'}</button>
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.nm)}</span>
+      ${n.exec?`<span style="font-family:${MONO};font-size:10px;padding:1px 6px;background:rgba(200,241,53,.12);color:${LIME};white-space:nowrap">✓ exec</span>`
+              :`<span style="font-family:${MONO};font-size:10px;padding:1px 6px;background:rgba(156,155,160,.12);color:${MUT};white-space:nowrap">○ rubric</span>`}
+    </div>
+    <div style="display:flex;gap:4px">${pips}</div>
+    <div style="font-family:${UNB};font-weight:700;font-size:13.5px;color:${off?DIM:(n.exec?LIME:MUT)};text-align:right">L${lvl}</div>
+  </div>`;
+}
+function editorAgentCard(a,i){
+  const skills=state.team.skills[a.agent_id];
+  const loading=state.team.skillsLoading[a.agent_id];
+  const err=state.team.skillsErr[a.agent_id];
+  let body;
+  if(loading)body=`<div style="font-family:${MONO};font-size:12px;color:${LIME};padding:8px 0">loading skills…</div>`;
+  else if(err)body=`<div style="font-family:${MONO};font-size:12px;color:${RED};padding:8px 0">⚠ ${esc(err)}</div>`;
+  else if(skills&&skills.length)body=skills.map((n,j)=>editorSkillRow(a,n,i+'-'+j)).join('');
+  else body=`<div style="font-family:${MONO};font-size:12px;color:${DIM};padding:8px 0">no skill data — click ↻ to load from /api</div>`;
+  return `<div style="background:${PANEL};border:1px solid ${a.anchor?LIME:LINE};padding:20px 24px;${a.anchor?'box-shadow:0 0 0 1px rgba(200,241,53,.15)':''}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
+      <div style="min-width:200px;flex:1">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:17px;font-weight:700">${esc(a.role)}</span>
+          ${a.anchor?`<span style="font-family:${MONO};font-size:10.5px;letter-spacing:1px;padding:2px 8px;background:${LIME};color:#0A0A0C">ANCHOR</span>`:''}
+          <span style="font-family:${MONO};font-size:11px;color:${DIM};border:1px solid ${LINE};padding:2px 8px">STAGE ${a.stage}</span>
+        </div>
+        ${a.rationale?`<div style="font-family:${MONO};font-size:11.5px;color:${MUT};margin-top:6px;line-height:1.5;max-width:600px">${esc(a.rationale)}</div>`:''}
+        <div style="font-family:${MONO};font-size:10.5px;color:${DIM};margin-top:8px">${esc(a.agent_id)}${a.produces?` · produces: ${esc(a.produces)}`:''}${a.consumes?` · consumes: ${esc(a.consumes)}`:''}</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="hv" onclick="app.teamReloadSkills('${esc(a.agent_id)}')" style="background:none;border:1px solid ${LINE};color:${MUT};font-family:${MONO};font-size:11.5px;padding:8px 12px;cursor:pointer">↻ skills</button>
+        <button class="hv" onclick="app.deleteAgent('${esc(a.agent_id)}')" style="background:none;border:1px solid ${LINE};color:${RED};font-family:${MONO};font-size:11.5px;padding:8px 12px;cursor:pointer">✕ delete</button>
+      </div>
+    </div>
+    <div style="margin-top:16px;border-top:1px solid ${DIV};padding-top:14px">
+      <div style="font-family:${MONO};font-size:11px;letter-spacing:2px;color:${DIM};margin-bottom:10px">PER-SKILL · CLICK PIP TO SET LEVEL · ✓ = ENABLED</div>
+      ${body}
+    </div>
+  </div>`;
+}
+function renderAddAgentForm(){
+  if(!state.team.addingAgent)return '';
+  return `<div style="background:${INSET};border:1px dashed ${LIME};padding:14px 18px;margin-bottom:14px">
+    <div style="font-family:${MONO};font-size:11px;letter-spacing:1px;color:${LIME};margin-bottom:8px">ADD AGENT · ENTER ROLE_ID</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input id="addRoleId" type="text" value="${esc(state.team.addRoleId)}" placeholder="role_id (e.g. 1234) or role name" oninput="state.team.addRoleId=this.value" style="flex:1;min-width:220px;background:${INSET};border:1px solid ${LINE};color:${INK};font-size:14px;padding:10px 12px;outline:none">
+      <button onclick="app.confirmAddAgent()" style="background:${LIME};color:#0A0A0C;border:none;font-weight:700;font-size:13px;padding:10px 16px;cursor:pointer">Add →</button>
+      <button onclick="state.team.addingAgent=false;app.rerenderEditor()" class="hv" style="background:none;border:1px solid ${LINE};color:${MUT};font-size:13px;padding:10px 14px;cursor:pointer">cancel</button>
+    </div>
+    <div style="margin-top:8px;font-family:${MONO};font-size:10.5px;color:${DIM};line-height:1.5">tip: use ⌕ BROWSE ROLES above to find a role, then copy its role_id here.</div>
+  </div>`;
+}
+function renderEditor(){
+  if(!state.team.id){
+    return `<section style="max-width:920px;margin:0 auto;padding:48px 44px">
+      <div style="font-family:${MONO};font-size:13px;letter-spacing:3px;color:${LIME};margin-bottom:10px">02 · TEAM EDITOR</div>
+      <h1 style="font-family:${UNB};font-weight:900;font-size:40px;margin:0 0 16px">No team loaded.</h1>
+      <p style="color:${MUT};font-size:16px;line-height:1.6;max-width:560px">Run intake and recommend first, then per-agent skill toggles, add, and delete will be wired to <code style="font-family:${MONO};color:${INK}">/api/team/{id}/agents</code>.</p>
+      <button onclick="app.nav('recommend')" style="margin-top:18px;background:${LIME};color:#0A0A0C;border:none;font-weight:700;font-size:15px;padding:12px 24px;cursor:pointer">← Back to recommend</button>
+    </section>`;
+  }
+  const ag=state.team.agents;
+  return `<section style="max-width:1240px;margin:0 auto;padding:48px 44px 64px">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:20px;flex-wrap:wrap">
+    <div>
+      <div style="font-family:${MONO};font-size:13px;letter-spacing:3px;color:${LIME};margin-bottom:8px">02 · TEAM EDITOR</div>
+      <h1 style="font-family:${UNB};font-weight:700;font-size:30px;margin:0">${esc(state.team.name||'Team')}</h1>
+      <div style="font-family:${MONO};font-size:12px;color:${DIM};margin-top:6px">${ag.length} agent${ag.length===1?'':'s'}${state.team.purpose?` · ${esc(state.team.purpose)}`:''}</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="hv" onclick="app.nav('recommend')" style="background:none;border:1px solid ${LINE};color:${MUT};font-family:${MONO};font-size:12px;letter-spacing:1px;padding:11px 16px;cursor:pointer">← RECOMMEND</button>
+      <button class="hv" onclick="app.openCatalog()" style="background:none;border:1px solid ${LINE};color:${MUT};font-family:${MONO};font-size:12px;letter-spacing:1px;padding:11px 16px;cursor:pointer">⌕ BROWSE ROLES</button>
+      <button onclick="app.addAgent()" style="background:${LIME};color:#0A0A0C;border:none;font-weight:700;font-size:14px;padding:11px 20px;cursor:pointer">+ Add agent</button>
+    </div>
+  </div>
+  ${state.team.error?`<div style="padding:14px;border:1px solid ${RED};color:${RED};font-family:${MONO};font-size:12.5px;margin-bottom:18px;line-height:1.6">⚠ ${esc(state.team.error)}</div>`:''}
+  ${editorChartPreview()}
+  ${renderAddAgentForm()}
+  <div style="display:flex;flex-direction:column;gap:14px">${ag.map((a,i)=>editorAgentCard(a,i)).join('')}</div>
+</section>`;
+}
+
 /* ============ app ============ */
 const app={
   nav(sc){
     RUN++;state.screen=sc;
     if(sc==='deliver')state.lit.oxy=true;
     const root=document.getElementById('root');
-    if(sc==='request')root.innerHTML=renderRequest();
+    if(sc==='intake'){
+      root.innerHTML=renderIntake();
+      renderIntakeTranscript();renderIntakeForm();
+      if(state.serverEnabled&&!state.intake.sessionId)this.startIntake();
+    }
+    else if(sc==='recommend')root.innerHTML=renderRecommend();
+    else if(sc==='editor'){root.innerHTML=renderEditor();this.teamAutoLoadSkills();}
+    else if(sc==='request')root.innerHTML=renderRequest();
     else if(sc==='loadout'){root.innerHTML=renderLoadout();updateLoadout();}
     else if(sc==='prove'){root.innerHTML=renderProve();setTimeout(runSim,60);}
     else root.innerHTML=renderDeliver();
@@ -924,14 +1225,180 @@ const app={
   closeCatalog(){
     const m=document.getElementById('catModal');if(m)m.remove();
     clearTimeout(this._catDeb);
+  },
+  /* ---- screen 00 · intake ---- */
+  async startIntake(){
+    const I=state.intake;
+    if(I.sessionId||I.loading||!state.serverEnabled)return;
+    I.loading=true;I.error=null;
+    renderIntakeForm();
+    const d=await api('/intake/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+    I.loading=false;
+    if(d.error){I.error=d.error;renderIntakeForm();return;}
+    I.sessionId=d.session_id||d.id;
+    I.questions=d.questions&&d.questions.length?d.questions:SEED_QUESTIONS.slice();
+    I.transcript=I.questions.map(q=>({role:'fixed',content:q,round:0}));
+    renderIntakeTranscript();renderIntakeForm();
+  },
+  async submitIntake(){
+    const I=state.intake;if(!I.sessionId)return;
+    const qs=I.questions||[];
+    const answers=qs.map((_,i)=>{const el=document.getElementById('intakeAns-'+i);return el?el.value.trim():'';});
+    if(answers.some(a=>!a)){
+      I.error='please answer all questions before submitting.';
+      renderIntakeForm();
+      setTimeout(()=>{I.error=null;renderIntakeForm();},1600);
+      return;
+    }
+    I._round=(I._round||0)+1;
+    answers.forEach((a,i)=>I.transcript.push({role:'user',content:a,round:I._round,q:qs[i]}));
+    I.loading=true;I.error=null;I.questions=[];
+    renderIntakeForm();
+    const d=await api(`/intake/${I.sessionId}/answer`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({answers})});
+    I.loading=false;
+    if(d.error){I.error=d.error;renderIntakeForm();return;}
+    if(d.ready){
+      I.ready=true;I.brief=d.brief||null;
+      state.team.brief=I.brief;        // seed the recommend screen
+      renderIntakeTranscript();renderIntakeForm();
+    }else{
+      I.questions=(d.questions||[]).slice();
+      I.transcript.push(...I.questions.map(q=>({role:'assistant',content:q,round:I._round})));
+      renderIntakeTranscript();renderIntakeForm();
+    }
+  },
+  resetIntake(){
+    state.intake={sessionId:null,transcript:[],questions:[],brief:null,ready:false,loading:false,error:null,_round:0};
+    renderIntakeTranscript();renderIntakeForm();
+    return this.startIntake();
+  },
+  skipToIntakePaste(){
+    const pasted=prompt('Paste a JSON brief (or cancel to keep interviewing):');
+    if(pasted===null)return;
+    try{
+      const b=pasted.trim()?JSON.parse(pasted):{};
+      state.intake.brief=b;state.intake.ready=true;state.team.brief=b;
+      renderIntakeForm();
+    }catch(e){alert('invalid JSON brief — fix and retry.');}
+  },
+  /* ---- screen 01 · recommend ---- */
+  async recommendTeam(){
+    const brief=state.intake.brief;
+    const T=state.team;
+    if(!brief){
+      T.error='no brief — run intake first.';
+      const p=document.getElementById('recommendPreview');if(p)p.innerHTML=renderRecommendPreview();
+      return;
+    }
+    T.loading=true;T.error=null;
+    const p=document.getElementById('recommendPreview');if(p)p.innerHTML=renderRecommendPreview();
+    let d;
+    if(state.intake.sessionId){
+      d=await api(`/intake/${state.intake.sessionId}/recommend`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+    }else{
+      d=await api('/team/recommend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({brief})});
+    }
+    T.loading=false;
+    if(d.error){T.error=d.error;}
+    else{
+      T.id=d.team_id||d.id;
+      T.name=d.name||'Recommended team';
+      T.purpose=d.purpose||'';
+      T.agents=(d.agents||[]).map(normTeamAgent);
+      T.skills={};T.skillsLoading={};T.skillsErr={};  // fresh caches
+    }
+    const p2=document.getElementById('recommendPreview');if(p2)p2.innerHTML=renderRecommendPreview();
+  },
+  /* ---- screen 02 · team editor ---- */
+  rerenderEditor(){const r=document.getElementById('root');if(state.screen==='editor'&&r)r.innerHTML=renderEditor();},
+  async teamLoadSkills(agentId){
+    if(!state.team.id)return;
+    const a=state.team.agents.find(x=>x.agent_id===agentId);
+    // fast path: agent payload already carries sk rows (chart-shape response)
+    if(a&&a.sk&&a.sk.length&&!state.team.skills[agentId]&&!state.team.skillsErr[agentId]){
+      state.team.skills[agentId]=a.sk.map(normSkill);
+      this.rerenderEditor();
+      return;
+    }
+    if(state.team.skills[agentId]&&!state.team.skillsErr[agentId])return;
+    state.team.skillsLoading[agentId]=true;state.team.skillsErr[agentId]='';
+    this.rerenderEditor();
+    const d=await api(`/team/${state.team.id}/skills/${agentId}`);
+    state.team.skillsLoading[agentId]=false;
+    if(d.error){state.team.skillsErr[agentId]=d.error;}
+    else{state.team.skills[agentId]=(d.skills||d.sk||[]).map(normSkill);}
+    this.rerenderEditor();
+  },
+  teamReloadSkills(aid){return this.teamLoadSkills(aid);},
+  async teamAutoLoadSkills(){
+    if(!state.team.agents.length)return;
+    await Promise.all(state.team.agents
+      .filter(a=>!state.team.skills[a.agent_id]&&!state.team.skillsErr[a.agent_id])
+      .map(a=>this.teamLoadSkills(a.agent_id)));
+  },
+  async teamSetLevel(agentId,code,l){
+    const T=state.team;const a=T.agents.find(x=>x.agent_id===agentId);if(!a||!T.id)return;
+    if(!a.skill_overrides)a.skill_overrides={};
+    const cur=a.skill_overrides[code]??(T.skills[agentId]?.find(s=>(s.code||s.nm)===code)?.lvl||0);
+    a.skill_overrides[code]=cur===l?Math.max(0,l-1):l;  // click same level → step down
+    this.rerenderEditor();
+    const d=await api(`/team/${T.id}/agents/${agentId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({skill_overrides:a.skill_overrides})});
+    if(d.error){T.error=d.error;}
+    else if(d.agent){Object.assign(a,normTeamAgent(d.agent));}
+    this.rerenderEditor();
+  },
+  async teamToggle(agentId,code){
+    const T=state.team;const a=T.agents.find(x=>x.agent_id===agentId);if(!a||!T.id)return;
+    if(!a.skill_disabled)a.skill_disabled=[];
+    const i=a.skill_disabled.indexOf(code);
+    if(i>=0)a.skill_disabled.splice(i,1);else a.skill_disabled.push(code);
+    this.rerenderEditor();
+    const d=await api(`/team/${T.id}/agents/${agentId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({skill_disabled:a.skill_disabled})});
+    if(d.error){T.error=d.error;}
+    else if(d.agent){Object.assign(a,normTeamAgent(d.agent));}
+    this.rerenderEditor();
+  },
+  async deleteAgent(agentId){
+    const T=state.team;if(!T.id)return;
+    if(!confirm('Delete this agent from the team?'))return;
+    T.agents=T.agents.filter(a=>a.agent_id!==agentId);
+    delete T.skills[agentId];delete T.skillsLoading[agentId];delete T.skillsErr[agentId];
+    this.rerenderEditor();
+    const d=await api(`/team/${T.id}/agents/${agentId}`,{method:'DELETE'});
+    if(d.error&&!d.ok){T.error=d.error;this.rerenderEditor();}
+  },
+  addAgent(){state.team.addingAgent=true;state.team.addRoleId='';this.rerenderEditor();},
+  async confirmAddAgent(){
+    const T=state.team;
+    const roleId=(T.addRoleId||'').trim();
+    if(!roleId){T.error='enter a role_id.';this.rerenderEditor();return;}
+    T.addingAgent=false;T.loading=true;T.error=null;
+    this.rerenderEditor();
+    const d=await api(`/team/${T.id}/agents`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role_id:roleId})});
+    T.loading=false;
+    if(d.error){T.error=d.error;}
+    else if(d.agent){T.agents.push(normTeamAgent(d.agent));}
+    this.rerenderEditor();
+    // lazily load skills for the freshly-added agent
+    if(d&&d.agent){this.teamLoadSkills(normTeamAgent(d.agent).agent_id);}
   }
 };
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){app.closeTeam();app.closeCatalog();}});
 buildHeader();app.nav('request');
-// catalog feature-detect: only enable when /api is reachable (served by FastAPI).
-// Hides the entry in CLI/dashboard mode (window.AP_REAL set) AND in pure
-// standalone file:// mode, so the scripted demo never shows a dead button.
-if(!REAL){api('/health').then(h=>{if(h&&!h.error){state.catalogEnabled=true;if(state.screen==='request')app.nav('request');}});}
+// catalog + live-flow feature-detect: only enable when /api is reachable (served
+// by FastAPI). Hides the entries in CLI/dashboard mode (window.AP_REAL set) AND
+// in pure standalone file:// mode, so the scripted demo never shows dead buttons.
+// When the probe succeeds we flip state.serverEnabled (gates the intake →
+// recommend → team-editor screens) and rebuild the rail so the 00/0R/0T buttons
+// appear alongside the scripted 01–04 demo entries.
+if(!REAL){api('/health').then(h=>{
+  if(h&&!h.error){
+    state.catalogEnabled=true;state.serverEnabled=true;
+    buildHeader();updateHeader();
+    if(state.screen==='request')app.nav('request');      // surface the intake entry button
+    else if(state.screen==='intake')app.nav('intake');   // kick off startIntake() now that the gate is open
+  }
+});}
 </script>
 </body>
 </html>
