@@ -19,6 +19,18 @@ textarea{font-family:inherit}
 @keyframes ap-pulse{0%,100%{opacity:.25}50%{opacity:1}}
 @keyframes ap-sweep{from{left:-45%}to{left:125%}}
 @keyframes ap-glow{0%,100%{box-shadow:0 0 0 rgba(200,241,53,0)}50%{box-shadow:0 0 26px rgba(200,241,53,.35)}}
+/* light responsive touch — stacks the heavy 2-col grids + full-width modals on narrow widths */
+@media(max-width:760px){
+  #app [style*="grid-template-columns:1fr 340px"],
+  #app [style*="grid-template-columns:1.05fr .95fr"],
+  #app [style*="grid-template-columns:320px 1fr"],
+  #app [style*="grid-template-columns:1fr 1fr"],
+  #app [style*="grid-template-columns:300px 1fr"],
+  #app [style*="grid-template-columns:1fr 340px;gap:16px"]{grid-template-columns:1fr!important}
+  #app [style*="grid-template-columns:34px 1fr auto 160px"]{grid-template-columns:34px 1fr auto 120px!important}
+  #app section{padding-left:20px!important;padding-right:20px!important}
+  #app h1{font-size:34px!important}
+}
 </style>
 </head>
 <body>
@@ -125,6 +137,7 @@ const state={
         specsList:[],specsLoading:false,specsError:null,
         specMd:{},specLoading:{},specErr:{},
         selSpecAgent:null,
+        rendering:false,                  /* Stage 5: async render job in flight */
         verifyRuns:{},verifyLoading:{},verifyErr:{},
         adminToken:(typeof localStorage!=='undefined'?(localStorage.getItem('ap_admin_token')||''):'')}
 };
@@ -741,8 +754,123 @@ async function api(path,opts){
     return {error:'non-json response'};
   }catch(e){return {error:String(e)};}
 }
+
+/* ============ toasts (Stage 5) — top-right, auto-dismiss ~4s, Esc clears ============ */
+function toast(msg,kind){
+  let wrap=document.getElementById('apToasts');
+  if(!wrap){wrap=document.createElement('div');wrap.id='apToasts';
+    wrap.style.cssText='position:fixed;top:16px;right:16px;z-index:90;display:flex;flex-direction:column;gap:8px;pointer-events:none;max-width:340px';
+    document.body.appendChild(wrap);}
+  const k=kind||'info';                       // info|ok|err|warn
+  const col=k==='err'?RED:(k==='warn'?AMBER:(k==='ok'?LIME:INK));
+  const t=document.createElement('div');
+  t.style.cssText='pointer-events:auto;background:'+PANEL+';border:1px solid '+col+';color:'+col+';font-family:'+MONO+';font-size:12px;line-height:1.5;padding:11px 14px;box-shadow:0 6px 22px rgba(0,0,0,.5);opacity:0;transition:opacity .2s;max-width:340px;word-break:break-word';
+  t.innerHTML=msg;                             // msg may include <a>/<b> tags
+  wrap.appendChild(t);
+  requestAnimationFrame(()=>t.style.opacity='1');
+  const close=()=>{t.style.opacity='0';setTimeout(()=>{t.remove();const w=document.getElementById('apToasts');if(w&&!w.children.length)w.remove();},250);};
+  setTimeout(close,4000);
+  t.onclick=close;
+  return close;
+}
+function closeAllToasts(){const w=document.getElementById('apToasts');if(w)w.remove();}
+
+/* ============ salary outlier notes (Stage 5) ============ */
+// Two known outliers surfaced inline on the catalog card. The server may send
+// salary_notes in the card payload; fall back to these hardcoded ones by role.
+const SALARY_OUTLIERS={
+  'Data Analyst':{note:'median–high only · low ~S$0.8k is an internship outlier'},
+  'Head of Product':{note:'range with median · high ~S$28.6k is a ceiling outlier'}
+};
+function salaryNote(card){
+  const sb=card.salary_band||{};
+  if(sb.notes)return sb.notes;                 // server-provided
+  const role=card.role||'';
+  for(const k in SALARY_OUTLIERS){if(role.indexOf(k)>=0)return SALARY_OUTLIERS[k].note;}
+  return '';
+}
+
+/* ============ async job polling (Stage 5) — render + verify run async ============ */
+// POST with ?async_mode=true → {job_id, poll:"/api/jobs/{id}"}. Poll GET /api/jobs/{id}
+// every ~3s until status is done (→ onDone(result)) or failed (→ onFail(error)).
+function pollJob(jobId,opts){
+  const {onPoll,onDone,onFail}=opts||{};
+  let stopped=false;const stop=()=>{stopped=true;};
+  const tick=async()=>{
+    if(stopped)return;
+    const s=await api('/jobs/'+encodeURIComponent(jobId));
+    if(stopped)return;
+    if(s&&s.error){onFail&&onFail(s.error);return;}
+    if(onPoll)onPoll(s);
+    if(s.status==='done'){onDone&&onDone(s.result,s);return;}
+    if(s.status==='failed'){onFail&&onFail(s.error||('job failed: '+(s.kind||'')));return;}
+    setTimeout(tick,3000);
+  };
+  setTimeout(tick,400);
+  return stop;
+}
+
+/* ============ verify two-track results rendering (Stage 5) ============ */
+// Replaces the Stage-4 placeholder. Executed skills → bars (score 0..1, sandbox_id
+// chip, "✓ execution-verified" badge). Rubric skills → separate panel (covered/total
+// + pct, "○ NOT execution-verified" badge). coverage_pct is shown labelled
+// "executed-track coverage only" — NEVER blended into one number.
+function renderVerifyResults(vr){
+  if(!vr)return '';
+  const exec=vr.exec_results||[],rub=vr.rubric_results||[],cov=vr.coverage_pct;
+  const note=vr.two_track_note||'';
+  const execBars=exec.length?exec.map(er=>{
+    const pct=Math.round((er.score||0)*100);
+    const sbTxt=er.sandbox_id?('sb '+String(er.sandbox_id).slice(0,8)):'no sandbox';
+    const err=er.error?`<div style="font-family:${MONO};font-size:10.5px;color:${RED};margin-top:4px">⚠ ${esc(er.error)}</div>`:'';
+    const held=er.held_level!=null&&er.required_level!=null?`L${er.required_level}→L${er.held_level}`:'';
+    return `<div style="margin-bottom:11px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
+        <span style="font-size:13.5px;font-weight:600">${esc(er.skill)}${held?`<span style="font-family:${MONO};font-size:11px;color:${DIM};margin-left:6px">${held}</span>`:''}</span>
+        <span style="font-family:${MONO};font-size:10.5px;color:${DIM};border:1px solid ${LINE};padding:2px 7px;white-space:nowrap">${esc(sbTxt)}</span>
+      </div>
+      <div style="height:9px;background:${INSET};border:1px solid #1E1E23;position:relative;margin-top:6px;overflow:hidden">
+        <div style="position:absolute;top:0;bottom:0;left:0;width:${pct}%;background:${GRAD}"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px">
+        <span style="font-family:${MONO};font-size:11px;color:${LIME}">✓ execution-verified · ${pct}%</span>
+      </div>
+      ${err}
+    </div>`;}).join('')
+    :`<div style="font-family:${MONO};font-size:11.5px;color:${DIM};padding:6px 0">no execution-verified skills · this card is rubric-only.</div>`;
+  const rubRows=rub.length?rub.map(rr=>{
+    const pct=rr.pct!=null?Math.round(rr.pct):0;
+    const covTxt=rr.covered!=null?`${rr.covered}/${rr.total}`:'—';
+    const err=rr.error?`<div style="font-family:${MONO};font-size:10.5px;color:${RED};margin-top:4px">⚠ ${esc(rr.error)}</div>`:'';
+    return `<div style="display:grid;grid-template-columns:1fr auto;gap:12px;padding:7px 0;border-bottom:1px solid ${DIV}">
+      <div>
+        <div style="font-size:13px;font-weight:600">${esc(rr.skill)}${rr.level!=null?`<span style="font-family:${MONO};font-size:11px;color:${DIM};margin-left:6px">L${rr.level}</span>`:''}</div>
+        <div style="font-family:${MONO};font-size:10.5px;color:${AMBER};margin-top:3px">○ NOT execution-verified · rubric-judged</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:${MONO};font-size:12.5px;color:${AMBER}">${pct}%</div>
+        <div style="font-family:${MONO};font-size:10px;color:${DIM}">${esc(covTxt)} K&amp;A</div>
+      </div>
+      ${err}
+    </div>`;}).join('')
+    :`<div style="font-family:${MONO};font-size:11.5px;color:${DIM};padding:6px 0">no rubric-assessed skills.</div>`;
+  return `<div style="border:1px solid ${LINE};background:${INSET};padding:14px 16px;font-family:${MONO};font-size:12px;line-height:1.5">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid ${DIV};padding-bottom:9px;margin-bottom:11px">
+      <span style="color:${LIME};letter-spacing:1px">✓ EXECUTED TRACK · ${exec.length} skill${exec.length===1?'':'s'}</span>
+      ${cov!=null?`<span style="color:${LIME};font-size:11px">executed-track coverage only · <b style="font-size:14px">${cov}%</b></span>`:''}
+    </div>
+    ${execBars}
+    <div style="border-top:1px solid ${DIV};margin-top:14px;padding-top:11px">
+      <div style="color:${AMBER};letter-spacing:1px;margin-bottom:8px">○ RUBRIC TRACK · ${rub.length} skill${rub.length===1?'':'s'} · NOT execution-verified</div>
+      ${rubRows}
+    </div>
+    ${note?`<div style="margin-top:12px;font-size:10.5px;color:${DIM};line-height:1.5;border-top:1px solid ${DIV};padding-top:9px">${esc(note)}</div>`:''}
+    <div style="margin-top:10px;font-size:10.5px;color:${RED};line-height:1.5">two numbers · never one blend</div>
+  </div>`;
+}
 const catalog={q:'',sector:'',sectors:[],items:[],total:0,loading:false,error:null,
   card:null,cardLoading:false,cardErr:''};
+
 function renderCatalogRow(r){
   return `<div onclick="app.selectCatalogRole(${r.role_id})" class="tn" style="display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;padding:14px 18px;border-bottom:1px solid ${DIV};background:${INSET}">
     <div style="min-width:0">
@@ -782,7 +910,7 @@ function renderCatalogCardLoading(roleId){
     <div style="text-align:center;padding:20px 0">
       <div style="font-family:${MONO};font-size:13px;color:${LIME}">distilling responsibilities from live job postings…</div>
       <div style="margin-top:16px;display:flex;justify-content:center;gap:6px">${[0,1,2].map(i=>`<span style="width:9px;height:9px;border-radius:50%;background:${LIME};animation:ap-pulse 1s ${i*0.18}s infinite"></span>`).join('')}</div>
-      <div style="font-family:${MONO};font-size:11px;color:${DIM};margin-top:16px">cold role #${roleId} · one-time distill · cached forever after</div>
+      <div style="font-family:${MONO};font-size:11px;color:${DIM};margin-top:16px">cold role #${roleId} · one-time distill · ~55s · cached forever after</div>
     </div>
   </div>`;
 }
@@ -793,6 +921,7 @@ function renderCatalogCard(){
   const sb=c.salary_band||{};
   const salTxt=hasSal?`${sb.currency||'S$'}${Math.round((sb.low||0)/1000)}k – ${Math.round((sb.high||0)/1000)}k`:'market data not yet collected';
   const salSub=hasSal?'per month · SG market, scraped live':'no live postings scraped for this role';
+  const salNote=salaryNote(c);
   const tools=(c.tools||[]);
   const distilled=(c.distilled||[]);
   const rows=(c.sk||[]).map(normSkill).sort((x,y)=>(y.exec-x.exec)||(x.lvl-y.lvl));
@@ -812,6 +941,7 @@ function renderCatalogCard(){
         <div style="font-family:${MONO};font-size:11px;letter-spacing:2px;color:${DIM};margin-bottom:8px">SALARY BAND · OXYLABS</div>
         <div style="font-family:${UNB};font-weight:700;font-size:18px;color:${salTxt.includes('not')?MUT:LIME}">${salTxt}</div>
         <div style="font-family:${MONO};font-size:11px;color:${DIM};margin-top:5px">${salSub}</div>
+        ${salNote?`<div style="font-family:${MONO};font-size:10.5px;color:${AMBER};margin-top:6px;line-height:1.5">⚠ ${esc(salNote)}</div>`:''}
       </div>
       <div style="background:${INSET};border:1px solid ${LINE};padding:16px 18px">
         <div style="font-family:${MONO};font-size:11px;letter-spacing:2px;color:${DIM};margin-bottom:8px">TOOLS</div>
@@ -1372,7 +1502,7 @@ function renderSpecs(){
       <div style="font-size:14px;line-height:1.6;color:${INK}">${renderMarkdown(md)}</div>
     </div>`;
   }
-  // verify results placeholder for the selected agent
+  // verify two-track results for the selected agent (Stage 5: renderVerifyResults)
   const vr=sel?T.verifyRuns[sel]:null;
   const vErr=sel?T.verifyErr[sel]:'';
   const vLoad=sel?T.verifyLoading[sel]:false;
@@ -1383,9 +1513,10 @@ function renderSpecs(){
       ${T.adminToken?`<span style="font-family:${MONO};font-size:10.5px;color:${LIME}">✓ admin token set</span>`:`<span style="font-family:${MONO};font-size:10.5px;color:${AMBER}">⚠ no admin token — <a href="#" onclick="app.openSettings();return false" style="color:${LIME}">Settings</a></span>`}
     </div>
     <div id="verifyResults" style="margin-top:12px;min-height:30px">
-      ${vLoad?'':(vErr?`<div style="padding:12px;border:1px solid ${RED};color:${RED};font-family:${MONO};font-size:11.5px;line-height:1.6">⚠ ${esc(vErr)}</div>`
-        :vr?`<div style="padding:12px;border:1px solid ${LINE};background:${INSET};font-family:${MONO};font-size:11px;color:${DIM};line-height:1.6"><div style="color:${LIME};margin-bottom:6px">✓ verify returned</div><pre style="margin:0;white-space:pre-wrap;word-break:break-word;color:${MUT}">${esc(JSON.stringify(vr,null,2))}</pre><div style="color:${DIM};margin-top:8px">▸ Stage 4 wires the two-track execution-verified vs rubric-only rendering.</div></div>`
-        :`<div style="font-family:${MONO};font-size:11px;color:${DIM};padding:8px 0">results placeholder · Stage 4 wires execution-verified vs rubric-only rendering.</div>`)}
+      ${vLoad?`<div style="display:flex;align-items:center;gap:10px;font-family:${MONO};font-size:12px;color:${LIME};padding:8px 0"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${LIME};animation:ap-pulse 1s infinite"></span>verifying… (async · polls every 3s)</div>`
+        :vErr?`<div style="padding:12px;border:1px solid ${RED};color:${RED};font-family:${MONO};font-size:11.5px;line-height:1.6">⚠ ${esc(vErr)}<div style="margin-top:8px"><button onclick="app.verifyAgent('${esc(sel)}')" style="background:none;border:1px solid ${RED};color:${RED};font-family:${MONO};font-size:11px;padding:6px 12px;cursor:pointer">↻ retry</button></div></div>`
+        :vr?renderVerifyResults(vr)
+        :`<div style="font-family:${MONO};font-size:11px;color:${DIM};padding:8px 0">no verify run yet · click <b style="color:${INK}">⚡ Execution-verify</b> (admin-gated, runs async).</div>`}
     </div>
   </div>`:'';
   return `<section style="max-width:1240px;margin:0 auto;padding:48px 44px 64px">
@@ -1397,6 +1528,7 @@ function renderSpecs(){
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="hv" onclick="app.nav('wire')" style="background:none;border:1px solid ${LINE};color:${MUT};font-family:${MONO};font-size:12px;letter-spacing:1px;padding:11px 16px;cursor:pointer">← WIRE</button>
+      <button id="renderBtn" onclick="app.renderTeamSpecs()" ${T.specsLoading?'disabled':''} style="background:none;border:1px solid ${LIME};color:${LIME};font-family:${MONO};font-size:12px;letter-spacing:1px;padding:11px 16px;cursor:pointer">${state.team.rendering?'rendering…':'⚡ Render specs'}</button>
       <button onclick="app.downloadTeamZip()" style="background:${LIME};color:#0A0A0C;border:none;font-weight:700;font-size:14px;padding:11px 20px;cursor:pointer">⬇ download.zip</button>
       <button class="hv" onclick="app.openSettings()" style="background:none;border:1px solid ${LINE};color:${MUT};font-family:${MONO};font-size:12px;letter-spacing:1px;padding:11px 16px;cursor:pointer">⚙ Settings</button>
     </div>
@@ -1404,7 +1536,7 @@ function renderSpecs(){
   ${T.specsError?`<div style="padding:14px;border:1px solid ${RED};color:${RED};font-family:${MONO};font-size:12.5px;margin-bottom:18px;line-height:1.6">⚠ ${esc(T.specsError)}</div>`:''}
   <div style="display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start">
     <div style="background:${PANEL};border:1px solid ${LINE};padding:18px 22px">
-      <div style="font-family:${MONO};font-size:11px;letter-spacing:2px;color:${DIM};margin-bottom:12px">AGENTS · ${T.specsLoading?'loading versions…':(T.specsList.length?`${T.specsList.length} spec version${T.specsList.length===1?'':'s'}`:'versions not loaded')}</div>
+      <div style="font-family:${MONO};font-size:11px;letter-spacing:2px;color:${DIM};margin-bottom:12px">AGENTS · ${T.specsLoading?(state.team.rendering?'rendering specs… (async)':'loading versions…'):(T.specsList.length?`${T.specsList.length} spec version${T.specsList.length===1?'':'s'}`:'versions not loaded')}</div>
       ${agentList||`<div style="font-family:${MONO};font-size:12px;color:${DIM};padding:10px 0">no agents.</div>`}
     </div>
     <div style="background:${PANEL};border:1px solid ${LINE};padding:20px 24px;position:relative">
@@ -1789,16 +1921,67 @@ const app={
   },
   async verifyAgent(agentId){
     const T=state.team;if(!T.id||!agentId)return;
-    if(!T.adminToken){T.verifyErr[agentId]='no admin token set — open Settings to add one.';this.rerenderSpecs();return;}
+    if(T.verifyLoading[agentId])return;                       // already polling
+    if(!T.adminToken){T.verifyErr[agentId]='no admin token set — open Settings to add one.';toast('401 · admin token required for verify','err');this.rerenderSpecs();return;}
     T.verifyLoading[agentId]=true;T.verifyErr[agentId]='';delete T.verifyRuns[agentId];
     this.rerenderSpecs();
     try{
-      const r=await fetch(`/api/team/${T.id}/agents/${encodeURIComponent(agentId)}/verify`,{method:'POST',headers:{'Authorization':'Bearer '+T.adminToken,'Content-Type':'application/json'}});
-      T.verifyLoading[agentId]=false;
-      if(!r.ok){const t=await r.text().catch(()=>'');T.verifyErr[agentId]=`${r.status} ${r.statusText}${t?(' · '+t.slice(0,160)):''}`;}
-      else{const d=await r.json().catch(()=>({}));T.verifyRuns[agentId]=d;}
-    }catch(e){T.verifyLoading[agentId]=false;T.verifyErr[agentId]=String(e);}
+      // Stage 5: POST with ?async_mode=true → {job_id, poll} → poll /api/jobs/{id} every 3s.
+      const r=await fetch(`/api/team/${T.id}/agents/${encodeURIComponent(agentId)}/verify?async_mode=true`,{method:'POST',headers:{'Authorization':'Bearer '+T.adminToken,'Content-Type':'application/json'}});
+      if(r.status===429){const ra=r.headers.get('Retry-After')||'60';T.verifyLoading[agentId]=false;T.verifyErr[agentId]=`429 · rate-limited — retry in ${ra}s`;toast(`429 · rate-limited · retry in ${ra}s`,'warn');this.rerenderSpecs();return;}
+      if(r.status===401){T.verifyLoading[agentId]=false;T.verifyErr[agentId]='401 · admin token rejected';toast('401 · admin token rejected','err');this.rerenderSpecs();return;}
+      if(!r.ok){const t=await r.text().catch(()=>'');T.verifyLoading[agentId]=false;T.verifyErr[agentId]=`${r.status} ${r.statusText}${t?(' · '+t.slice(0,160)):''}`;toast('verify failed: '+r.status,'err');this.rerenderSpecs();return;}
+      const d=await r.json().catch(()=>({}));
+      const jobId=d.job_id;
+      if(!jobId){T.verifyLoading[agentId]=false;T.verifyErr[agentId]='no job_id returned from verify';this.rerenderSpecs();return;}
+      toast('verify submitted · polling…','info');
+      pollJob(jobId,{
+        onDone:(result)=>{
+          T.verifyLoading[agentId]=false;
+          // result is the verify dict (exec_results/rubric_results/coverage_pct);
+          // if absent, fall back to GET /verify for the persisted run.
+          if(result&&(result.exec_results||result.rubric_results)){
+            T.verifyRuns[agentId]=result;
+            const n=(result.exec_results||[]).length;
+            toast('verify complete · '+n+' executed skill'+(n===1?'':'s'),'ok');
+            this.rerenderSpecs();
+          }else{
+            api(`/team/${T.id}/agents/${encodeURIComponent(agentId)}/verify`,{headers:{'Authorization':'Bearer '+T.adminToken}})
+              .then(v=>{T.verifyRuns[agentId]=v||result||{};const n=((v||{}).exec_results||[]).length;toast('verify complete · '+n+' executed skill'+(n===1?'':'s'),'ok');this.rerenderSpecs();})
+              .catch(()=>{T.verifyRuns[agentId]=result||{};this.rerenderSpecs();});
+          }
+        },
+        onFail:err=>{T.verifyLoading[agentId]=false;T.verifyErr[agentId]=err;toast('verify failed · '+err,'err');this.rerenderSpecs();}
+      });
+    }catch(e){T.verifyLoading[agentId]=false;T.verifyErr[agentId]=String(e);toast('verify error: '+e,'err');this.rerenderSpecs();}
+  },
+  /* ---- Stage 5: async render job (POST /render?async_mode=true + poll) ---- */
+  async renderTeamSpecs(){
+    const T=state.team;if(!T.id)return;
+    if(T.specsLoading)return;
+    T.specsLoading=true;T.specsError=null;T.rendering=true;
     this.rerenderSpecs();
+    try{
+      const r=await fetch(`/api/team/${T.id}/render?async_mode=true&force=true`,{method:'POST',headers:{'Content-Type':'application/json'}});
+      if(r.status===429){T.specsError='429 · rate-limited — retry shortly';toast('429 · rate-limited · retry shortly','warn');T.specsLoading=false;T.rendering=false;this.rerenderSpecs();return;}
+      if(!r.ok){const t=await r.text().catch(()=>'');T.specsError=`${r.status} ${r.statusText}${t?(' · '+t.slice(0,160)):''}`;toast('render failed: '+r.status,'err');T.specsLoading=false;T.rendering=false;this.rerenderSpecs();return;}
+      const d=await r.json().catch(()=>({}));
+      const jobId=d.job_id;
+      if(!jobId){T.specsError='no job_id returned from render';T.specsLoading=false;T.rendering=false;this.rerenderSpecs();return;}
+      toast('render submitted · polling…','info');
+      pollJob(jobId,{
+        onDone:()=>{
+          T.specsLoading=false;T.rendering=false;
+          toast('specs rendered','ok');
+          // reload the versions list + re-fetch the selected agent's spec.
+          this.loadSpecsList().then(()=>{
+            const sel=T.selSpecAgent;
+            if(sel){delete T.specMd[sel];this.loadSpec(sel);}
+          });
+        },
+        onFail:err=>{T.specsLoading=false;T.rendering=false;T.specsError=err;toast('render failed · '+err,'err');this.rerenderSpecs();}
+      });
+    }catch(e){T.specsLoading=false;T.rendering=false;T.specsError=String(e);toast('render error: '+e,'err');this.rerenderSpecs();}
   },
   /* ---- settings modal (admin token) ---- */
   openSettings(){
@@ -1808,7 +1991,7 @@ const app={
   closeSettings(){const m=document.getElementById('setModal');if(m)m.remove();},
   saveAdminToken(){try{localStorage.setItem('ap_admin_token',state.team.adminToken||'');}catch(e){}this.closeSettings();}
 };
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){app.closeTeam();app.closeCatalog();app.closeSettings();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){app.closeTeam();app.closeCatalog();app.closeSettings();closeAllToasts();}});
 buildHeader();app.nav('request');
 // catalog + live-flow feature-detect: only enable when /api is reachable (served
 // by FastAPI). Hides the entries in CLI/dashboard mode (window.AP_REAL set) AND
