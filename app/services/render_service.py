@@ -17,10 +17,11 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import time
 import datetime
 import zipfile
 
-from app import db, settings
+from app import db, jobs, settings
 from app.services import team_service, handoff_service
 from app.services.team_service import TeamNotFound
 import agent, framework, teamspec
@@ -114,6 +115,20 @@ def _latest_spec_row(team_id, agent_id):
     )
 
 
+def _generate_with_retry(role, skills, context, custom_instructions, sector, attempts=3):
+    """agent.generate_agent has no retry wrapper — a transient LLM error would drop
+    an agent. Wrap it: 3 attempts with backoff. Returns the spec markdown."""
+    last = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return agent.generate_agent(role, skills, context, custom_instructions, sector)
+        except Exception as e:  # noqa: BLE001 — retry on any failure
+            last = e
+            if attempt < attempts:
+                time.sleep(2 ** (attempt - 1))
+    raise last
+
+
 def render(team_id, force=False):
     """Render (or reuse) per-agent spec markdown for a team. Returns
     {team_id, versions:[{agent_id, role, version, render_inputs_hash,
@@ -166,7 +181,7 @@ def render(team_id, force=False):
         else:
             custom_instructions = _compose_custom_instructions(
                 use_case, a, hands)
-            spec_md = agent.generate_agent(
+            spec_md = _generate_with_retry(
                 role, skills, context, custom_instructions, sector)
             version = _max_version(team_id, aid) + 1
             rendered_at = _now()
@@ -188,6 +203,11 @@ def render(team_id, force=False):
         })
 
     return {"team_id": team_id, "versions": versions}
+
+
+def render_async(team_id, force=False):
+    """Submit render() to the background job runner; returns a job_id to poll."""
+    return jobs.submit("render", render, team_id, force)
 
 
 def specs_list(team_id):

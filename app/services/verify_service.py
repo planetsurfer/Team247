@@ -12,6 +12,7 @@ import uuid
 import datetime
 
 from app import db
+from app import jobs
 from app.services import team_service, render_service
 from app.services.team_service import TeamNotFound
 
@@ -124,6 +125,11 @@ def verify(team_id, agent_id, battery_item_ids=None):
         "two_track_note": "exec_results are execution-verified; rubric_results are "
                           "LLM-judged and never blended into coverage_pct.",
     }
+
+
+def verify_async(team_id, agent_id):
+    """Submit verify() to the background job runner; returns a job_id to poll."""
+    return jobs.submit("verify", verify, team_id, agent_id)
 
 
 def get_verify(team_id, agent_id):

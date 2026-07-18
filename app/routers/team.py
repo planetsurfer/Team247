@@ -4,7 +4,7 @@ from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from typing import Optional
 
-from app import db, settings
+from app import db, jobs, settings
 from app.ratelimit import llm_rate_limit
 from app.services import handoff_service, render_service, team_service, verify_service
 from app.services.team_service import TeamNotFound
@@ -119,8 +119,11 @@ def wire(team_id: str, body: WireIn):
 
 
 @router.post("/api/team/{team_id}/render", dependencies=[Depends(llm_rate_limit)])
-def render_team(team_id: str, force: bool = False):
+def render_team(team_id: str, force: bool = False, async_mode: bool = False):
     try:
+        if async_mode:
+            jid = render_service.render_async(team_id, force=force)
+            return {"job_id": jid, "poll": f"/api/jobs/{jid}", "async": True}
         return render_service.render(team_id, force=force)
     except TeamNotFound:
         raise HTTPException(status_code=404, detail="team not found")
@@ -162,13 +165,21 @@ def chart(team_id: str):
 
 # ── Stage 4: optional execution-verify (admin-gated, two-track) ────────────
 @router.post("/api/team/{team_id}/agents/{agent_id}/verify", dependencies=[Depends(llm_rate_limit)])
-def verify(team_id: str, agent_id: str, request: Request):
+def verify(team_id: str, agent_id: str, request: Request, async_mode: bool = False):
     if not settings.admin_token_ok(request.headers.get("authorization", "")):
         raise HTTPException(status_code=401, detail="admin token required")
     try:
+        if async_mode:
+            jid = verify_service.verify_async(team_id, agent_id)
+            return {"job_id": jid, "poll": f"/api/jobs/{jid}", "async": True}
         return verify_service.verify(team_id, agent_id)
     except TeamNotFound:
         raise HTTPException(status_code=404, detail="agent not found")
+
+
+@router.get("/api/jobs/{jid}")
+def job_status(jid: str):
+    return jobs.status(jid)
 
 
 @router.get("/api/team/{team_id}/agents/{agent_id}/verify")
