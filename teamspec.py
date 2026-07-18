@@ -75,7 +75,7 @@ def build_markdown(agent, rows, enrich_rec, generated_on):
            f"Stage {agent['stage']} · Squad: {agent.get('squad', '—')}", ""]
 
     md += ["## Role", ""]
-    resp = enrich_rec.get("responsibilities", [])
+    resp = enrich_rec.get("responsibilities_distilled") or []
     if resp:
         md.append("Distilled from live job postings:")
         md.append("")
