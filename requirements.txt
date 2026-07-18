@@ -3,3 +3,9 @@ python-dotenv
 requests
 openpyxl
 certifi
+fastapi
+uvicorn[standard]
+structlog
+slowapi
+alembic
+pytest

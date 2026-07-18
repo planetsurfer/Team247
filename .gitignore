@@ -14,3 +14,10 @@ agent_team_specs.zip
 # A small sample fixture under data/fixtures/ IS committed for --dry-run.
 data/cache/
 data/role_enrichment.json
+
+# Production app runtime DB + backups (FastAPI app at app/)
+data/agentproof.db
+data/agentproof.db-journal
+data/agentproof.db-wal
+data/agentproof.db-shm
+*.bak

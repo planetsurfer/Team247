@@ -1,0 +1,9 @@
+.git
+__pycache__
+.venv
+*.pyc
+data/agentproof.db
+data/role_enrichment.json.bak
+team_specs/
+agent_team_specs.zip
+.claude/
