@@ -1,18 +1,15 @@
-from config import kimi_chat, make_daytona
+from config import llm_chat, make_runner
 
-reply = kimi_chat([{"role": "user", "content": "Reply with exactly: KIMI OK"}],
-                  temperature=0)[:40]
-print(f"KIMI: OK ({reply})")
-d = make_daytona()
-sb = d.create()
+reply = llm_chat([{"role": "user", "content": "Reply with exactly: LLM OK"}],
+                  temperature=0, purpose="smoke")[:40]
+print(f"LLM: OK ({reply})")
+r = make_runner()
+sb = r.create()
 try:
-    r = sb.process.code_run("print(2+2)")
-    out = (getattr(r, "result", "") or "").strip()
-    assert "4" in out, f"sandbox stdout was {out!r}"
-    print(f"DAYTONA: OK (2+2={out} | sandbox {sb.id})")
+    resp = sb.process.code_run("print(2+2)")
+    out = (getattr(resp, "result", "") or "").strip()
+    assert "4" in out, f"local exec stdout was {out!r}"
+    print(f"LOCAL EXEC: OK (2+2={out} | sandbox {sb.id})")
 finally:
-    try:
-        sb.delete()
-    except Exception:
-        d.delete(sb)                 # SDK versions differ on where delete lives
+    sb.delete()
 print("SMOKE OK")

@@ -94,7 +94,7 @@ def build_markdown(agent, rows, enrich_rec, generated_on):
         md.append(f"| {r['nm']} | {r['code']} | L{r['lvl']} | "
                   f"{'executed' if r['exec'] else 'rubric'} |")
     md += ["",
-           "_Executed skills are proven by running real code in isolated Daytona sandboxes, "
+           "_Executed skills are proven by running real code in isolated local subprocesses, "
            "graded against the official K&A rubric. Rubric skills are LLM-judged against the "
            "same checklist and are never blended with executed scores (two tracks, §7.5)._", ""]
 

@@ -1,7 +1,7 @@
 """AgentProof dashboard — renders the 4-screen demo UI (design_handoff_agentproof_demo).
 
-Injects REAL pipeline data (output.json scores, sandbox ids, agent_final.md, live
-Oxylabs salary) into demo.html. With no run artifacts, demo.html stands alone with
+Injects REAL pipeline data (output.json scores, sandbox ids, agent_final.md, team
+org chart) into demo.html. With no run artifacts, demo.html stands alone with
 the design's scripted data — this script then just opens it as-is.
 """
 import json, pathlib, re, webbrowser
@@ -25,7 +25,7 @@ def load_real():
             "base": round(b["score"] * 100), "ref": round(f["score"] * 100),
             "req": b["required_level"], "gapBase": b["gap"], "gapRef": f["gap"],
             "sid": f.get("sandbox_id") or "", "secs": f.get("seconds"),
-            "ka": f"graded in Daytona sandbox {str(f.get('sandbox_id') or '?')[:8]}… · "
+            "ka": f"graded via local subprocess {str(f.get('sandbox_id') or '?')[:8]}… · "
                   f"{f.get('seconds', '?')}s · score from real execution",
         })
     rub = out.get("rubric")
@@ -40,14 +40,6 @@ def load_real():
             })
 
     salary = None
-    try:                       # §10 forced-visible: live salary band if Oxylabs answers
-        import oxylabs_fetch
-        band = oxylabs_fetch.fetch_salary_band(out["role"])
-        if band:
-            salary = {"low": band["low"], "high": band["high"], "live": True}
-            print(f"Oxylabs: live salary band S${band['low']}–{band['high']}")
-    except Exception:
-        pass
 
     team = None
     team_p = pathlib.Path("data/demo_team.json")

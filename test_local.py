@@ -15,7 +15,7 @@ print("LOCAL TESTS OK")
 from agent import ANCHOR
 import refine
 spec = f"# X\n\nbody\n\n{ANCHOR}\n\n_None yet._\n"
-p1 = refine.patch_agent(spec, [])            # no gaps -> no Kimi call
+p1 = refine.patch_agent(spec, [])            # no gaps -> no LLM call
 assert ANCHOR in p1 and "_None yet._" not in p1
 p2 = refine.patch_agent(p1 + "\n### Old guidance\nkeep me", [])
 assert "keep me" in p2                       # a second pass never destroys prior guidance

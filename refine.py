@@ -1,4 +1,4 @@
-from config import kimi_chat
+from config import llm_chat
 from agent import ANCHOR
 
 def make_injection(gap_item):
@@ -14,7 +14,7 @@ agent pass tasks OF THIS KIND. Focus on likely failure modes: exact output forma
 rules in the stated order, edge cases (missing values, duplicates, case sensitivity, rounding,
 tie-breaks, sort stability). Do not mention this specific task's data or test values.
 Return only the instruction text."""
-    return kimi_chat([{"role": "user", "content": prompt}], temperature=0.3).strip()
+    return llm_chat([{"role": "user", "content": prompt}], temperature=0.3, purpose="refine").strip()
 
 def patch_agent(agent_spec, gaps):
     """Append guidance under the anchor. Everything after the anchor is refine's territory

@@ -6,7 +6,7 @@
 
 **Architecture:** A flat Python CLI pipeline (`framework → battery → agent → candidate → assess → gap → refine → run → dashboard`), per BUILD_GUIDE.md §3. The generated agent markdown is used *as the candidate's system prompt* (the graded object IS the deliverable). Executable skills are sandbox-graded; everything else is LLM-judged against the framework's own K&A rubric and badged "not execution-verified" — two numbers, never blended.
 
-**Tech Stack:** Python 3 · `daytona` SDK (sandboxes) · Kimi via OpenAI-compatible client (`api.moonshot.ai/v1`) · `openpyxl` (reads the SkillsFuture xlsx directly) · `requests` (Oxylabs Realtime API) · stdlib HTML dashboard.
+**Tech Stack:** Python 3 · `daytona` SDK (sandboxes) · Alibaba ModelStudio via OpenAI-compatible client (`token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`; per-function model routing via `LLM_*` env vars) · `openpyxl` (reads the SkillsFuture xlsx directly) · `requests` (Oxylabs Realtime API) · stdlib HTML dashboard.
 
 ---
 

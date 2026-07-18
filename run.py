@@ -4,7 +4,7 @@ import concurrent.futures as cf
 import framework, gap
 from agent import generate_agent, ANCHOR
 from assess import assess_skill
-from config import make_daytona, MAX_PARALLEL, TARGET_COVERAGE, MAX_ROUNDS
+from config import make_runner, MAX_PARALLEL, TARGET_COVERAGE, MAX_ROUNDS
 
 def load_seed_battery(role_codes):
     items = json.load(open("data/battery_seed.json"))
@@ -14,9 +14,9 @@ def load_seed_battery(role_codes):
                          "refusing to fabricate a score.")
     return kept
 
-def assess_round(daytona, battery, spec, label):
+def assess_round(runner, battery, spec, label):
     with cf.ThreadPoolExecutor(max_workers=MAX_PARALLEL) as ex:   # one sandbox per skill
-        results = list(ex.map(lambda it: assess_skill(daytona, it, spec), battery))
+        results = list(ex.map(lambda it: assess_skill(runner, it, spec), battery))
     report = gap.gap_report(results)
     gap.print_report(report, label)
     return report
@@ -26,7 +26,7 @@ def main():
     ap.add_argument("--role", default=framework.DEMO_ROLE)
     ap.add_argument("--task", help="Mode B: free-text task (stretch)")
     ap.add_argument("--generate", action="store_true",
-                    help="use Kimi-generated grounded battery instead of the seed")
+                    help="use LLM-generated grounded battery instead of the seed")
     ap.add_argument("--instructions", default="",
                     help="requester's custom instructions")
     args = ap.parse_args()
@@ -49,16 +49,9 @@ def main():
     print(f"{len(skills)} official skills; {len(executable)} executable "
           f"(rest are rubric-track)")
 
-    digest = None
-    try:                                                   # §10: forced-visible, up front
-        import oxylabs_fetch
-        digest = oxylabs_fetch.fetch_task_material(role)
-    except ImportError:
-        pass
-
     if args.generate:                                      # stretch A (Phase 8)
         import battery as batt
-        bat = batt.build_battery(role, executable, context, digest)
+        bat = batt.build_battery(role, executable, context)
     else:
         bat = load_seed_battery({s["code"] for s in skills})
     if not bat:      # empty battery -> gap_report([]) would fabricate 100% coverage
@@ -71,8 +64,8 @@ def main():
         spec = open("data/agent_seed.md").read()
     open("agent_v0.md", "w").write(spec)
 
-    daytona = make_daytona()
-    rounds = [assess_round(daytona, bat, spec, "baseline (spec v0)")]
+    runner = make_runner()
+    rounds = [assess_round(runner, bat, spec, "baseline (spec v0)")]
 
     import refine
     rnd = 0
@@ -81,7 +74,7 @@ def main():
         rnd += 1
         print(f"\nRefining spec (round {rnd}) — patching '{ANCHOR}' ...")
         spec = refine.patch_agent(spec, rounds[-1]["gaps"])
-        rounds.append(assess_round(daytona, bat, spec, f"refined (spec v{rnd})"))
+        rounds.append(assess_round(runner, bat, spec, f"refined (spec v{rnd})"))
 
     open("agent_final.md", "w").write(spec)
     from battery import rubric_score

@@ -1,5 +1,5 @@
 import json
-from config import kimi_json, make_daytona, SANDBOX_TIMEOUT
+from config import llm_json, make_runner, SANDBOX_TIMEOUT
 import framework
 from assess import parse_grade
 
@@ -28,7 +28,8 @@ operational process such as uptime, sign-offs, or audit trails):
 For each item, covered=true only if the specification's content would plausibly direct the
 agent to demonstrate that item.
 Return STRICT JSON: {{"covered": [true or false, exactly {len(items)} entries, in order]}}"""
-    obj = kimi_json([{"role": "user", "content": prompt}], temperature=0.0,
+    obj = llm_json([{"role": "user", "content": prompt}], temperature=0.0,
+                    purpose="battery_rubric",
                     validate=lambda o: (isinstance(o.get("covered"), list)
                                         and len(o["covered"]) == len(items)
                                         and all(isinstance(c, bool) for c in o["covered"])),
@@ -63,10 +64,11 @@ Return STRICT JSON with exactly these keys:
   GRADE:{{"score": <fraction of cases passed, 0..1>}}
 - "reference_code": a correct reference implementation of solve(...).
 Task must be solvable in <=60 lines and graded purely by running the code."""
-    return kimi_json([{"role": "user", "content": prompt}], temperature=0.2,
+    return llm_json([{"role": "user", "content": prompt}], temperature=0.2,
+                     purpose="battery_grader",
                      validate=lambda o: _REQ_KEYS <= set(o), max_tokens=4096)
 
-def _validate_item(daytona, item):
+def _validate_item(runner, item):
     """§0.5 bug 5: static check, then run the item's own reference against its grader in a
     sandbox — an item its own reference can't solve is a bad item; drop it."""
     try:
@@ -74,7 +76,7 @@ def _validate_item(daytona, item):
         compile(item["reference_code"], "<ref>", "exec")
     except SyntaxError:
         return False
-    sb = daytona.create()
+    sb = runner.create()
     try:
         resp = sb.process.code_run(item["reference_code"] + "\n\n" + item["grader_code"],
                                    timeout=SANDBOX_TIMEOUT)
@@ -89,7 +91,7 @@ def _validate_item(daytona, item):
             pass
 
 def build_battery(role, executable, context, task_material=None):
-    daytona = make_daytona()
+    runner = make_runner()
     out = []
     for s in executable:
         ka = framework.get_ka(s["code"], s["required_level"])
@@ -100,7 +102,7 @@ def build_battery(role, executable, context, task_material=None):
                     "required_level": s["required_level"],
                     "task_prompt": gen["task_prompt"],
                     "grader_code": gen["grader_code"]}
-            if _validate_item(daytona, {**item, "reference_code": gen["reference_code"]}):
+            if _validate_item(runner, {**item, "reference_code": gen["reference_code"]}):
                 out.append(item)
                 print(f"battery: generated + self-validated '{s['skill']}' L{s['required_level']}")
             else:

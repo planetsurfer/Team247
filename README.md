@@ -7,8 +7,8 @@ Point it at a role → it generates that role's skill battery → benchmarks a c
 **Status:** plan v3 (2026-07-15), ready for the day — the design was built to production between
 Jul 13–15 as **MakeMyTeam** (separate repo, non-hackathon infra) and is fully de-risked; BUILD_GUIDE
 §0.5 carries the validated decisions, the real bugs to avoid, and known-good constants. Day-of code
-is built fresh on the hackathon stack (Daytona + Moonshot Kimi + Oxylabs).
+is built fresh on the hackathon stack (Daytona + Alibaba ModelStudio + Oxylabs).
 
 - 📄 **[BUILD_GUIDE.md](./BUILD_GUIDE.md)** — the complete day-of guide: every file, prompt, SDK reference, run order, fallbacks, and demo script. Runs from a laptop only.
-- Stack: Python · `daytona` SDK · Kimi (OpenAI-compatible `https://api.moonshot.ai/v1`).
+- Stack: Python · `daytona` SDK · Alibaba ModelStudio (OpenAI-compatible `compatible-mode` endpoint; per-function model routing via `LLM_*` env vars in `.env`).
 - Working copy also in `~/Projects/AgentProof/`.

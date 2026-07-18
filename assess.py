@@ -24,13 +24,13 @@ def held_level(score, required):
         return max(required - 1, 0)
     return max(required - 2, 0)
 
-def assess_skill(daytona, item, agent_spec):
+def assess_skill(runner, item, agent_spec):
     """Fresh sandbox -> candidate code + grader together -> parse GRADE -> teardown in finally."""
     skill, req = item["skill"], item["required_level"]
     sandbox, sid, t0, err = None, "?", time.time(), None
     score = 0.0
     try:
-        sandbox = daytona.create()
+        sandbox = runner.create()
         sid = sandbox.id
         emit("spawn", skill=skill, sandbox_id=sid)
         code = candidate_solve(item["task_prompt"], agent_spec)
@@ -49,7 +49,7 @@ def assess_skill(daytona, item, agent_spec):
                 sandbox.delete()
             except Exception:
                 try:
-                    daytona.delete(sandbox)
+                    runner.delete(sandbox)
                 except Exception:
                     pass
     held = held_level(score, req)

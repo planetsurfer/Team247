@@ -1,4 +1,4 @@
-from config import kimi_chat
+from config import llm_chat
 
 ANCHOR = "## Learned skill guidance"
 
@@ -39,7 +39,7 @@ Rules:
   tactical guidance later; a terse v0 is intentional.)
 - The final section "{ANCHOR}" must contain only the line: _None yet._
 Return ONLY the markdown."""
-    spec = kimi_chat([{"role": "user", "content": prompt}], temperature=0.3) or ""
+    spec = llm_chat([{"role": "user", "content": prompt}], temperature=0.3, purpose="agent") or ""
     # reasoning models can return None/empty when tokens run out — empty spec falls
     # through to run.py's agent_seed.md fallback (len check) instead of crashing here
     if ANCHOR not in spec:                       # the anchor is load-bearing for refine
