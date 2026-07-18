@@ -1,12 +1,12 @@
 """Team lifecycle + Phase 1-2 (recommend / edit) routes: /api/team/*."""
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from typing import Optional
 
-from app import db
+from app import db, settings
 from app.ratelimit import llm_rate_limit
-from app.services import handoff_service, render_service, team_service
+from app.services import handoff_service, render_service, team_service, verify_service
 from app.services.team_service import TeamNotFound
 
 router = APIRouter()
@@ -158,3 +158,24 @@ def chart(team_id: str):
         return render_service.chart(team_id)
     except TeamNotFound:
         raise HTTPException(status_code=404, detail="team not found")
+
+
+# ── Stage 4: optional execution-verify (admin-gated, two-track) ────────────
+@router.post("/api/team/{team_id}/agents/{agent_id}/verify", dependencies=[Depends(llm_rate_limit)])
+def verify(team_id: str, agent_id: str, request: Request):
+    if not settings.admin_token_ok(request.headers.get("authorization", "")):
+        raise HTTPException(status_code=401, detail="admin token required")
+    try:
+        return verify_service.verify(team_id, agent_id)
+    except TeamNotFound:
+        raise HTTPException(status_code=404, detail="agent not found")
+
+
+@router.get("/api/team/{team_id}/agents/{agent_id}/verify")
+def get_verify(team_id: str, agent_id: str, request: Request):
+    if not settings.admin_token_ok(request.headers.get("authorization", "")):
+        raise HTTPException(status_code=401, detail="admin token required")
+    r = verify_service.get_verify(team_id, agent_id)
+    if r is None:
+        raise HTTPException(status_code=404, detail="no verify run")
+    return r
