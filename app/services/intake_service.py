@@ -15,6 +15,52 @@ import uuid
 
 from app import db, llm_contracts
 from app.schemas import Brief  # noqa: F401 — re-exported shape used by callers
+from app.services import card_service
+
+# The one deterministic industry-confirming exchange. Injected at most once per
+# interview; the answer is matched against the OFFICIAL catalog sector names so
+# brief.sector carries a verbatim official name that team_service can use
+# directly (exact match → no inference guesswork on ambiguous task text).
+SECTOR_QUESTION_MARKER = "official SkillsFuture sector"
+
+
+def _official_sectors() -> list[str]:
+    """Official catalog sector names (39), longest-first for greedy matching."""
+    try:
+        return sorted((row["sector"] for row in card_service.sectors()),
+                      key=len, reverse=True)
+    except Exception:  # noqa: BLE001 — sector capture must never break intake
+        return []
+
+
+def _match_official_sector(messages: list[str], names: list[str]):
+    """Scan user messages (latest first) for an official sector name.
+
+    Case-insensitive substring match, longest name first so 'Public Transport'
+    wins over a hypothetical shorter overlap. Returns the verbatim official
+    name or None.
+    """
+    for text in reversed(messages):
+        low = (text or "").lower()
+        for name in names:
+            if name.lower() in low:
+                return name
+    return None
+
+
+def _sector_question(user_text: str, names: list[str]) -> str:
+    guesses = []
+    try:
+        guesses = llm_contracts.infer_sectors(user_text, names)
+    except Exception:  # noqa: BLE001
+        pass
+    hint = (f" Our best guesses for you: {', or '.join(guesses)}."
+            if guesses else " For example: Accountancy, Logistics, Food Services, Retail.")
+    return (
+        "So we match you with officially recognised roles: which industry are "
+        "you in? Please reply with the specific official SkillsFuture sector "
+        f"name.{hint}"
+    )
 
 
 def _now() -> str:
@@ -109,28 +155,61 @@ def answer(session_id: str, answers: list[str]) -> dict:
         )
 
     transcript = _transcript(session_id)
+
+    # The one industry-confirming exchange: match user answers against the
+    # official sector names; the confirmed name overrides whatever free text
+    # the LLM puts in brief.sector.
+    sector_names = _official_sectors()
+    user_msgs = [m["content"] for m in transcript if m["role"] == "user"]
+    confirmed_sector = _match_official_sector(user_msgs, sector_names)
+    sector_asked = any(
+        SECTOR_QUESTION_MARKER in (m["content"] or "")
+        for m in transcript if m["role"] in ("assistant", "fixed")
+    )
+
     turn = llm_contracts.intake(transcript)
 
     if turn.ready:
+        # "Ensure the system asks": a ready verdict may not skip the official-
+        # sector exchange — hold readiness one round to ask it (once). The
+        # MAX_INTAKE_ROUNDS force-terminate still guarantees termination.
+        if sector_names and not confirmed_sector and not sector_asked \
+                and R < llm_contracts.MAX_INTAKE_ROUNDS:
+            q = _sector_question(" ".join(user_msgs), sector_names)
+            db.execute(
+                "INSERT INTO intake_messages (session_id, role, content, round, created_at) "
+                "VALUES (?, 'assistant', ?, ?, ?)",
+                (session_id, q, R, now),
+            )
+            return {"ready": False, "questions": [q]}
         brief_dict = turn.brief.model_dump(exclude_none=True)
+        if confirmed_sector:
+            brief_dict["sector"] = confirmed_sector
         _persist_brief(session_id, brief_dict)
         return {"ready": True, "brief": brief_dict}
 
     if R >= llm_contracts.MAX_INTAKE_ROUNDS:
         # Cap reached -- guarantee termination with a minimal best-effort brief.
-        user_msgs = [m for m in transcript if m["role"] == "user"]
-        outcome = user_msgs[-1]["content"] if user_msgs else ""
-        _persist_brief(session_id, {"outcome": outcome, "pain_points": []})
+        outcome = user_msgs[-1] if user_msgs else ""
+        brief_dict = {"outcome": outcome, "pain_points": [], "artifacts_needed": []}
+        if confirmed_sector:
+            brief_dict["sector"] = confirmed_sector
+        _persist_brief(session_id, brief_dict)
         return {"ready": True}
 
     # LLM wants another round -- record its follow-ups at the same round R.
-    for q in turn.questions:
+    # If the official-sector exchange hasn't happened yet, inject its question
+    # (once per interview), trimming the LLM's follow-ups to keep <=3 total.
+    questions = list(turn.questions)
+    if sector_names and not confirmed_sector and not sector_asked:
+        questions = questions[:2] + [_sector_question(" ".join(user_msgs), sector_names)]
+    for q in questions:
         db.execute(
             "INSERT INTO intake_messages (session_id, role, content, round, created_at) "
             "VALUES (?, 'assistant', ?, ?, ?)",
             (session_id, q, R, now),
         )
-    return {"ready": False, "questions": list(turn.questions)}
+    return {"ready": False, "questions": questions}
 
 
 def get(session_id: str) -> dict:

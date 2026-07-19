@@ -8,6 +8,24 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+# The kinds of input artifacts an honest agent-build should ask the user to provide.
+# Surfaced structurally (Brief.artifacts_needed) so the SPA can render a precise
+# "what to provide" prompt instead of relying on free-text leading questions.
+ARTIFACT_KINDS = (
+    "sample",           # a worked example the user can hand over
+    "blank_format",     # a blank template / format to fill
+    "past_documents",   # a corpus of past documents to mine
+    "database",         # a live database / system of record to read or write
+    "none",             # pure reasoning — no external artifact needed
+)
+
+
+class Artifact(BaseModel):
+    """One input artifact the build will need from the user."""
+    model_config = ConfigDict(extra="allow")
+    kind: str  # one of ARTIFACT_KINDS
+    description: str = ""
+
 
 class Brief(BaseModel):
     """The structured brief produced at the end of the intake interview."""
@@ -16,8 +34,16 @@ class Brief(BaseModel):
     pain_points: list[str] = Field(default_factory=list)
     outcome: Optional[str] = None
     domain: Optional[str] = None
+    # The user's industry in their own words ("trucking", "childcare centre").
+    # Captured by the intake interview; team_service feeds it into sector
+    # inference so candidate retrieval isn't blind to who the user is.
+    sector: Optional[str] = None
     scale: Optional[str] = None
     constraints: list[str] = Field(default_factory=list)
+    # Structured artifact requests — the "identify if a sample should be provided"
+    # capability. Populated by the intake LLM (IntakeTurn.brief) and by the one-shot
+    # identify_artifacts() contract used by team_service.recommend.
+    artifacts_needed: list[Artifact] = Field(default_factory=list)
 
 
 class IntakeTurn(BaseModel):

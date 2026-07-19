@@ -15,7 +15,7 @@ import time
 import config  # root config.py — Alibaba LLM client (llm_json, _model_for)
 
 from app.logging_setup import log_llm
-from app.schemas import Brief, IntakeTurn, TeamRecommend, WireHandoffs
+from app.schemas import ARTIFACT_KINDS, Artifact, Brief, IntakeTurn, TeamRecommend, WireHandoffs
 
 CEREMONIES = (
     "artifact handoff", "review gate", "sprint demo", "sign-off", "feedback loop",
@@ -136,10 +136,24 @@ def intake(transcript):
         "  A) Ask 1-3 MORE tailored follow-up questions to close gaps (e.g. scale, "
         "domain, existing tools, compliance, timeline, team size, must-haves). Return "
         '{"ready": false, "questions": ["...", ...]}.\n'
+        "     NOTE: the system separately asks the user for their official industry "
+        "sector — do NOT ask your own industry/line-of-business question; ask about "
+        "other gaps.\n"
         "  B) If you have enough context, stop and produce a structured brief. Return "
-        '{"ready": true, "brief": {"team_type": "...", "pain_points": ["..."], '
-        '"outcome": "...", "domain": "...", "scale": "...", "constraints": ["..."]}} '
-        "(omit any field you cannot fill; you may add others).\n\n"
+        '{"ready": true, "brief": {"team_type": "...", "sector": "...", '
+        '"pain_points": ["..."], '
+        '"outcome": "...", "domain": "...", "scale": "...", "constraints": ["..."], '
+        '"artifacts_needed": [{"kind": "...", "description": "..."}]}} '
+        "(omit any field you cannot fill; you may add others). `sector` is the "
+        "user's industry in their own words (e.g. \"freight trucking\").\n"
+        "  For artifacts_needed, list the input artifacts the build will need from the "
+        "user to actually do the work. `kind` MUST be one of: "
+        + ", ".join(ARTIFACT_KINDS) + " —\n"
+        "    sample = a worked example to mimic; blank_format = a blank template/form "
+        "to fill; past_documents = a corpus of past documents to mine; database = a "
+        "live database/system of record to read or write; none = pure reasoning, no "
+        "external artifact. Only list artifacts genuinely required; use [{\"kind\": "
+        "\"none\"}] if none.\n\n"
         f"Conversation so far:\n{convo}\n\n"
         "Return STRICT JSON only — one of the two shapes above."
     )
@@ -153,10 +167,51 @@ def intake(transcript):
     return IntakeTurn.model_validate(raw)
 
 
+def infer_sectors(text, sector_names):
+    """Classify the user's task text to the 1-2 most likely industry sectors.
+
+    Feeds classify.recommend_roles(preferred_sectors=...) so the candidate
+    slate isn't sector-blind. Returns a (possibly empty) list of names drawn
+    strictly from sector_names; callers must treat failure as [] — sector
+    grounding is an improvement, never a gate on the 100%-team guarantee.
+    """
+    names = list(sector_names)
+    listing = "\n".join(f"- {s}" for s in names)
+
+    def _validate(o):
+        got = o.get("sectors")
+        if not isinstance(got, list):
+            raise ValueError("sectors must be a list")
+        picked = [s for s in got if s in names][:2]
+        return {"sectors": picked}
+
+    prompt = (
+        f'A user describes a work task: "{text}"\n\n'
+        "Which 1-2 sectors from this exact list would contain the OCCUPATIONAL "
+        "ROLES best suited to PERFORM this task? Weigh the functional nature of "
+        "the work over the user's own industry when they differ — bookkeeping "
+        "tasks are performed by Accountancy roles even if the user runs a "
+        "restaurant; logging patent disclosures is Intellectual Property work "
+        "even inside a manufacturing firm. When the task IS industry-specific "
+        "(e.g. rostering truck drivers), the user's industry is the right "
+        "answer. Verbatim names only; empty list if genuinely unclear:\n"
+        + listing + "\n\n"
+        'Return STRICT JSON: {"sectors": ["<name>", ...]}'
+    )
+    obj = call_llm_json(
+        "sector_infer",
+        [{"role": "user", "content": prompt}],
+        validate=_validate,
+        temperature=0.0,
+        max_tokens=256,
+    )
+    return obj["sectors"]
+
+
 def _validate_team_recommend(o):
     tr = TeamRecommend.model_validate(o)
-    if not (3 <= len(tr.team) <= 8):
-        raise ValueError("team must have 3-8 agents")
+    if not (1 <= len(tr.team) <= 8):
+        raise ValueError("team must have 1-8 agents")
     for a in tr.team:
         if a.stage < 1:
             raise ValueError("stage must be >= 1")
@@ -167,7 +222,7 @@ def _validate_team_recommend(o):
 
 
 def team_recommend(brief, candidates):
-    """Phase 1: assemble a 3-8 agent team from ONLY the given candidate roles.
+    """Phase 1: assemble a 1-8 agent team from ONLY the given candidate roles.
 
     brief: dict (the intake Brief). candidates: list[{n, role, sector, matched_on}].
     Returns TeamRecommend. The LLM never names a role not in `candidates`.
@@ -182,13 +237,21 @@ def team_recommend(brief, candidates):
         f"{brief_txt}\n\n"
         "REAL SkillsFuture roles available — choose ONLY from these, by list number:\n"
         f"{listing}\n\n"
-        "Assemble a team of 3-8 agents to deliver the brief end-to-end. For each agent:\n"
-        "- n: the list number of the chosen role (must be one of the numbers above)\n"
+        "Assemble a team of 1-8 agents to deliver the brief end-to-end. For each agent:\n"
+        "- n: the list number of the chosen role (must be one of the numbers above);\n"
+        "  NEVER use the same list number twice — every agent must be a different role\n"
         "- stage: 1 = first, increasing along the delivery flow\n"
         "- squad: a short squad name (e.g. 'Data & AI', 'Build & Platform', 'Delivery')\n"
         "- skill_level_overrides: {code: level} ONLY for the few skills whose default\n"
         "  required level the brief clearly changes; empty {} if none\n"
         "- rationale: one short sentence\n"
+        "Team sizing: first list (mentally) the DISTINCT FUNCTIONS the brief needs\n"
+        "— e.g. gather inputs, do the core work, check/report — then staff ONE agent\n"
+        "per distinct function. Use the smallest team that covers every function:\n"
+        "one agent only when one role genuinely covers them all; never pad with\n"
+        "extra agents to look thorough, and never leave a needed function unstaffed.\n"
+        "Prefer hands-on operational/executive-level roles; include director/head-\n"
+        "level roles ONLY when the brief genuinely needs governance.\n"
         'Return STRICT JSON: {"team": [{"n": <int>, "stage": <int>, "squad": "<str>", '
         '"skill_level_overrides": {"<code>": <int>}, "rationale": "<str>"}]}'
     )
@@ -257,3 +320,57 @@ def wire_handoffs(composition, use_case, agent_ids):
     ]
     validate_handoff_graph(handoff_dicts, agent_ids)  # raises on a non-feedback cycle
     return wh
+
+
+def _validate_artifacts(o):
+    """Validate the raw dict the LLM returns for identify_artifacts."""
+    if not isinstance(o, dict) or "artifacts_needed" not in o:
+        raise ValueError("expected {artifacts_needed: [...] }")
+    arts = o["artifacts_needed"]
+    if not isinstance(arts, list):
+        raise ValueError("artifacts_needed must be a list")
+    out = []
+    for a in arts:
+        am = Artifact.model_validate(a)
+        if am.kind not in ARTIFACT_KINDS:
+            raise ValueError(f"artifact kind must be one of {ARTIFACT_KINDS}, got {am.kind!r}")
+        out.append({"kind": am.kind, "description": am.description})
+    if not out:
+        out = [{"kind": "none", "description": "No external artifact required."}]
+    return {"artifacts_needed": out}
+
+
+def identify_artifacts(use_case):
+    """One-shot: classify what input artifacts the user should provide for a task.
+
+    Returns a list of {kind, description} dicts (kind in ARTIFACT_KINDS). Used by
+    team_service.recommend so the one-shot chat path can surface a structured
+    "what to provide" prompt — the hardening over free-text intake questions.
+    """
+    prompt = (
+        "A user described a task they want an agentic team to handle:\n\n"
+        f"\"\"\"\n{use_case}\n\"\"\"\n\n"
+        "Identify what input ARTIFACTS the build will genuinely need from the user "
+        "to do this work well. `kind` MUST be one of: "
+        + ", ".join(ARTIFACT_KINDS) + " —\n"
+        "  sample = a worked example to mimic (e.g. a past quote, a sample excel);\n"
+        "  blank_format = a blank template/form/format to fill (e.g. the report "
+        "format management expects, a KYC checklist form);\n"
+        "  past_documents = a corpus of past documents to mine (e.g. past proposals, "
+        "an old contract repository);\n"
+        "  database = a live database/system of record to read or write (e.g. the "
+        "CRM export, the billing system, a shipment DB);\n"
+        "  none = pure reasoning, no external artifact needed.\n\n"
+        "Only list artifacts genuinely required for THIS task. If none, return "
+        '[{"kind": "none", "description": "No external artifact required."}].\n'
+        'Return STRICT JSON: {"artifacts_needed": [{"kind": "...", '
+        '"description": "<short, <=18 words>"}]}'
+    )
+    raw = call_llm_json(
+        "identify_artifacts",
+        [{"role": "user", "content": prompt}],
+        validate=_validate_artifacts,
+        temperature=0.1,
+        max_tokens=512,
+    )
+    return _validate_artifacts(raw)["artifacts_needed"]

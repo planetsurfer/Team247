@@ -40,23 +40,43 @@ def _loads(raw, default):
 # Phase 1 — recommend
 # ──────────────────────────────────────────────────────────────────────────────
 def recommend(use_case=None, brief=None, intake_session_id=None):
-    """Compose a 3-8 agent team from the brief (or use_case) via the guardrailed
+    """Compose a 1-8 agent team from the brief (or use_case) via the guardrailed
     classify.recommend_roles → llm_contracts.team_recommend pipeline. Persists
     `teams` + `team_agents` and returns the team_id + agent list + raw recommendation.
     """
     brief = brief or ({"outcome": use_case, "team_type": use_case} if use_case else {})
-    query = (
-        brief.get("outcome")
-        or brief.get("team_type")
-        or " ".join(brief.get("pain_points", []))
-        or use_case
-        or ""
-    )
+    # Retrieval query concatenates the brief's functional fields (not just the
+    # first non-empty one): pain points carry the verbs ("rostering", "chasing
+    # payments") that keyword retrieval needs to surface function-matched roles.
+    query_parts = [brief.get("outcome"), brief.get("team_type"),
+                   " ".join(brief.get("pain_points", []))]
+    seen_parts = set()
+    query = " ".join(
+        p for p in query_parts
+        if p and p.strip() and not (p in seen_parts or seen_parts.add(p))
+    ).strip() or (use_case or "")
 
-    recs = classify.recommend_roles(query, k=10)  # [{role, sector, confidence, matched_on}]
+    # Ground retrieval in the user's likely industry so the candidate slate
+    # isn't sector-blind keyword overlap. The intake brief's own words about
+    # their industry (sector/domain) beat inference from the task text alone —
+    # a one-shot "driver roster" utterance can't distinguish trucking from
+    # buses, but a brief that says "freight trucking" can. Best-effort:
+    # inference failure must never break the 100%-team guarantee.
+    try:
+        sector_names = sorted({r[0] for r in framework._sheet("Job Role_Description") if r[0]})
+        stated = (brief.get("sector") or brief.get("domain") or "").strip()
+        if stated in sector_names:
+            preferred_sectors = [stated]
+        else:
+            infer_text = query + (f"\n(The user says they work in: {stated})" if stated else "")
+            preferred_sectors = llm_contracts.infer_sectors(infer_text, sector_names)
+    except Exception:  # noqa: BLE001
+        preferred_sectors = []
+
+    recs = classify.recommend_roles(query, k=12, preferred_sectors=preferred_sectors)
     candidates = [
         {"n": i + 1, "role": r["role"], "sector": r.get("sector"),
-         "matched_on": r.get("matched_on")}
+         "confidence": r.get("confidence"), "matched_on": r.get("matched_on")}
         for i, r in enumerate(recs)
     ]
 
@@ -81,17 +101,24 @@ def recommend(use_case=None, brief=None, intake_session_id=None):
     )
 
     agents_out = []
+    seen_role_ids = set()
     for i, a in enumerate(tr.team):
         n = a.n  # 1-based index into candidates (guardrail)
         if n < 1 or n > len(candidates):
             # Skip any agent whose n is out of range — never trust model-supplied numbers.
             continue
         role = candidates[n - 1]["role"]
+        cand = candidates[n - 1]
         role_row = db.query("SELECT role_id FROM roles WHERE role = ?", (role,), one=True)
         if role_row is None:
             # Candidate role not in the catalog — skip rather than crash (defensive).
             continue
         role_id = role_row["role_id"]
+        if role_id in seen_role_ids:
+            # Duplicate-role guard: the prompt forbids reusing a list number, but
+            # never trust it — identical clone agents add no capability.
+            continue
+        seen_role_ids.add(role_id)
         agent_id = f"a{i + 1}"
         db.execute(
             "INSERT INTO team_agents(team_id, agent_id, role_id, stage, squad, "
@@ -111,11 +138,22 @@ def recommend(use_case=None, brief=None, intake_session_id=None):
             "squad": a.squad,
             "skill_level_overrides": a.skill_level_overrides,
             "rationale": a.rationale,
+            "confidence": cand.get("confidence"),
+            "matched_on": cand.get("matched_on"),
         })
+
+    # Identify the input artifacts the user should provide (the "is a sample needed?"
+    # capability). Best-effort — a failure here must never break the team guarantee;
+    # fall back to an empty list so /recommend still returns a team.
+    try:
+        artifacts = llm_contracts.identify_artifacts(query or (use_case or ""))
+    except Exception:  # noqa: BLE001 — the 100%-team guarantee must not depend on this
+        artifacts = []
 
     return {
         "team_id": team_id,
         "agents": agents_out,
+        "artifacts_needed": artifacts,
         "recommendation_raw": {"team": [a.model_dump() for a in tr.team],
                                "candidates": candidates},
     }
