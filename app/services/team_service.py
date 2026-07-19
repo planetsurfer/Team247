@@ -56,20 +56,27 @@ def recommend(use_case=None, brief=None, intake_session_id=None):
         if p and p.strip() and not (p in seen_parts or seen_parts.add(p))
     ).strip() or (use_case or "")
 
-    # Ground retrieval in the user's likely industry so the candidate slate
-    # isn't sector-blind keyword overlap. The intake brief's own words about
-    # their industry (sector/domain) beat inference from the task text alone —
-    # a one-shot "driver roster" utterance can't distinguish trucking from
-    # buses, but a brief that says "freight trucking" can. Best-effort:
-    # inference failure must never break the 100%-team guarantee.
+    # Ground retrieval in TWO sector signals, unioned — never one overriding
+    # the other:
+    #   1. the user's stated industry (brief.sector/domain) — the employer
+    #      context that disambiguates industry-specific tasks a bare utterance
+    #      cannot ("driver roster" → trucking vs buses);
+    #   2. the sectors whose ROLES functionally perform the task (infer_sectors)
+    #      — the right signal for role-agnostic work, where the employer
+    #      industry is irrelevant (a farm chasing unpaid invoices needs
+    #      Accountancy roles, not Farm Workers).
+    # Hard-overriding retrieval with the stated industry alone regressed exactly
+    # these cross-functional tasks, so both go into preferred_sectors and the
+    # composer picks by function. Best-effort: inference failure must never
+    # break the 100%-team guarantee.
     try:
         sector_names = sorted({r[0] for r in framework._sheet("Job Role_Description") if r[0]})
         stated = (brief.get("sector") or brief.get("domain") or "").strip()
-        if stated in sector_names:
-            preferred_sectors = [stated]
-        else:
-            infer_text = query + (f"\n(The user says they work in: {stated})" if stated else "")
-            preferred_sectors = llm_contracts.infer_sectors(infer_text, sector_names)
+        infer_text = query + (f"\n(The user says they work in: {stated})" if stated else "")
+        inferred = llm_contracts.infer_sectors(infer_text, sector_names)
+        preferred_sectors = ([stated] if stated in sector_names else []) + [
+            s for s in inferred if s != stated
+        ]
     except Exception:  # noqa: BLE001
         preferred_sectors = []
 
