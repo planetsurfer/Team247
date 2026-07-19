@@ -57,7 +57,7 @@ def _index():
         _INDEX = (docs, idf)
     return _INDEX
 
-def recommend_roles(task, k=3, preferred_sectors=None):
+def recommend_roles(task, k=3, preferred_sectors=None, must_include=None):
     """Retrieve-and-rank over REAL roles only (keyword overlap -> LLM choosing among the
     top slate). The LLM never names a role from scratch — the guardrail the proof depends on.
 
@@ -66,6 +66,17 @@ def recommend_roles(task, k=3, preferred_sectors=None):
     slate, so the chooser is never starved of in-industry candidates — but the
     slate always keeps cross-sector slots, since tasks like invoicing legitimately
     pull roles from other sectors.
+
+    must_include: optional list of (role, sector) pairs to force into the slate
+    BEFORE the chooser LLM runs (Phase B / decompose-then-retrieve: the caller —
+    team_service — decomposed the task into canonical functions and looked up
+    role_functions for each, then passes the seed roles here). This function
+    stays framework/DB-agnostic: it only merges whatever pairs it's handed, it
+    never does its own function lookup. Merged roles land in the slate even if
+    their IDF text score against `task` is zero or they're altogether absent
+    from `docs` (unknown-to-the-index roles are still included by name/sector
+    so the chooser can see them; the guardrail — the LLM can only pick from the
+    slate it's shown — still holds).
     """
     preferred = set(preferred_sectors or ())
     q = set(_tokens(task))
@@ -81,18 +92,43 @@ def recommend_roles(task, k=3, preferred_sectors=None):
     # Sort by score only — a (score, role, ...) tuple sort would break ties
     # reverse-alphabetically and bias the slate toward 'W...' role names.
     scored.sort(key=lambda s: s[0], reverse=True)
-    if not scored:
+    if not scored and not must_include:
         raise SystemExit("Task matched no dataset role — rephrase, or use --role (Mode A).")
 
-    slate_size = 15
+    # Dedup must_include pairs up front (caller may hand duplicates across
+    # functions — e.g. the same Accounts Executive seeded for two functions).
+    seed_pairs, _seen_seed = [], set()
+    for role, sector in (must_include or ()):
+        if (sector, role) not in _seen_seed:
+            _seen_seed.add((sector, role))
+            seed_pairs.append((role, sector))
+
+    # Slate cap grows from 15->18 when there are must_include seeds, so forcing
+    # them in doesn't starve the existing IDF+sector-reserve retrieval (which
+    # still matters — it's what covers any function the taxonomy/tagging missed).
+    # Reserve room for the seeds up front so the final slate stays <= slate_size.
+    slate_size = 18 if seed_pairs else 15
+    retrieval_cap = max(0, slate_size - len(seed_pairs))
     if preferred:
         # Reserve up to 8 slots for the user's sector(s), fill the rest globally.
         in_sector = [s for s in scored if s[2] in preferred][:8]
         rest = [s for s in scored if s not in in_sector]
-        top = (in_sector + rest)[:slate_size]
+        top = (in_sector + rest)[:retrieval_cap]
         top.sort(key=lambda s: s[0], reverse=True)
     else:
-        top = scored[:slate_size]
+        top = scored[:retrieval_cap]
+
+    if seed_pairs:
+        # Merge dedup by (sector, role); a seed pair already present in `top`
+        # (by any score) is left where it is rather than duplicated. Pairs not
+        # already scored (zero query overlap, or altogether outside `docs`)
+        # are appended with score 0.0 — forced into the slate regardless of
+        # text-match score, which is the whole point of decompose-then-retrieve.
+        present = {(s, r) for _, r, s in top}
+        for role, sector in seed_pairs:
+            if (sector, role) not in present:
+                top.append((0.0, role, sector))
+                present.add((sector, role))
 
     sector_hint = (f"\nThe user most likely works in: {', '.join(sorted(preferred))}. "
                    f"Prefer roles from their industry when equally plausible, but a "

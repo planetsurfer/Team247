@@ -1,0 +1,1963 @@
+[
+  {
+    "id": "access-control-systems",
+    "name": "Access Control Systems Management",
+    "definition": "Managing technologies and procedures that regulate who can enter physical locations or access digital resources.",
+    "everyday_phrasings": [
+      "managing keycards and badges",
+      "controlling who gets in",
+      "setting up door access",
+      "issuing building entry permissions",
+      "managing login access"
+    ]
+  },
+  {
+    "id": "accounts-receivable-billing",
+    "name": "Accounts Receivable / Billing & Collections",
+    "definition": "Issuing invoices, tracking and reconciling billing/settlement, and following up on outstanding or overdue payments from customers.",
+    "everyday_phrasings": [
+      "chase unpaid invoices",
+      "who owes us money",
+      "send out our bills",
+      "follow up on late payments",
+      "sort out billing enquiries",
+      "credit control and collections"
+    ]
+  },
+  {
+    "id": "additive-manufacturing-operations",
+    "name": "Additive Manufacturing Operations",
+    "definition": "Operating and managing 3D printing and other layer-based fabrication technologies for production or prototyping.",
+    "everyday_phrasings": [
+      "running the 3D printers",
+      "fixing print failures",
+      "setting up additive production",
+      "managing 3D printing jobs",
+      "working with printed parts"
+    ]
+  },
+  {
+    "id": "advocacy-dispute-resolution",
+    "name": "Advocacy & Dispute Resolution",
+    "definition": "Representing interests and facilitating resolution of conflicts through litigation, arbitration, mediation, or negotiation.",
+    "everyday_phrasings": [
+      "argue our case in court",
+      "settle a dispute",
+      "represent someone's interests",
+      "resolve a legal conflict",
+      "find a compromise"
+    ]
+  },
+  {
+    "id": "aesthetic-design-judgment",
+    "name": "Aesthetic & Design Judgment",
+    "definition": "Applying cultivated taste and visual sensibility to evaluate and guide the creation of appealing, functional, and culturally appropriate designs.",
+    "everyday_phrasings": [
+      "knowing what looks good",
+      "making sure the design isn't ugly",
+      "having an eye for style",
+      "judging if something looks professional",
+      "giving feedback on visual choices",
+      "understanding what makes design appealing"
+    ]
+  },
+  {
+    "id": "audit-governance-oversight",
+    "name": "Audit & Governance Oversight",
+    "definition": "Conducting systematic reviews and maintaining oversight structures to ensure accountability, transparency, and adherence to standards.",
+    "everyday_phrasings": [
+      "internal checks and reviews",
+      "oversight and accountability",
+      "governance and compliance checks",
+      "auditing what we do",
+      "making sure rules are followed",
+      "independent review process"
+    ]
+  },
+  {
+    "id": "benchmarking-performance",
+    "name": "Benchmarking & Performance Comparison",
+    "definition": "Measuring organizational processes and performance against internal standards or external best practices to identify improvement opportunities.",
+    "everyday_phrasings": [
+      "how do we compare to others",
+      "are we as good as the competition",
+      "finding gaps in our performance",
+      "measuring ourselves against best in class"
+    ]
+  },
+  {
+    "id": "biosecurity-compliance",
+    "name": "Biosecurity Compliance & Management",
+    "definition": "Implementing measures to prevent the introduction and spread of infectious diseases, pests, and biological threats in agricultural or food production settings.",
+    "everyday_phrasings": [
+      "keeping diseases out of farms",
+      "preventing spread of animal or plant diseases",
+      "managing biological threats",
+      "protecting crops and livestock from infection"
+    ]
+  },
+  {
+    "id": "budgeting-financial-planning",
+    "name": "Budgeting & Financial Planning",
+    "definition": "Forecasting revenue and expenses, allocating financial resources, and monitoring adherence to fiscal plans across operations.",
+    "everyday_phrasings": [
+      "how much money do we have to spend",
+      "planning our spending for the year",
+      "making sure we don't run out of cash",
+      "figuring out what departments get what",
+      "sticking to our financial plan"
+    ]
+  },
+  {
+    "id": "building-information-modeling",
+    "name": "Building Information Modeling & Digital Delivery",
+    "definition": "Creating and managing digital representations of physical and functional characteristics of facilities to support design, construction, and operation.",
+    "everyday_phrasings": [
+      "digital models of buildings",
+      "3D building design and data",
+      "virtual construction planning",
+      "digital twin for buildings"
+    ]
+  },
+  {
+    "id": "business-acumen-strategy",
+    "name": "Business Acumen & Strategic Thinking",
+    "definition": "Understanding market dynamics, organizational drivers, and financial levers to make sound decisions and align actions with business goals.",
+    "everyday_phrasings": [
+      "understanding how business works",
+      "thinking strategically",
+      "making smart business decisions",
+      "seeing the big picture",
+      "business savvy and judgment",
+      "knowing what drives profit"
+    ]
+  },
+  {
+    "id": "business-continuity-planning",
+    "name": "Business Continuity Planning",
+    "definition": "Developing strategies and procedures to maintain essential functions during and after disruptions, disasters, or emergencies.",
+    "everyday_phrasings": [
+      "keeping going when disaster strikes",
+      "planning for the worst",
+      "what do we do if everything stops working",
+      "surviving major disruptions"
+    ]
+  },
+  {
+    "id": "business-development-growth",
+    "name": "Business Development & Growth",
+    "definition": "Identifying, creating, and pursuing opportunities to expand revenue, market presence, and strategic relationships.",
+    "everyday_phrasings": [
+      "finding new customers and deals",
+      "growing the business",
+      "bringing in new revenue streams",
+      "building partnerships and expanding"
+    ]
+  },
+  {
+    "id": "business-intelligence-reporting",
+    "name": "Business Intelligence & Reporting",
+    "definition": "Transforming operational data into actionable insights and structured reports to inform decision-making, performance tracking, and organizational communication.",
+    "everyday_phrasings": [
+      "creating dashboards and reports",
+      "turning data into useful information",
+      "building reports for management",
+      "analyzing business performance",
+      "making sense of our numbers",
+      "producing regular updates on how we're doing",
+      "crunching the numbers",
+      "making sense of financial reports",
+      "understanding if we're making money",
+      "preparing balance sheets and income statements"
+    ]
+  },
+  {
+    "id": "business-needs-requirements-analysis",
+    "name": "Business Needs & Requirements Analysis",
+    "definition": "Identifying, documenting, and validating organizational needs to inform solutions, systems, or process designs.",
+    "everyday_phrasings": [
+      "figure out what the business needs",
+      "gather requirements",
+      "understand the problem to solve",
+      "document what users want",
+      "translate needs into specifications"
+    ]
+  },
+  {
+    "id": "business-opportunity-identification",
+    "name": "Business Opportunity Identification",
+    "definition": "Spotting, evaluating, and prioritizing new avenues for revenue growth, market expansion, or strategic advantage.",
+    "everyday_phrasings": [
+      "finding new ways to make money",
+      "spotting gaps in the market",
+      "figuring out what else we could sell",
+      "identifying growth opportunities",
+      "discovering untapped potential"
+    ]
+  },
+  {
+    "id": "business-presentation-delivery",
+    "name": "Business Presentation & Persuasive Communication",
+    "definition": "Crafting and delivering compelling verbal and visual communications to inform, influence, and secure commitment from diverse audiences.",
+    "everyday_phrasings": [
+      "giving presentations to bosses or clients",
+      "making slides that convince people",
+      "pitching ideas effectively",
+      "presenting findings to stakeholders",
+      "public speaking for business",
+      "getting buy-in through clear communication"
+    ]
+  },
+  {
+    "id": "business-relationship-building",
+    "name": "Business Relationship Building",
+    "definition": "Establishing, nurturing, and leveraging professional connections to create mutual value and advance organizational interests.",
+    "everyday_phrasings": [
+      "getting to know people who can help our business",
+      "networking without being fake",
+      "staying in touch with industry contacts",
+      "turning acquaintances into business partners",
+      "who do we know that could open doors for us"
+    ]
+  },
+  {
+    "id": "carbon-accounting-reporting",
+    "name": "Carbon Accounting & Sustainability Reporting",
+    "definition": "Measuring, tracking, and disclosing greenhouse gas emissions and environmental impacts to support regulatory compliance and organizational transparency.",
+    "everyday_phrasings": [
+      "figuring out our carbon footprint",
+      "reporting how much pollution we make",
+      "tracking emissions for the annual report",
+      "measuring environmental impact",
+      "carbon bookkeeping",
+      "filling out climate disclosure forms"
+    ]
+  },
+  {
+    "id": "cash-flow-management",
+    "name": "Cash Flow Management",
+    "definition": "Monitoring, analyzing, and optimizing the movement of money into and out of the business to ensure liquidity.",
+    "everyday_phrasings": [
+      "tracking money in and out",
+      "making sure we have enough cash",
+      "managing when bills get paid",
+      "keeping the business solvent",
+      "monitoring bank balances"
+    ]
+  },
+  {
+    "id": "change-management",
+    "name": "Change Management",
+    "definition": "Preparing, supporting, and helping individuals, teams, and organizations make organizational change successfully.",
+    "everyday_phrasings": [
+      "helping people adapt to new ways",
+      "managing transitions smoothly",
+      "getting buy-in for changes",
+      "supporting people through organizational shifts"
+    ]
+  },
+  {
+    "id": "chemical-biorisk-management",
+    "name": "Chemical & Biological Risk Management",
+    "definition": "Identifying, assessing, and controlling hazards associated with chemical substances and biological agents to protect people and the environment.",
+    "everyday_phrasings": [
+      "handling dangerous chemicals safely",
+      "managing biological hazards",
+      "controlling toxic substance risks",
+      "safe use of hazardous materials"
+    ]
+  },
+  {
+    "id": "child-safeguarding",
+    "name": "Child Safeguarding & Protection",
+    "definition": "Implementing policies, practices, and vigilance to ensure children are safe from harm, abuse, and neglect in institutional and community settings.",
+    "everyday_phrasings": [
+      "keeping kids safe from harm",
+      "protecting children from abuse",
+      "making sure children are not in danger",
+      "child protection policies",
+      "reporting concerns about a child's welfare",
+      "background checks and safety rules for working with kids"
+    ]
+  },
+  {
+    "id": "client-relationship-management",
+    "name": "Client & Customer Relationship Management",
+    "definition": "Building and maintaining productive relationships with clients to ensure satisfaction, retention, and account growth.",
+    "everyday_phrasings": [
+      "keep my clients happy",
+      "handle client complaints",
+      "grow existing accounts",
+      "manage key customer relationships",
+      "understand what the client needs"
+    ]
+  },
+  {
+    "id": "clinical-services-development",
+    "name": "Clinical Services Development",
+    "definition": "Designing, enhancing, and expanding healthcare or specialized professional services to meet patient needs and improve care outcomes.",
+    "everyday_phrasings": [
+      "developing new health services",
+      "improving patient care programs",
+      "creating new treatment offerings",
+      "expanding clinical programs",
+      "health service innovation",
+      "better care for patients"
+    ]
+  },
+  {
+    "id": "cloud-computing-operations",
+    "name": "Cloud Computing Operations",
+    "definition": "Managing cloud-based infrastructure, platforms, and services to deliver scalable, resilient, and cost-effective computing capabilities.",
+    "everyday_phrasings": [
+      "moving our servers to the cloud",
+      "managing our online storage and software",
+      "keeping our cloud systems running smoothly",
+      "figuring out which cloud services to use",
+      "making sure our remote systems don't crash"
+    ]
+  },
+  {
+    "id": "coaching-mentoring",
+    "name": "Coaching & Mentoring",
+    "definition": "Developing others' capabilities through guided reflection, feedback, and personalized support to enhance performance, confidence, and career progression.",
+    "everyday_phrasings": [
+      "helping colleagues get better at their job",
+      "guiding junior staff",
+      "one-on-one coaching sessions",
+      "being a mentor to someone",
+      "giving advice to develop people's careers",
+      "supporting team members to improve"
+    ]
+  },
+  {
+    "id": "compliance-certification-management",
+    "name": "Compliance Certification Management",
+    "definition": "Obtaining, maintaining, and renewing official certifications and accreditations to meet industry, regulatory, or market requirements.",
+    "everyday_phrasings": [
+      "getting certified",
+      "maintaining our accreditation",
+      "renewing licenses and certificates",
+      "meeting certification standards",
+      "official approval and compliance",
+      "keeping our credentials current"
+    ]
+  },
+  {
+    "id": "confined-space-management",
+    "name": "Confined Space Management",
+    "definition": "Identifying, assessing, and controlling hazards associated with working in enclosed or restricted spaces to prevent injuries and fatalities.",
+    "everyday_phrasings": [
+      "safe work inside tanks and silos",
+      "managing entry into tight dangerous spaces",
+      "permits for working in enclosed areas",
+      "preventing deaths in small spaces",
+      "rules for climbing into tight spots underground"
+    ]
+  },
+  {
+    "id": "construction-technology",
+    "name": "Construction Technology Application",
+    "definition": "Implementing advanced tools, methods, and systems to improve efficiency, quality, and safety in construction projects.",
+    "everyday_phrasings": [
+      "using modern building methods",
+      "new tech for construction",
+      "innovative construction techniques",
+      "advanced tools for building projects"
+    ]
+  },
+  {
+    "id": "continuous-improvement-operations",
+    "name": "Continuous Improvement Operations",
+    "definition": "Systematically identifying, analyzing, and implementing incremental enhancements to processes, products, or services across the organization.",
+    "everyday_phrasings": [
+      "always finding better ways to do things",
+      "how do we stop doing things the hard way",
+      "making small tweaks that add up over time",
+      "keeping our processes from getting stale",
+      "finding waste and fixing it bit by bit"
+    ]
+  },
+  {
+    "id": "contract-development-negotiation",
+    "name": "Contract Development & Negotiation",
+    "definition": "Drafting, reviewing, and negotiating legally binding agreements that define rights, obligations, and terms between parties.",
+    "everyday_phrasings": [
+      "writing agreements that protect us",
+      "hammering out deal terms with suppliers",
+      "making sure contracts don't screw us over",
+      "getting the lawyer stuff right in our deals",
+      "negotiating better payment terms"
+    ]
+  },
+  {
+    "id": "contract-management",
+    "name": "Contract & Agreement Management",
+    "definition": "The end-to-end handling of contracts including drafting, reviewing, negotiating, executing, and monitoring contractual obligations.",
+    "everyday_phrasings": [
+      "write up a contract",
+      "review the terms before signing",
+      "negotiate a better deal",
+      "track what we agreed to",
+      "manage vendor contracts"
+    ]
+  },
+  {
+    "id": "corporate-governance-oversight",
+    "name": "Corporate Governance Oversight",
+    "definition": "Establishing and monitoring the frameworks, policies, and practices that ensure accountable and ethical organizational leadership.",
+    "everyday_phrasings": [
+      "making sure the board does its job",
+      "overseeing company rules",
+      "ensuring proper management",
+      "monitoring ethical leadership",
+      "keeping governance in check"
+    ]
+  },
+  {
+    "id": "cost-budget-management",
+    "name": "Cost & Budget Management",
+    "definition": "Planning, estimating, monitoring, and controlling expenditures to ensure financial resources are used efficiently and projects remain economically viable.",
+    "everyday_phrasings": [
+      "keeping spending under control",
+      "managing project budgets",
+      "tracking costs and avoiding overruns",
+      "figuring out how much things will cost",
+      "budget planning and monitoring",
+      "making sure we don't run out of money"
+    ]
+  },
+  {
+    "id": "creative-concept-development",
+    "name": "Creative Concept Development",
+    "definition": "Generating original ideas, narratives, and creative directions for products, campaigns, or entertainment experiences.",
+    "everyday_phrasings": [
+      "come up with a creative idea",
+      "brainstorm campaign concepts",
+      "develop the story",
+      "create something new and different",
+      "pitch creative directions"
+    ]
+  },
+  {
+    "id": "critical-thinking-problem-solving",
+    "name": "Critical Thinking & Problem Solving",
+    "definition": "Analyzing complex situations, evaluating evidence, and developing logical solutions to overcome challenges and make sound decisions.",
+    "everyday_phrasings": [
+      "thinking through difficult problems",
+      "figuring things out logically",
+      "solving complex challenges",
+      "using your head to find answers"
+    ]
+  },
+  {
+    "id": "cultural-competency",
+    "name": "Cultural Competency & Inclusion",
+    "definition": "Recognizing, respecting, and effectively engaging with diverse cultural backgrounds, identities, and perspectives to create equitable and inclusive environments.",
+    "everyday_phrasings": [
+      "working respectfully with different cultures",
+      "understanding diverse backgrounds",
+      "being inclusive of everyone",
+      "avoiding cultural insensitivity",
+      "valuing diversity in the workplace",
+      "making people from all backgrounds feel welcome"
+    ]
+  },
+  {
+    "id": "customer-behavior-insights",
+    "name": "Customer Behavior Insights",
+    "definition": "Analyzing how customers think, feel, and act to inform marketing, product development, and experience design.",
+    "everyday_phrasings": [
+      "understanding why customers buy",
+      "figuring out shopper habits",
+      "studying what people want",
+      "analyzing customer actions",
+      "learning about buyer preferences"
+    ]
+  },
+  {
+    "id": "customer-experience-management",
+    "name": "Customer Experience Management",
+    "definition": "Designing and managing end-to-end customer interactions to ensure satisfaction, loyalty, and positive brand perception across all touchpoints.",
+    "everyday_phrasings": [
+      "keeping customers happy",
+      "managing customer complaints",
+      "improving customer service",
+      "making sure customers come back",
+      "handling customer feedback",
+      "building customer loyalty"
+    ]
+  },
+  {
+    "id": "cybersecurity-management",
+    "name": "Cybersecurity Management",
+    "definition": "Protecting organizational systems, networks, and data from digital threats, attacks, and unauthorized access.",
+    "everyday_phrasings": [
+      "keeping hackers out",
+      "protecting company data",
+      "managing security threats",
+      "preventing cyber attacks",
+      "securing our networks",
+      "we got hacked",
+      "respond to a data breach",
+      "secure our systems",
+      "investigate a security incident",
+      "prevent cyber attacks"
+    ]
+  },
+  {
+    "id": "data-analytics-insights",
+    "name": "Data Analytics & Insights",
+    "definition": "Collecting, processing, and interpreting data to discover patterns, generate insights, and support evidence-based decision making.",
+    "everyday_phrasings": [
+      "making sense of our data",
+      "finding trends in numbers",
+      "using data to make better decisions",
+      "what is the data telling us"
+    ]
+  },
+  {
+    "id": "data-governance-stewardship",
+    "name": "Data Governance & Stewardship",
+    "definition": "Establishing policies, standards, and accountability mechanisms to ensure data quality, security, accessibility, and proper usage across the organization.",
+    "everyday_phrasings": [
+      "who owns our data and who can touch it",
+      "making sure our data isn't a mess",
+      "rules for how we handle customer information",
+      "keeping our databases clean and trustworthy",
+      "who decides what data means what"
+    ]
+  },
+  {
+    "id": "deal-structuring-transaction",
+    "name": "Deal Structuring & Transaction Management",
+    "definition": "Designing and executing the terms, financing, and mechanics of business transactions, investments, or acquisitions.",
+    "everyday_phrasings": [
+      "structure a deal",
+      "figure out payment terms",
+      "arrange financing",
+      "negotiate transaction details",
+      "close the acquisition"
+    ]
+  },
+  {
+    "id": "design-conceptualization",
+    "name": "Design Conceptualization & Creation",
+    "definition": "Developing original visual, spatial, or experiential concepts that communicate ideas and meet functional and aesthetic requirements.",
+    "everyday_phrasings": [
+      "coming up with the look and feel",
+      "designing how something appears",
+      "creating visual concepts",
+      "artistic and creative direction"
+    ]
+  },
+  {
+    "id": "design-for-manufacturing-assembly",
+    "name": "Design for Manufacturing & Assembly",
+    "definition": "Optimizing product designs to simplify and reduce the cost of production and assembly processes.",
+    "everyday_phrasings": [
+      "designing products that are easy to build",
+      "making things cheaper to manufacture",
+      "simplifying assembly through design",
+      "build-friendly product design"
+    ]
+  },
+  {
+    "id": "design-for-safety-maintainability",
+    "name": "Design for Safety & Maintainability",
+    "definition": "Incorporating safety and ease of maintenance considerations into the design phase of products, systems, or facilities.",
+    "everyday_phrasings": [
+      "designing things that are safe and easy to fix",
+      "building in safety from the start",
+      "making maintenance simpler through design",
+      "safe and serviceable design"
+    ]
+  },
+  {
+    "id": "design-thinking-facilitation",
+    "name": "Design Thinking & Creative Facilitation",
+    "definition": "Leading structured creative processes to explore possibilities, generate novel solutions, and foster innovation through human-centered methods.",
+    "everyday_phrasings": [
+      "running brainstorming sessions",
+      "helping teams think outside the box",
+      "facilitating workshops to solve problems creatively",
+      "guiding design sprints",
+      "getting people to imagine new ideas",
+      "making innovation workshops actually work"
+    ]
+  },
+  {
+    "id": "digital-technology-monitoring",
+    "name": "Digital Technology Monitoring & Scanning",
+    "definition": "Tracking emerging technologies and digital trends to identify opportunities, threats, and implications for the organization.",
+    "everyday_phrasings": [
+      "keeping up with new tech",
+      "what's coming next in technology",
+      "scanning for digital disruptions",
+      "staying current with tech trends"
+    ]
+  },
+  {
+    "id": "due-diligence-investigation",
+    "name": "Due Diligence & Investigation",
+    "definition": "Conducting thorough examination and verification of facts, risks, and conditions before committing to transactions or decisions.",
+    "everyday_phrasings": [
+      "check everything before buying",
+      "verify claims and facts",
+      "investigate before committing",
+      "do background research",
+      "assess risks thoroughly"
+    ]
+  },
+  {
+    "id": "early-childhood-development",
+    "name": "Early Childhood Development & Care",
+    "definition": "Planning, delivering, and evaluating nurturing educational experiences and environments that promote the wellbeing and growth of young children.",
+    "everyday_phrasings": [
+      "teaching little kids",
+      "running a preschool program",
+      "planning activities for toddlers",
+      "taking care of children during the day",
+      "helping young children learn and grow",
+      "managing a childcare center"
+    ]
+  },
+  {
+    "id": "emergency-crisis-response",
+    "name": "Emergency & Crisis Response Management",
+    "definition": "Coordinating immediate and planned responses to critical incidents to protect people, assets, and operations while restoring normal conditions.",
+    "everyday_phrasings": [
+      "handling emergencies when they happen",
+      "managing crisis situations",
+      "coordinating disaster response",
+      "what to do when things go badly wrong",
+      "evacuation and emergency plans",
+      "responding to sudden critical events",
+      "handling the press in a crisis",
+      "managing bad news",
+      "communicating during emergencies",
+      "protecting our reputation when things go wrong"
+    ]
+  },
+  {
+    "id": "engineering-design-documentation",
+    "name": "Engineering Design & Documentation",
+    "definition": "Creating, interpreting, and managing technical drawings, specifications, and documents that communicate design intent and requirements.",
+    "everyday_phrasings": [
+      "making technical drawings",
+      "reading blueprints and plans",
+      "documenting how something should be built",
+      "creating engineering specifications"
+    ]
+  },
+  {
+    "id": "environmental-management",
+    "name": "Environmental Management",
+    "definition": "Developing and implementing policies and practices to minimize negative environmental impacts and ensure sustainable operations.",
+    "everyday_phrasings": [
+      "reducing our environmental footprint",
+      "going green and sustainable",
+      "managing pollution and waste",
+      "protecting the environment in our operations"
+    ]
+  },
+  {
+    "id": "equipment-installation-commissioning",
+    "name": "Equipment Installation & Commissioning",
+    "definition": "Overseeing the setup, testing, and formal acceptance of machinery and systems to ensure they operate as designed in their intended environment.",
+    "everyday_phrasings": [
+      "setting up new machines",
+      "getting equipment ready to run",
+      "installing and testing systems before handover",
+      "making sure new gear works properly",
+      "commissioning plant equipment",
+      "final checks before equipment goes live"
+    ]
+  },
+  {
+    "id": "equipment-maintenance",
+    "name": "Equipment Maintenance & Housekeeping",
+    "definition": "Performing regular upkeep, repair, and cleaning of machinery, tools, and facilities to ensure reliable operation and safe conditions.",
+    "everyday_phrasings": [
+      "fixing and maintaining machines",
+      "keeping equipment in good working order",
+      "regular cleaning and servicing",
+      "preventing breakdowns through upkeep"
+    ]
+  },
+  {
+    "id": "ethics-governance",
+    "name": "Ethics & Governance",
+    "definition": "Establishing and upholding moral principles, professional standards, and governance frameworks that guide organizational decision-making and behavior.",
+    "everyday_phrasings": [
+      "doing the right thing at work",
+      "setting company rules and values",
+      "making sure we follow ethical guidelines",
+      "corporate conscience and accountability"
+    ]
+  },
+  {
+    "id": "executive-protection-services",
+    "name": "Executive Protection Services",
+    "definition": "Providing specialized security measures to safeguard high-profile individuals from physical harm, harassment, or unwanted attention.",
+    "everyday_phrasings": [
+      "protecting VIPs",
+      "bodyguard services",
+      "keeping important people safe",
+      "personal security for executives",
+      "escorting high-profile individuals"
+    ]
+  },
+  {
+    "id": "facilities-operations-management",
+    "name": "Facilities & Operations Management",
+    "definition": "Overseeing physical spaces, equipment, and daily operational infrastructure to support safe and efficient business functioning.",
+    "everyday_phrasings": [
+      "managing buildings and facilities",
+      "keeping the place running",
+      "operations and maintenance",
+      "facility upkeep and repairs",
+      "running the physical workplace",
+      "building and equipment management"
+    ]
+  },
+  {
+    "id": "family-community-partnership",
+    "name": "Family & Community Partnership",
+    "definition": "Collaborating with parents, caregivers, and community organizations to support holistic outcomes and extend organizational reach beyond direct service delivery.",
+    "everyday_phrasings": [
+      "working with parents on their child's progress",
+      "building ties with local organizations",
+      "getting families involved",
+      "partnering with community groups",
+      "communicating with moms and dads",
+      "engaging the neighborhood in what we do"
+    ]
+  },
+  {
+    "id": "feasibility-assessment",
+    "name": "Feasibility Assessment & Value Engineering",
+    "definition": "Evaluating project viability and systematically analyzing functions to achieve essential performance at lowest total cost.",
+    "everyday_phrasings": [
+      "is this project worth doing",
+      "figuring out if it will work",
+      "getting the most bang for our buck",
+      "analyzing costs versus benefits",
+      "will this idea actually work before we spend money",
+      "checking if our plan is realistic",
+      "figuring out if we should bother doing this",
+      "is this project worth the headache",
+      "running the numbers before we jump in"
+    ]
+  },
+  {
+    "id": "food-safety-management",
+    "name": "Food Safety & Hygiene Management",
+    "definition": "Implementing systems and practices to prevent foodborne illness, contamination, and ensure safe food handling throughout the supply chain.",
+    "everyday_phrasings": [
+      "keeping food safe to eat",
+      "preventing food poisoning",
+      "maintaining kitchen hygiene",
+      "ensuring food doesn't make people sick"
+    ]
+  },
+  {
+    "id": "food-waste-sustainability",
+    "name": "Food Waste & Sustainability Management",
+    "definition": "Reducing waste, conserving resources, and implementing sustainable practices in food handling, production, and disposal.",
+    "everyday_phrasings": [
+      "cutting down food waste",
+      "sustainable food practices",
+      "reducing what we throw away",
+      "environmentally friendly food handling",
+      "waste reduction programs",
+      "saving food and resources"
+    ]
+  },
+  {
+    "id": "good-practices-implementation",
+    "name": "Good Practices Implementation",
+    "definition": "Establishing and maintaining standardized operational practices and protocols to ensure quality, safety, and regulatory compliance in production or service delivery.",
+    "everyday_phrasings": [
+      "following industry best practices",
+      "implementing standard good practices",
+      "doing things the right way according to guidelines",
+      "maintaining proper procedures and protocols"
+    ]
+  },
+  {
+    "id": "group-work-facilitation",
+    "name": "Group Work Facilitation",
+    "definition": "Leading, coordinating, and evaluating structured group activities to achieve therapeutic, educational, or organizational outcomes.",
+    "everyday_phrasings": [
+      "running group sessions",
+      "leading team activities",
+      "facilitating group discussions",
+      "managing group dynamics",
+      "coordinating group programs"
+    ]
+  },
+  {
+    "id": "hazard-risk-control",
+    "name": "Hazard & Risk Control",
+    "definition": "Identifying workplace hazards, evaluating associated risks, and implementing controls to eliminate or reduce potential harm.",
+    "everyday_phrasings": [
+      "spotting dangers before they hurt someone",
+      "controlling risks in the workplace",
+      "putting safeguards in place",
+      "managing health and safety hazards",
+      "what could go wrong",
+      "preparing for bad things happening",
+      "protecting the business from surprises",
+      "figuring out our biggest dangers"
+    ]
+  },
+  {
+    "id": "human-factors-error-management",
+    "name": "Human Factors & Error Management",
+    "definition": "Designing systems, tasks, and environments to optimize human performance and minimize the likelihood and consequences of human error.",
+    "everyday_phrasings": [
+      "designing for real people",
+      "understanding why people make mistakes",
+      "making work easier and safer for humans",
+      "fitting the job to the person not the person to the job"
+    ]
+  },
+  {
+    "id": "import-export-administration",
+    "name": "Import & Export Administration",
+    "definition": "Managing documentation, customs requirements, and regulatory compliance for cross-border trade of goods.",
+    "everyday_phrasings": [
+      "ship goods overseas",
+      "deal with customs paperwork",
+      "get import permits",
+      "understand export restrictions",
+      "clear goods at the border"
+    ]
+  },
+  {
+    "id": "incident-investigation",
+    "name": "Incident Investigation & Root Cause Analysis",
+    "definition": "Systematically examining accidents, failures, and near-misses to identify underlying causes and prevent recurrence through corrective action.",
+    "everyday_phrasings": [
+      "figuring out what went wrong",
+      "investigating accidents at work",
+      "finding the real reason something failed",
+      "analyzing why the incident happened",
+      "getting to the bottom of safety problems",
+      "preventing the same mistake from happening again"
+    ]
+  },
+  {
+    "id": "industry-research-intelligence",
+    "name": "Industry Research & Intelligence",
+    "definition": "Gathering, analyzing, and synthesizing sector-specific information to inform strategic decisions and maintain competitive awareness.",
+    "everyday_phrasings": [
+      "knowing what's happening in our industry",
+      "keeping up with what competitors are doing",
+      "understanding where our market is headed",
+      "researching trends before they hit us",
+      "becoming the expert on our business sector"
+    ]
+  },
+  {
+    "id": "infection-control-management",
+    "name": "Infection Control & Prevention",
+    "definition": "Implementing practices and protocols to prevent the spread of infectious diseases and maintain hygienic environments in workplaces and facilities.",
+    "everyday_phrasings": [
+      "preventing germs from spreading",
+      "keeping workplace clean and safe",
+      "infection prevention measures",
+      "hygiene protocols",
+      "stopping disease transmission",
+      "sanitation and cleanliness standards"
+    ]
+  },
+  {
+    "id": "infographics-data-visualization",
+    "name": "Infographics & Data Visualization",
+    "definition": "Creating graphical representations of information to communicate complex data clearly and persuasively.",
+    "everyday_phrasings": [
+      "making charts and graphs",
+      "creating visual reports",
+      "designing data presentations",
+      "building dashboards people can understand",
+      "turning numbers into pictures"
+    ]
+  },
+  {
+    "id": "innovation-management",
+    "name": "Innovation Management",
+    "definition": "Systematically managing the generation, development, and implementation of new ideas, products, processes, or business models.",
+    "everyday_phrasings": [
+      "coming up with new ideas and making them happen",
+      "managing the innovation pipeline",
+      "turning creativity into business value",
+      "fostering new ways of doing things"
+    ]
+  },
+  {
+    "id": "instrumentation-control-maintenance",
+    "name": "Instrumentation & Control Systems Maintenance",
+    "definition": "Servicing, calibrating, and repairing sensors, instruments, and automated control systems to ensure accurate measurement and reliable process operation.",
+    "everyday_phrasings": [
+      "fixing sensors and gauges",
+      "keeping control systems working",
+      "calibrating measurement instruments",
+      "maintaining automation equipment",
+      "troubleshooting instrument failures",
+      "servicing the systems that monitor our processes"
+    ]
+  },
+  {
+    "id": "intellectual-property-management",
+    "name": "Intellectual Property Management",
+    "definition": "The stewardship of patents, trademarks, copyrights, and trade secrets including portfolio strategy, filing, prosecution, and enforcement.",
+    "everyday_phrasings": [
+      "protect my invention or brand",
+      "file a patent or trademark",
+      "manage our company's IP assets",
+      "stop someone from copying our product",
+      "license our technology to others"
+    ]
+  },
+  {
+    "id": "internet-of-things-implementation",
+    "name": "Internet of Things Implementation",
+    "definition": "Deploying connected sensor and device networks to collect data, enable remote monitoring, and automate responses across operations.",
+    "everyday_phrasings": [
+      "connecting devices to the internet",
+      "smart sensors and connected equipment",
+      "making things talk to each other online",
+      "implementing smart technology networks"
+    ]
+  },
+  {
+    "id": "inventory-stock-management",
+    "name": "Inventory & Stock Management",
+    "definition": "Planning, tracking, and controlling the flow of goods, materials, and supplies to meet operational needs while minimizing waste and costs.",
+    "everyday_phrasings": [
+      "keeping track of stock",
+      "ordering supplies",
+      "managing warehouse inventory",
+      "preventing stock shortages",
+      "controlling stock levels",
+      "what do we have in stock"
+    ]
+  },
+  {
+    "id": "iot-device-management",
+    "name": "IoT Device & Sensor Management",
+    "definition": "Deploying, monitoring, and maintaining networked physical devices and sensors that collect and exchange data for operational insights.",
+    "everyday_phrasings": [
+      "managing all our smart devices and sensors",
+      "keeping track of connected equipment",
+      "making sure our internet-connected gadgets work together",
+      "handling the tech that talks to itself",
+      "overseeing our network of smart machines"
+    ]
+  },
+  {
+    "id": "irrigation-water-management",
+    "name": "Irrigation & Water Management",
+    "definition": "Designing, operating, and optimizing systems for controlled water delivery to landscapes, crops, or facilities.",
+    "everyday_phrasings": [
+      "set up watering systems",
+      "manage water usage",
+      "fix irrigation problems",
+      "optimize water consumption",
+      "design sprinkler systems"
+    ]
+  },
+  {
+    "id": "knowledge-management",
+    "name": "Knowledge Management",
+    "definition": "Capturing, distributing, and effectively using organizational knowledge and expertise to improve performance and innovation.",
+    "everyday_phrasings": [
+      "sharing what we know",
+      "not reinventing the wheel",
+      "keeping important know-how from walking out the door",
+      "organizing company knowledge"
+    ]
+  },
+  {
+    "id": "laboratory-operations",
+    "name": "Laboratory Operations & Sample Management",
+    "definition": "Managing the workflow, materials, equipment, and protocols required to conduct accurate testing, analysis, and research in controlled environments.",
+    "everyday_phrasings": [
+      "running the lab day-to-day",
+      "keeping track of test samples",
+      "making sure lab tests are done right",
+      "ordering chemicals and supplies for experiments",
+      "managing lab equipment and schedules",
+      "coordinating who does which test when"
+    ]
+  },
+  {
+    "id": "landscape-horticultural-management",
+    "name": "Landscape & Horticultural Management",
+    "definition": "Planning, establishing, and maintaining planted environments including plant selection, health care, and cultivation practices.",
+    "everyday_phrasings": [
+      "design and maintain gardens",
+      "choose the right plants",
+      "keep plants healthy",
+      "manage landscaping projects",
+      "care for trees and shrubs"
+    ]
+  },
+  {
+    "id": "lean-process-improvement",
+    "name": "Lean & Process Improvement",
+    "definition": "Systematically analyzing and enhancing workflows to eliminate waste, reduce variation, and increase efficiency and value.",
+    "everyday_phrasings": [
+      "making things faster and cheaper",
+      "cutting out unnecessary steps",
+      "doing more with less",
+      "streamlining how we work"
+    ]
+  },
+  {
+    "id": "learning-development",
+    "name": "Learning & Development",
+    "definition": "Designing and delivering training, education, and growth opportunities to enhance workforce capabilities and performance.",
+    "everyday_phrasings": [
+      "training employees",
+      "helping people learn and grow",
+      "building skills in the team",
+      "professional development and education"
+    ]
+  },
+  {
+    "id": "legal-research-analysis",
+    "name": "Legal Research & Analysis",
+    "definition": "Systematic investigation of laws, regulations, precedents, and legal principles to inform case strategy, opinions, and decisions.",
+    "everyday_phrasings": [
+      "look up the law on this",
+      "find cases like mine",
+      "understand what the rules say",
+      "research legal precedents",
+      "check if this is allowed"
+    ]
+  },
+  {
+    "id": "local-exhaust-ventilation-management",
+    "name": "Local Exhaust Ventilation Management",
+    "definition": "Designing, operating, and maintaining engineered systems that capture and remove airborne contaminants at their source to protect worker health.",
+    "everyday_phrasings": [
+      "keeping fumes away from workers' faces",
+      "maintaining those hoods and ducts in factories",
+      "making sure extraction fans actually work",
+      "ventilation systems that suck up dangerous dust",
+      "air quality control at the source"
+    ]
+  },
+  {
+    "id": "logistics-operations-management",
+    "name": "Logistics & Supply Chain Operations",
+    "definition": "Planning, executing, and optimizing the movement and storage of goods, materials, and information through supply networks.",
+    "everyday_phrasings": [
+      "get products from A to B",
+      "manage shipping and deliveries",
+      "optimize warehouse operations",
+      "track where our cargo is",
+      "solve supply chain bottlenecks"
+    ]
+  },
+  {
+    "id": "maintenance-scheduling-planning",
+    "name": "Maintenance Scheduling & Planning",
+    "definition": "Coordinating when and how equipment, vehicles, or facilities are inspected, serviced, and repaired to minimize downtime.",
+    "everyday_phrasings": [
+      "planning when to fix things",
+      "scheduling equipment checkups",
+      "organizing repair work",
+      "making sure maintenance happens on time",
+      "booking service appointments",
+      "knowing when machines will break",
+      "monitoring equipment health",
+      "predicting maintenance needs",
+      "keeping track of asset condition"
+    ]
+  },
+  {
+    "id": "manpower-workforce-planning",
+    "name": "Manpower & Workforce Planning",
+    "definition": "Analyzing, forecasting, and scheduling workforce requirements to ensure the right people with right skills are in place when needed.",
+    "everyday_phrasings": [
+      "figuring out how many people we need",
+      "scheduling staff and planning headcount",
+      "ensuring we have enough workers",
+      "workforce scheduling and staffing"
+    ]
+  },
+  {
+    "id": "manufacturing-process-management",
+    "name": "Manufacturing Process Management",
+    "definition": "Planning, executing, and optimizing the methods and workflows used to transform raw materials into finished products.",
+    "everyday_phrasings": [
+      "how do we make this product",
+      "setting up production steps",
+      "fixing problems on the factory floor",
+      "making sure machines run smoothly",
+      "improving how things are built"
+    ]
+  },
+  {
+    "id": "market-research-insights",
+    "name": "Market Research & Consumer Insights",
+    "definition": "Gathering and analyzing information about markets, competitors, and consumer behavior to inform business decisions.",
+    "everyday_phrasings": [
+      "understand our customers",
+      "research the market",
+      "find out what people want",
+      "analyze competitor offerings",
+      "identify market opportunities"
+    ]
+  },
+  {
+    "id": "market-risk-assessment",
+    "name": "Market Risk Assessment",
+    "definition": "Identifying, measuring, and managing exposures to financial losses arising from market price movements and economic fluctuations.",
+    "everyday_phrasings": [
+      "what happens if prices crash",
+      "protecting ourselves from market swings",
+      "how exposed are we to economic downturns",
+      "figuring out what could go wrong with our investments",
+      "preparing for interest rate changes"
+    ]
+  },
+  {
+    "id": "market-trend-forecasting",
+    "name": "Market Trend Forecasting",
+    "definition": "Identifying and predicting shifts in consumer demand, industry dynamics, and competitive landscapes to guide business decisions.",
+    "everyday_phrasings": [
+      "predicting what's coming next",
+      "spotting new trends early",
+      "figuring out where the market is heading",
+      "anticipating customer needs",
+      "forecasting industry changes"
+    ]
+  },
+  {
+    "id": "materials-qualification",
+    "name": "Materials Qualification & Specification",
+    "definition": "Evaluating, selecting, and approving raw materials and components to ensure they meet technical, regulatory, and performance criteria for intended use.",
+    "everyday_phrasings": [
+      "approving which materials we can use",
+      "checking if a supplier's material is good enough",
+      "qualifying new raw materials",
+      "setting material specifications",
+      "testing materials before production",
+      "making sure inputs meet our standards"
+    ]
+  },
+  {
+    "id": "mathematical-physics-application",
+    "name": "Mathematical & Scientific Application",
+    "definition": "Applying mathematical and scientific principles to solve practical problems, model systems, and inform engineering and technical decisions.",
+    "everyday_phrasings": [
+      "using math to solve real problems",
+      "applying science to practical challenges",
+      "calculating and modeling how things work",
+      "engineering calculations and scientific reasoning"
+    ]
+  },
+  {
+    "id": "media-production-operations",
+    "name": "Media & Content Production",
+    "definition": "Planning, coordinating, and executing the creation of media content including filming, editing, and post-production.",
+    "everyday_phrasings": [
+      "make a video or film",
+      "produce content for broadcast",
+      "manage a production crew",
+      "shoot and edit footage",
+      "deliver final content on time"
+    ]
+  },
+  {
+    "id": "multimedia-production",
+    "name": "Multimedia & Technical Production",
+    "definition": "Planning, executing, and managing the technical and creative elements of media, sound, lighting, and visual presentations.",
+    "everyday_phrasings": [
+      "producing shows and events",
+      "managing sound and lights",
+      "technical production for performances",
+      "creating multimedia experiences"
+    ]
+  },
+  {
+    "id": "negotiation",
+    "name": "Business Negotiation",
+    "definition": "Engaging in discussions with parties to reach agreements, resolve conflicts, and secure favorable terms for the organization.",
+    "everyday_phrasings": [
+      "hammering out a deal",
+      "negotiating contracts and terms",
+      "getting the best agreement possible",
+      "bargaining and making compromises"
+    ]
+  },
+  {
+    "id": "network-infrastructure-management",
+    "name": "Network & Infrastructure Management",
+    "definition": "Designing, implementing, and maintaining the hardware, software, and connectivity that enable organizational IT operations.",
+    "everyday_phrasings": [
+      "fix the network",
+      "set up servers and connections",
+      "keep systems running",
+      "manage IT infrastructure",
+      "troubleshoot connectivity issues"
+    ]
+  },
+  {
+    "id": "organizational-analysis-planning",
+    "name": "Organizational Analysis & Planning",
+    "definition": "Assessing organizational structures, capabilities, and dynamics to design improvements and align resources with strategic goals.",
+    "everyday_phrasings": [
+      "figuring out why our company is so slow",
+      "redesigning how teams fit together",
+      "understanding what's broken in our structure",
+      "planning how our organization should look in future",
+      "making sure our setup matches our strategy"
+    ]
+  },
+  {
+    "id": "organizational-culture-development",
+    "name": "Organizational Culture Development",
+    "definition": "Shaping workplace values, norms, and behaviors to create an environment that supports engagement, performance, and strategic alignment.",
+    "everyday_phrasings": [
+      "building company culture",
+      "creating a positive workplace",
+      "shaping how we work together",
+      "establishing workplace values",
+      "making people feel part of the team",
+      "culture change initiatives"
+    ]
+  },
+  {
+    "id": "organizational-strategy-policy",
+    "name": "Organizational Strategy & Policy Realization",
+    "definition": "Translating high-level strategic direction into actionable policies, plans, and operational frameworks across an organization.",
+    "everyday_phrasings": [
+      "turn strategy into action",
+      "implement company policies",
+      "make the plan actually happen",
+      "align operations with goals",
+      "execute strategic initiatives"
+    ]
+  },
+  {
+    "id": "partnership-alliance-management",
+    "name": "Partnership & Alliance Management",
+    "definition": "Establishing, nurturing, and governing collaborative relationships with external organizations for mutual benefit.",
+    "everyday_phrasings": [
+      "work with other companies",
+      "manage partner relationships",
+      "build strategic alliances",
+      "negotiate partnership deals",
+      "coordinate with external stakeholders"
+    ]
+  },
+  {
+    "id": "people-management",
+    "name": "People Management & Team Leadership",
+    "definition": "Directing, motivating, and developing employees to achieve organizational goals while fostering a positive and productive work environment.",
+    "everyday_phrasings": [
+      "managing staff and teams",
+      "leading people effectively",
+      "supervising employees",
+      "getting the best out of your team"
+    ]
+  },
+  {
+    "id": "performance-management",
+    "name": "Performance Management",
+    "definition": "Setting expectations, monitoring progress, and improving individual and team performance through feedback, appraisals, and development plans.",
+    "everyday_phrasings": [
+      "employee reviews and appraisals",
+      "managing staff performance",
+      "setting goals for workers",
+      "performance evaluations",
+      "helping employees improve",
+      "tracking how well people work"
+    ]
+  },
+  {
+    "id": "policy-procedure-development",
+    "name": "Policy & Procedure Development",
+    "definition": "Creating, updating, and communicating organizational rules, guidelines, and standard processes to ensure consistency and compliance.",
+    "everyday_phrasings": [
+      "writing company policies",
+      "updating workplace rules",
+      "creating standard procedures",
+      "documenting how things are done",
+      "establishing guidelines",
+      "policy review and revision"
+    ]
+  },
+  {
+    "id": "precision-measurement-inspection",
+    "name": "Precision Measurement & Inspection",
+    "definition": "Using specialized tools and techniques to verify that parts and products meet exact dimensional and quality specifications.",
+    "everyday_phrasings": [
+      "checking if parts are the right size",
+      "measuring with calipers and gauges",
+      "quality checking tight tolerances",
+      "making sure things fit perfectly",
+      "inspecting finished pieces"
+    ]
+  },
+  {
+    "id": "procurement-sourcing",
+    "name": "Procurement & Sourcing",
+    "definition": "Acquiring goods, services, and works from external sources through strategic selection, negotiation, and contract management.",
+    "everyday_phrasings": [
+      "buying what the business needs",
+      "finding and purchasing supplies",
+      "managing vendors and purchases",
+      "getting the best deals on materials"
+    ]
+  },
+  {
+    "id": "product-management-lifecycle",
+    "name": "Product Management & Lifecycle",
+    "definition": "Guiding a product from conception through launch and evolution, balancing customer needs, business goals, and technical feasibility.",
+    "everyday_phrasings": [
+      "build and launch a product",
+      "decide what features to add",
+      "manage the product roadmap",
+      "understand user needs",
+      "prioritize development work"
+    ]
+  },
+  {
+    "id": "product-testing-validation",
+    "name": "Product Testing & Validation",
+    "definition": "Verifying that products, materials, and components meet specifications, standards, and performance requirements through systematic examination and measurement.",
+    "everyday_phrasings": [
+      "checking if the product works",
+      "testing items before they go to customers",
+      "making sure quality is up to standard",
+      "running product trials",
+      "inspecting goods for defects",
+      "validating that things perform as promised"
+    ]
+  },
+  {
+    "id": "production-line-setup-commissioning",
+    "name": "Production Line Setup & Commissioning",
+    "definition": "Configuring, installing, and bringing new production lines and equipment into operational readiness.",
+    "everyday_phrasings": [
+      "getting a new line running",
+      "setting up factory equipment",
+      "starting up production for the first time",
+      "making sure everything works together",
+      "installing manufacturing systems"
+    ]
+  },
+  {
+    "id": "production-planning-scheduling",
+    "name": "Production Planning & Scheduling",
+    "definition": "Coordinating resources, timelines, and activities to ensure efficient manufacturing or creation of goods and services.",
+    "everyday_phrasings": [
+      "planning what to make and when",
+      "scheduling production runs",
+      "coordinating manufacturing timelines",
+      "organizing how things get built"
+    ]
+  },
+  {
+    "id": "productivity-efficiency-optimization",
+    "name": "Productivity & Efficiency Optimization",
+    "definition": "Analyzing workflows and removing bottlenecks to maximize output, reduce waste, and improve resource utilization.",
+    "everyday_phrasings": [
+      "getting more done with less",
+      "making work faster and easier",
+      "cutting out wasted time",
+      "improving output per worker",
+      "streamlining operations",
+      "boosting team productivity"
+    ]
+  },
+  {
+    "id": "professional-consultation-services",
+    "name": "Professional Consultation Services",
+    "definition": "Providing expert advice, guidance, and problem-solving support to clients, colleagues, or organizations.",
+    "everyday_phrasings": [
+      "giving expert advice",
+      "consulting with clients",
+      "providing professional guidance",
+      "helping others solve problems",
+      "offering specialist recommendations"
+    ]
+  },
+  {
+    "id": "programme-portfolio-management",
+    "name": "Programme & Portfolio Management",
+    "definition": "Coordinating multiple related projects and initiatives to achieve strategic objectives and optimize resource allocation.",
+    "everyday_phrasings": [
+      "manage multiple projects together",
+      "oversee a group of initiatives",
+      "align projects with business goals",
+      "coordinate big programmes",
+      "prioritize across many projects"
+    ]
+  },
+  {
+    "id": "project-management-delivery",
+    "name": "Project Management & Delivery",
+    "definition": "Planning, executing, and closing projects to achieve specific goals within constraints of time, budget, and scope.",
+    "everyday_phrasings": [
+      "getting projects done on time",
+      "managing a project from start to finish",
+      "coordinating who does what and when",
+      "keeping projects on track and on budget"
+    ]
+  },
+  {
+    "id": "quality-management",
+    "name": "Quality Management & Assurance",
+    "definition": "Coordinating activities to direct and control an organization with regard to quality, including policy setting, quality planning, and systematic monitoring.",
+    "everyday_phrasings": [
+      "making sure our products are good enough",
+      "checking quality at every step",
+      "preventing defects and errors",
+      "maintaining high standards"
+    ]
+  },
+  {
+    "id": "rail-transport-operations",
+    "name": "Rail Transport Operations",
+    "definition": "Managing the safe and efficient movement of trains, passengers, and freight across rail networks.",
+    "everyday_phrasings": [
+      "running train services",
+      "keeping trains on schedule",
+      "managing rail movements",
+      "coordinating train operations",
+      "making sure trains run safely"
+    ]
+  },
+  {
+    "id": "recipe-product-formulation",
+    "name": "Recipe & Product Formulation",
+    "definition": "Developing, testing, and standardizing recipes, formulas, or product specifications to meet quality, cost, and regulatory requirements.",
+    "everyday_phrasings": [
+      "creating new recipes",
+      "figuring out ingredients",
+      "standardizing food formulas",
+      "developing product recipes",
+      "recipe costing and testing",
+      "how to make this product"
+    ]
+  },
+  {
+    "id": "reflective-practice",
+    "name": "Reflective Practice & Self-Improvement",
+    "definition": "Engaging in systematic self-assessment and critical reflection on one's own work to identify growth areas and continuously enhance professional effectiveness.",
+    "everyday_phrasings": [
+      "thinking about what I could do better",
+      "reviewing my own performance",
+      "learning from mistakes and successes",
+      "self-evaluation and improvement",
+      "reflecting on how I handled situations",
+      "getting better at my job through self-awareness"
+    ]
+  },
+  {
+    "id": "regulatory-compliance",
+    "name": "Regulatory Compliance & Legal Adherence",
+    "definition": "Ensuring organizational activities conform to applicable laws, regulations, industry standards, and certification requirements.",
+    "everyday_phrasings": [
+      "following the rules and laws",
+      "staying on the right side of regulations",
+      "getting permits and approvals",
+      "keeping up with changing laws"
+    ]
+  },
+  {
+    "id": "regulatory-submission-clearance",
+    "name": "Regulatory Submission & Clearance",
+    "definition": "Preparing and submitting documentation to regulatory bodies to obtain approvals, permits, or certifications required for projects or products.",
+    "everyday_phrasings": [
+      "getting approval from authorities",
+      "submitting paperwork to regulators",
+      "navigating the approval process",
+      "obtaining permits and clearances"
+    ]
+  },
+  {
+    "id": "robotics-automation",
+    "name": "Robotics & Automation Application",
+    "definition": "Implementing and managing automated systems and robotic technologies to perform tasks with minimal human intervention.",
+    "everyday_phrasings": [
+      "using robots and machines to do work",
+      "automating repetitive tasks",
+      "bringing in automation to replace manual labor",
+      "setting up machines to run operations"
+    ]
+  },
+  {
+    "id": "rostering-scheduling",
+    "name": "Staff Rostering & Shift Scheduling",
+    "definition": "Building and maintaining day-to-day duty rosters and shift schedules so the right people are on the right shift.",
+    "everyday_phrasings": [
+      "sort out the driver roster",
+      "who's working this week",
+      "plan the shift schedule",
+      "fill gaps in the roster",
+      "arrange staff coverage",
+      "duty roster planning"
+    ]
+  },
+  {
+    "id": "safety-health-management",
+    "name": "Workplace Safety & Health Management",
+    "definition": "Establishing policies, systems, and practices to protect worker wellbeing, prevent injuries, and ensure compliance with occupational health standards.",
+    "everyday_phrasings": [
+      "keeping workers safe",
+      "preventing accidents at work",
+      "health and safety compliance",
+      "making sure nobody gets hurt on the job",
+      "HSE management",
+      "protecting people and planet",
+      "safety and environmental stewardship",
+      "combined health safety and environmental programs"
+    ]
+  },
+  {
+    "id": "scenario-strategic-planning",
+    "name": "Scenario & Strategic Planning",
+    "definition": "Exploring multiple possible futures and developing robust long-term plans that account for uncertainty, disruption, and evolving organizational priorities.",
+    "everyday_phrasings": [
+      "planning for different possible futures",
+      "what-if planning",
+      "long-term strategic thinking",
+      "preparing for changes down the road",
+      "exploring scenarios that could happen",
+      "building flexible plans for the future"
+    ]
+  },
+  {
+    "id": "security-operations-management",
+    "name": "Security Operations Management",
+    "definition": "Overseeing the day-to-day activities that protect people, property, and information from threats and unauthorized access.",
+    "everyday_phrasings": [
+      "running security day-to-day",
+      "managing guards and patrols",
+      "keeping buildings safe",
+      "overseeing security staff",
+      "making sure everything is secure"
+    ]
+  },
+  {
+    "id": "security-screening-inspection",
+    "name": "Security Screening & Inspection",
+    "definition": "Checking people, baggage, cargo, and vehicles for prohibited items, threats, or compliance violations.",
+    "everyday_phrasings": [
+      "checking bags at checkpoints",
+      "running metal detectors",
+      "screening passengers",
+      "inspecting cargo for threats",
+      "doing security checks"
+    ]
+  },
+  {
+    "id": "security-surveillance-monitoring",
+    "name": "Security Surveillance & Monitoring",
+    "definition": "Operating and overseeing video, alarm, and sensor systems to detect and respond to security incidents.",
+    "everyday_phrasings": [
+      "watching security cameras",
+      "monitoring alarm systems",
+      "keeping an eye on things",
+      "running CCTV operations",
+      "checking for suspicious activity"
+    ]
+  },
+  {
+    "id": "sense-making-complexity",
+    "name": "Sense-Making & Complexity Navigation",
+    "definition": "Interpreting ambiguous, incomplete, or conflicting information to construct coherent understanding and inform action in uncertain or rapidly changing situations.",
+    "everyday_phrasings": [
+      "making sense of confusing situations",
+      "figuring out what's really going on",
+      "understanding complex problems",
+      "finding clarity in chaos",
+      "interpreting mixed signals",
+      "getting a handle on messy information"
+    ]
+  },
+  {
+    "id": "service-delivery-operations",
+    "name": "Service Delivery & Operations",
+    "definition": "Planning, executing, and monitoring the day-to-day delivery of services to ensure consistent quality, efficiency, and customer satisfaction.",
+    "everyday_phrasings": [
+      "running daily operations",
+      "delivering services to clients",
+      "managing service quality",
+      "making sure services run smoothly",
+      "day-to-day business operations",
+      "service delivery standards"
+    ]
+  },
+  {
+    "id": "service-excellence-delivery",
+    "name": "Service Excellence & Delivery",
+    "definition": "Ensuring consistently high-quality service experiences through standards, training, and continuous improvement of customer-facing operations.",
+    "everyday_phrasings": [
+      "deliver great service",
+      "improve customer satisfaction",
+      "set service standards",
+      "train staff on service quality",
+      "fix service problems",
+      "making customers love dealing with us",
+      "going above and beyond for our clients",
+      "delivering service that makes people come back",
+      "treating customers like gold",
+      "making sure every interaction is a good one"
+    ]
+  },
+  {
+    "id": "service-quality-assurance",
+    "name": "Service Quality Assurance",
+    "definition": "Monitoring, evaluating, and improving service standards to ensure consistent delivery and customer satisfaction.",
+    "everyday_phrasings": [
+      "checking service quality",
+      "making sure service is good",
+      "service standards and checks",
+      "quality of customer service",
+      "service review and improvement",
+      "maintaining high service levels"
+    ]
+  },
+  {
+    "id": "skills-framework-implementation",
+    "name": "Skills Framework Implementation",
+    "definition": "Adopting and operationalizing standardized competency models to structure workforce development, assessment, and career progression.",
+    "everyday_phrasings": [
+      "using official skill standards in our company",
+      "implementing government skills frameworks",
+      "mapping jobs to recognized skill levels",
+      "getting our training aligned with national standards",
+      "building career paths based on skill benchmarks"
+    ]
+  },
+  {
+    "id": "social-service-programme-lifecycle",
+    "name": "Social Service Programme Lifecycle Management",
+    "definition": "Designing, implementing, and evaluating community and social support programs from concept through to outcomes assessment.",
+    "everyday_phrasings": [
+      "running community programs",
+      "setting up help services",
+      "managing welfare projects",
+      "delivering social support programs",
+      "evaluating if programs work"
+    ]
+  },
+  {
+    "id": "soil-environmental-assessment",
+    "name": "Soil & Environmental Site Assessment",
+    "definition": "Evaluating soil, water, and environmental conditions to inform land use, remediation, and sustainable management decisions.",
+    "everyday_phrasings": [
+      "test the soil quality",
+      "assess environmental damage",
+      "evaluate land before building",
+      "clean up contaminated ground",
+      "understand site conditions"
+    ]
+  },
+  {
+    "id": "solutions-design-thinking",
+    "name": "Solutions Design & Thinking",
+    "definition": "Applying creative, user-centered problem-solving approaches to develop novel and effective solutions to business challenges.",
+    "everyday_phrasings": [
+      "designing something that actually solves the real problem",
+      "thinking outside the box for our customers",
+      "starting with what people need not what we want to build",
+      "brainstorming that leads to real answers",
+      "creative problem solving for tricky situations"
+    ]
+  },
+  {
+    "id": "stakeholder-engagement",
+    "name": "Stakeholder Engagement & Relationship Management",
+    "definition": "Building and maintaining productive relationships with internal and external parties to align interests, manage expectations, and drive collaborative outcomes.",
+    "everyday_phrasings": [
+      "keeping everyone on the same page",
+      "working with different groups to get things done",
+      "managing relationships with partners and clients",
+      "getting buy-in from people we need to work with",
+      "handling complaints and requests from outside groups",
+      "building trust with community and partners"
+    ]
+  },
+  {
+    "id": "standard-operating-procedures",
+    "name": "Standard Operating Procedures Development",
+    "definition": "Creating, documenting, and maintaining detailed instructions for routine operations to ensure consistency, quality, and safety.",
+    "everyday_phrasings": [
+      "writing down how to do things",
+      "creating step-by-step instructions",
+      "documenting best practices",
+      "establishing the way we do things here"
+    ]
+  },
+  {
+    "id": "strategy-development",
+    "name": "Strategy Development",
+    "definition": "Formulating long-term plans and direction-setting to achieve competitive advantage and organizational objectives.",
+    "everyday_phrasings": [
+      "figuring out where we're headed",
+      "long-term planning and direction",
+      "setting the big picture strategy",
+      "deciding our future course"
+    ]
+  },
+  {
+    "id": "succession-planning-talent-pipeline",
+    "name": "Succession Planning & Talent Pipeline",
+    "definition": "Identifying and developing internal talent to fill critical roles and ensure leadership continuity.",
+    "everyday_phrasings": [
+      "planning for who takes over next",
+      "preparing future leaders",
+      "finding replacements for key roles",
+      "growing internal talent",
+      "making sure we're not caught short"
+    ]
+  },
+  {
+    "id": "surface-treatment-finishing",
+    "name": "Surface Treatment & Finishing",
+    "definition": "Applying coatings, treatments, and finishing processes to protect surfaces and achieve desired material properties or aesthetics.",
+    "everyday_phrasings": [
+      "painting and coating parts",
+      "preventing rust and corrosion",
+      "applying protective layers",
+      "finishing metal surfaces",
+      "making surfaces last longer"
+    ]
+  },
+  {
+    "id": "systems-thinking-application",
+    "name": "Systems Thinking Application",
+    "definition": "Analyzing complex situations by understanding how interconnected parts influence overall behavior and outcomes.",
+    "everyday_phrasings": [
+      "seeing the big picture",
+      "understanding how things connect",
+      "thinking about whole systems",
+      "figuring out ripple effects",
+      "connecting the dots between issues"
+    ]
+  },
+  {
+    "id": "talent-capability-evaluation",
+    "name": "Talent Capability Evaluation",
+    "definition": "Assessing the skills, competencies, and potential of individuals and teams to inform development, deployment, and succession decisions.",
+    "everyday_phrasings": [
+      "figuring out what our people are good at",
+      "assessing whether staff can do the job",
+      "understanding our team's strengths and gaps",
+      "evaluating if employees need more training",
+      "knowing who can take on bigger roles"
+    ]
+  },
+  {
+    "id": "talent-casting-acquisition",
+    "name": "Talent Casting & Acquisition",
+    "definition": "Identifying, evaluating, and securing performers, contributors, or specialized personnel for productions or projects.",
+    "everyday_phrasings": [
+      "find the right actor",
+      "cast for a role",
+      "recruit specialized talent",
+      "audition performers",
+      "build a creative team"
+    ]
+  },
+  {
+    "id": "tax-planning-compliance",
+    "name": "Tax Planning & Compliance",
+    "definition": "Managing tax obligations through strategic planning, accurate calculation, and timely filing in accordance with tax legislation.",
+    "everyday_phrasings": [
+      "doing our taxes",
+      "finding legal ways to pay less tax",
+      "filing with the tax office",
+      "understanding tax rules"
+    ]
+  },
+  {
+    "id": "teaching-supervision",
+    "name": "Teaching & Professional Supervision",
+    "definition": "Educating, guiding, and overseeing learners or junior professionals to build competence, ensure safety, and uphold standards.",
+    "everyday_phrasings": [
+      "training new staff",
+      "supervising students",
+      "mentoring junior workers",
+      "clinical teaching",
+      "on-the-job instruction",
+      "professional development guidance"
+    ]
+  },
+  {
+    "id": "technical-writing-communication",
+    "name": "Technical Writing & Communication",
+    "definition": "Creating clear, accurate, and accessible documentation, reports, and presentations that convey specialized information to intended audiences.",
+    "everyday_phrasings": [
+      "writing technical documents",
+      "explaining complex things clearly",
+      "creating reports and manuals",
+      "communicating technical information"
+    ]
+  },
+  {
+    "id": "technology-adoption-enablement",
+    "name": "Technology Adoption & Enablement",
+    "definition": "Evaluating, selecting, and driving the uptake of new technologies within an organization to improve capabilities and competitive positioning.",
+    "everyday_phrasings": [
+      "how do we get our staff to use new software",
+      "convincing old-school managers to try digital tools",
+      "rolling out new tech without chaos",
+      "helping employees adapt to automation",
+      "making sure we actually use the tech we bought"
+    ]
+  },
+  {
+    "id": "technology-implementation-integration",
+    "name": "Technology Implementation & Integration",
+    "definition": "Deploying new tools, systems, or platforms and ensuring they work effectively with existing processes and infrastructure.",
+    "everyday_phrasings": [
+      "rolling out new software",
+      "getting new tech to work",
+      "integrating systems together",
+      "implementing digital tools",
+      "technology changeover",
+      "making new technology fit our workflow"
+    ]
+  },
+  {
+    "id": "third-party-contractor-management",
+    "name": "Third-Party & Contractor Management",
+    "definition": "Overseeing external vendors, contractors, and service providers to ensure performance, compliance, and alignment with organizational standards and objectives.",
+    "everyday_phrasings": [
+      "managing outside contractors",
+      "working with vendors and suppliers",
+      "overseeing external service providers",
+      "making sure third parties do their job right",
+      "coordinating with companies we hire",
+      "contractor supervision and compliance"
+    ]
+  },
+  {
+    "id": "threat-intelligence-research",
+    "name": "Threat Intelligence & Research",
+    "definition": "Gathering, analyzing, and disseminating information about potential or emerging threats to inform protective decisions.",
+    "everyday_phrasings": [
+      "researching potential dangers",
+      "tracking emerging threats",
+      "studying security risks",
+      "finding out about new dangers",
+      "keeping ahead of bad actors"
+    ]
+  },
+  {
+    "id": "tourism-product-development",
+    "name": "Tourism Product Development",
+    "definition": "Creating, packaging, and enhancing travel experiences, attractions, and services for visitors and tourists.",
+    "everyday_phrasings": [
+      "designing tour packages",
+      "creating visitor experiences",
+      "building new attractions",
+      "developing travel products",
+      "coming up with things for tourists to do"
+    ]
+  },
+  {
+    "id": "transdisciplinary-integration",
+    "name": "Transdisciplinary Integration & Synthesis",
+    "definition": "Combining knowledge, methods, and perspectives from multiple disciplines to address complex problems that no single field can solve alone.",
+    "everyday_phrasings": [
+      "bringing together different fields of knowledge",
+      "combining expertise from various areas",
+      "thinking across subject boundaries",
+      "integrating multiple perspectives",
+      "synthesizing ideas from different experts",
+      "breaking down silos between disciplines"
+    ]
+  },
+  {
+    "id": "vendor-supplier-management",
+    "name": "Vendor & Supplier Management",
+    "definition": "Selecting, negotiating with, and overseeing external providers of goods and services to ensure quality and value.",
+    "everyday_phrasings": [
+      "working with suppliers",
+      "managing outside vendors",
+      "dealing with contractors",
+      "keeping suppliers in line",
+      "negotiating with service providers"
+    ]
+  },
+  {
+    "id": "virtual-augmented-reality-operations",
+    "name": "Virtual & Augmented Reality Operations",
+    "definition": "Deploying, managing, and maintaining immersive digital environments for training, design, or operational applications.",
+    "everyday_phrasings": [
+      "using VR headsets for training",
+      "running virtual reality simulations",
+      "managing AR applications",
+      "fixing VR equipment issues",
+      "setting up immersive experiences"
+    ]
+  },
+  {
+    "id": "warehousing-inventory-operations",
+    "name": "Warehousing & Inventory Operations",
+    "definition": "Oversight of goods receipt, storage, stock control, and dispatch activities within warehouse and distribution facilities.",
+    "everyday_phrasings": [
+      "organize the warehouse",
+      "track what's in stock",
+      "receive and ship orders",
+      "manage warehouse staff",
+      "reduce stock discrepancies"
+    ]
+  },
+  {
+    "id": "workforce-conflict-resolution",
+    "name": "Workforce Conflict Resolution",
+    "definition": "Addressing and resolving disagreements, disputes, and tensions among employees or teams to restore productive working relationships.",
+    "everyday_phrasings": [
+      "fixing fights between coworkers",
+      "dealing with two employees who hate each other",
+      "mediating team disputes",
+      "stopping workplace arguments from spreading",
+      "getting people to work together again after a blowup"
+    ]
+  },
+  {
+    "id": "workforce-diversity-inclusion",
+    "name": "Workforce Diversity & Inclusion",
+    "definition": "Building and sustaining an inclusive workplace by recruiting, retaining, and developing diverse talent and fostering equitable practices.",
+    "everyday_phrasings": [
+      "hiring diverse staff",
+      "making workplace fair for everyone",
+      "inclusion programs at work",
+      "supporting minority employees",
+      "building diverse teams",
+      "workplace equality initiatives"
+    ]
+  },
+  {
+    "id": "workplace-safety-culture",
+    "name": "Workplace Safety & Culture Development",
+    "definition": "Building and sustaining organizational attitudes, behaviors, and norms that prioritize worker safety and embed safety consciousness into daily operations.",
+    "everyday_phrasings": [
+      "how do we make safety part of our company culture",
+      "getting employees to actually care about safety rules",
+      "building a safety-first mindset in our team",
+      "why do workers ignore safety procedures",
+      "creating a culture where people speak up about hazards",
+      "keeping staff informed",
+      "employee communication",
+      "internal messaging and updates",
+      "engaging the workforce",
+      "two-way communication with teams",
+      "making sure everyone knows what's going on"
+    ]
+  }
+]

@@ -62,6 +62,16 @@ def structural_checks(record: dict) -> dict:
             (record.get("brief") or {}).get("sector") == record.get("sector")
         )
 
+    # Phase B deterministic recall checks — only when the record actually
+    # carries the functions_needed/functions_uncovered pair (team_service's
+    # decompose-then-retrieve fields). Older records / degraded responses
+    # simply omit the key entirely, so these are skipped rather than failed.
+    if "functions_needed" in record:
+        functions_needed = record.get("functions_needed") or []
+        functions_uncovered = record.get("functions_uncovered") or []
+        checks["functions_identified"] = len(functions_needed) > 0
+        checks["functions_all_covered"] = len(functions_uncovered) == 0
+
     for name, ok in checks.items():
         if not ok:
             errors.append(name)

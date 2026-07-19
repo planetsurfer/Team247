@@ -9,6 +9,7 @@ reuse teamspec.skill_rows (reads framework's official K&A index).
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -25,6 +26,61 @@ class TeamNotFound(Exception):
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Phase B — function taxonomy + per-function role seeding (decompose-then-retrieve)
+# ──────────────────────────────────────────────────────────────────────────────
+_TAXONOMY_PATH = os.getenv("FUNCTION_TAXONOMY_JSON", "data/function_taxonomy.json")
+_TAXONOMY_CACHE = None
+
+
+def _load_taxonomy():
+    """Load+cache data/function_taxonomy.json (Phase A). Module-level cache — the
+    file is committed/static at process lifetime, same pattern as classify._INDEX.
+    Returns [] on any failure (missing file, bad JSON) so callers degrade to the
+    pre-Phase-B behavior rather than raising."""
+    global _TAXONOMY_CACHE
+    if _TAXONOMY_CACHE is None:
+        try:
+            with open(_TAXONOMY_PATH, "r") as f:
+                _TAXONOMY_CACHE = json.load(f)
+        except Exception:  # noqa: BLE001
+            _TAXONOMY_CACHE = []
+    return _TAXONOMY_CACHE
+
+
+def _seed_candidates_for_functions(function_ids, preferred_sectors):
+    """B2: for each identified function_id, look up roles tagged with it via
+    role_functions (Phase A's tagging table) joined to roles, rank preferred-
+    sector matches first then by role name for stability, and take the top ~3
+    per function as seed (role, sector) pairs.
+
+    Returns (must_include, uncovered) where must_include is a deduped list of
+    (role, sector) pairs across all functions, and uncovered is the subset of
+    function_ids that matched zero roles in role_functions (either because
+    tagging hasn't reached those roles yet — the background job is mid-run —
+    or because no role in the catalog performs that function).
+    """
+    preferred = set(preferred_sectors or ())
+    must_include, seen_pairs = [], set()
+    uncovered = []
+    for fid in function_ids:
+        rows = db.query(
+            "SELECT r.role_id, r.role, r.sector FROM role_functions rf "
+            "JOIN roles r ON r.role_id = rf.role_id WHERE rf.function_id = ?",
+            (fid,),
+        )
+        if not rows:
+            uncovered.append(fid)
+            continue
+        rows.sort(key=lambda r: (r["sector"] not in preferred, r["role"]))
+        for r in rows[:3]:
+            pair = (r["role"], r["sector"])
+            if pair not in seen_pairs:
+                seen_pairs.add(pair)
+                must_include.append(pair)
+    return must_include, uncovered
 
 
 def _loads(raw, default):
@@ -80,19 +136,56 @@ def recommend(use_case=None, brief=None, intake_session_id=None):
     except Exception:  # noqa: BLE001
         preferred_sectors = []
 
-    recs = classify.recommend_roles(query, k=12, preferred_sectors=preferred_sectors)
+    # Phase B — decompose-then-retrieve: decompose the query into canonical
+    # business functions (data/function_taxonomy.json), look up seed roles per
+    # function via role_functions (Phase A's tagging table), and force those
+    # roles into the candidate slate so it's CONSTRUCTED to cover every
+    # function the task needs rather than hoping keyword overlap surfaces them.
+    # Best-effort end to end: identify_functions failing, the taxonomy being
+    # unavailable, or role_functions having no rows yet (the background
+    # tagging job may be mid-run) must all degrade silently to functions=[]/
+    # must_include=[] — the pipeline then behaves EXACTLY as it did before
+    # this feature existed. The 100%-team guarantee never depends on this.
+    functions_needed = []      # list of {id, name} — identified functions
+    functions_uncovered = []   # subset with zero seed candidates in role_functions
+    must_include = []
+    try:
+        taxonomy = _load_taxonomy()
+        if taxonomy:
+            by_id = {e["id"]: e for e in taxonomy}
+            ident = llm_contracts.identify_functions(query or (use_case or ""), taxonomy)
+            fn_ids = [fid for fid in ident.get("functions", []) if fid in by_id]
+            functions_needed = [{"id": fid, "name": by_id[fid]["name"]} for fid in fn_ids]
+            if fn_ids:
+                must_include, uncovered_ids = _seed_candidates_for_functions(
+                    fn_ids, preferred_sectors,
+                )
+                functions_uncovered = [{"id": fid, "name": by_id[fid]["name"]} for fid in uncovered_ids]
+    except Exception:  # noqa: BLE001
+        functions_needed, functions_uncovered, must_include = [], [], []
+
+    recs = classify.recommend_roles(
+        query, k=12, preferred_sectors=preferred_sectors, must_include=must_include,
+    )
     candidates = [
         {"n": i + 1, "role": r["role"], "sector": r.get("sector"),
          "confidence": r.get("confidence"), "matched_on": r.get("matched_on")}
         for i, r in enumerate(recs)
     ]
 
+    # NOTE: functions_needed is deliberately NOT passed to team_recommend — the
+    # composer is no longer mandated to staff one agent per identified function
+    # (that mandate was the confirmed cause of team bloat/genericization).
+    # functions_needed still seeded `must_include` into `candidates` above (the
+    # slate), and is still returned/persisted below for observability.
     tr = llm_contracts.team_recommend(brief, candidates)  # TeamRecommend
 
     team_id = uuid4().hex
     recommendation_json = json.dumps({
         "team": [a.model_dump() for a in tr.team],
         "candidates": candidates,
+        "functions_needed": functions_needed,
+        "functions_uncovered": functions_uncovered,
     })
     db.execute(
         "INSERT INTO teams(team_id, name, use_case, intake_session_id, brief, "
@@ -161,6 +254,8 @@ def recommend(use_case=None, brief=None, intake_session_id=None):
         "team_id": team_id,
         "agents": agents_out,
         "artifacts_needed": artifacts,
+        "functions_needed": functions_needed,
+        "functions_uncovered": functions_uncovered,
         "recommendation_raw": {"team": [a.model_dump() for a in tr.team],
                                "candidates": candidates},
     }

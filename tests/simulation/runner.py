@@ -83,6 +83,10 @@ def run_oneshot(client, persona: dict, clock: _Clock) -> dict:
         "intake_questions": None,
         "rounds": 0,
         "team": _enrich_team(client, body, clock),
+        # Phase B fields (functional decompose-then-retrieve recall signal).
+        # Default to [] so older/degraded responses don't blow up downstream.
+        "functions_needed": body.get("functions_needed") or [],
+        "functions_uncovered": body.get("functions_uncovered") or [],
     }
 
 
@@ -123,12 +127,18 @@ def run_intake(client, persona: dict, clock: _Clock) -> dict:
     r = client.post_limited(f"/api/intake/{sid}/recommend")
     if r.status_code != 200:
         raise RuntimeError(f"intake recommend HTTP {r.status_code}: {r.text[:300]}")
+    body = r.json()
     return {
         "transcript": transcript,
         "brief": brief,
         "intake_questions": all_questions,
         "rounds": rounds,
-        "team": _enrich_team(client, r.json(), clock),
+        "team": _enrich_team(client, body, clock),
+        # Phase B fields — /api/intake/{sid}/recommend shares team_service.recommend
+        # with the one-shot path, so it carries the same functions_needed/
+        # functions_uncovered pair. Default to [] for degraded responses.
+        "functions_needed": body.get("functions_needed") or [],
+        "functions_uncovered": body.get("functions_uncovered") or [],
     }
 
 

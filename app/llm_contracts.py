@@ -221,10 +221,16 @@ def _validate_team_recommend(o):
     return tr
 
 
-def team_recommend(brief, candidates):
+def team_recommend(brief, candidates, functions_needed=None):
     """Phase 1: assemble a 1-8 agent team from ONLY the given candidate roles.
 
     brief: dict (the intake Brief). candidates: list[{n, role, sector, matched_on}].
+    functions_needed: unused — kept only for call-signature stability. The
+    per-function seed roles (B1/B2) already influence this call indirectly by
+    being present in `candidates`; the composer is deliberately NOT told to
+    cover every identified function (mandating one-agent-per-function was the
+    confirmed cause of team bloat/genericization in an earlier iteration).
+    Team sizing is governed purely by the lean-team guidance below.
     Returns TeamRecommend. The LLM never names a role not in `candidates`.
     """
     listing = "\n".join(
@@ -234,7 +240,7 @@ def team_recommend(brief, candidates):
     brief_txt = str(brief)
     prompt = (
         "A user wants to staff a multi-agent team. Their intake brief (JSON):\n"
-        f"{brief_txt}\n\n"
+        f"{brief_txt}\n"
         "REAL SkillsFuture roles available — choose ONLY from these, by list number:\n"
         f"{listing}\n\n"
         "Assemble a team of 1-8 agents to deliver the brief end-to-end. For each agent:\n"
@@ -320,6 +326,139 @@ def wire_handoffs(composition, use_case, agent_ids):
     ]
     validate_handoff_graph(handoff_dicts, agent_ids)  # raises on a non-feedback cycle
     return wh
+
+
+_FUNCTION_DF_CACHE = None
+
+
+def _function_df():
+    """Document-frequency of each function_id over role_functions (Phase A's
+    tagging table): fraction of ALL tagged roles carrying that function_id.
+    Cached once per process (same pattern as classify._INDEX — the tagging
+    table is effectively static at process lifetime).
+
+    Used as a deterministic guard against ubiquitous generic functions
+    (client-relationship-management, business-intelligence-reporting, etc.)
+    that identify_functions over-picks despite prompt instructions: any
+    function tagged on a large fraction of the whole catalog carries near
+    zero distinguishing signal for role retrieval.
+
+    Returns {} on any failure (missing table, empty catalog, import cycle) —
+    callers MUST treat that as "no drop" so this never breaks the pipeline.
+    """
+    global _FUNCTION_DF_CACHE
+    if _FUNCTION_DF_CACHE is None:
+        try:
+            from app import db  # local import — avoids a hard app.db dependency at module load
+            total_row = db.query(
+                "SELECT COUNT(DISTINCT role_id) AS n FROM role_functions", one=True,
+            )
+            total = (total_row["n"] if total_row else 0) or 0
+            if total <= 0:
+                _FUNCTION_DF_CACHE = {}
+            else:
+                rows = db.query(
+                    "SELECT function_id, COUNT(DISTINCT role_id) AS n "
+                    "FROM role_functions GROUP BY function_id",
+                )
+                _FUNCTION_DF_CACHE = {r["function_id"]: r["n"] / total for r in rows}
+        except Exception:  # noqa: BLE001 — degrade to "no drop", never break the pipeline
+            _FUNCTION_DF_CACHE = {}
+    return _FUNCTION_DF_CACHE
+
+
+def _validate_identify_functions(taxonomy_ids):
+    """Return a validator bound to the closed taxonomy id set (B1). Drops any id
+    not in the taxonomy; raises if nothing valid remains so call_llm_json retries
+    (and eventually the caller's own try/except falls back to plain retrieval).
+
+    After taxonomy filtering, also applies the function-IDF guard: drops any
+    function whose document-frequency fraction (over role_functions) is > 0.20
+    — a code-level backstop against near-signal-free generic functions that
+    survives even if the LLM ignores the prompt's "don't pad with generic
+    functions" instruction. If dropping would leave zero functions, the single
+    lowest-DF (most distinguishing) one is kept instead of raising.
+    """
+    def _validate(o):
+        if not isinstance(o, dict) or not isinstance(o.get("functions"), list):
+            raise ValueError('expected {"functions": [...]}')
+        picked = [f for f in o["functions"] if f in taxonomy_ids]
+        # de-dup, keep order, cap at 2
+        seen = set()
+        out = []
+        for f in picked:
+            if f not in seen:
+                seen.add(f)
+                out.append(f)
+            if len(out) >= 2:
+                break
+        if not out:
+            raise ValueError("no valid function ids after validation against taxonomy")
+        df = _function_df()
+        if df:
+            kept = [f for f in out if df.get(f, 0.0) <= 0.20]
+            if kept:
+                out = kept
+            else:
+                # everything returned is generic — keep the least-generic one
+                out = [min(out, key=lambda f: df.get(f, 0.0))]
+        return {"functions": out}
+    return _validate
+
+
+def identify_functions(brief_text, taxonomy):
+    """B1: decompose a task/brief into the 1-2 CORE canonical business FUNCTIONS
+    the work requires (data/function_taxonomy.json), INCLUDING implied functions
+    not stated verbatim (e.g. "auditor coming in 2 weeks" implies a compliance/
+    audit-prep function even though the brief never says "audit").
+
+    This is a RECALL SAFETY-NET, not a team-size driver: it exists so the
+    candidate slate is seeded with the one specific role the task actually
+    needs, not so team_recommend staffs one agent per returned function. Kept
+    deliberately narrow (1-2 ids) — over-decomposing into 3-4 functions per
+    task, padded with generic cross-cutting functions, was the confirmed root
+    cause of team bloat/genericization in an earlier iteration.
+
+    taxonomy: the loaded list[{id, name, definition, everyday_phrasings}]
+    (Phase A's data/function_taxonomy.json). Returns {"functions": [id, ...]},
+    1-2 ids strictly drawn from taxonomy ids (after the taxonomy + DF-guard
+    validation in _validate_identify_functions).
+
+    Failure mode: this raises (LLMError or the last validation error) on total
+    failure — by design. The 100%-team guarantee is sacred, so the CALLER
+    (team_service.recommend) must wrap this in try/except and treat any
+    exception as functions=[], falling back to plain keyword retrieval exactly
+    as before this feature existed. This function itself never swallows errors.
+    """
+    taxonomy_ids = {e["id"] for e in taxonomy}
+    listing = "\n".join(f"- {e['id']} — {e['name']}" for e in taxonomy)
+    prompt = (
+        f'A user describes a task/brief for an agentic team:\n"""\n{brief_text}\n"""\n\n'
+        "From the CANONICAL BUSINESS FUNCTION list below, identify the 1-2 CORE "
+        "functions that DISTINGUISH this specific task — the actual work being "
+        "requested. Do NOT include generic cross-cutting support/management "
+        "functions (stakeholder engagement, people/team management, project "
+        "management, data analytics, business intelligence/reporting, continuous "
+        "improvement, quality management, compliance) UNLESS the task is "
+        "SPECIFICALLY and primarily about that function.\n\n"
+        "Include a function that is IMPLIED by the work even if not stated "
+        "outright — e.g. \"our auditor is coming in 2 weeks\" implies a "
+        "compliance/audit-preparation function even though the word \"audit\" isn't "
+        "the task itself; \"chase up people who owe me money\" implies accounts-"
+        "receivable/collections even though the brief never says \"accounts receivable\".\n\n"
+        "Every id you return MUST be copied exactly (the part before the — ) from "
+        "this list:\n" + listing + "\n\n"
+        'Return STRICT JSON: {"functions": ["id-1", "id-2"]} — 1 to 2 ids, the '
+        "most important (most distinguishing, least generic) first."
+    )
+    raw = call_llm_json(
+        "identify_functions",
+        [{"role": "user", "content": prompt}],
+        validate=_validate_identify_functions(taxonomy_ids),
+        temperature=0.1,
+        max_tokens=512,
+    )
+    return raw
 
 
 def _validate_artifacts(o):

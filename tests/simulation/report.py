@@ -66,6 +66,38 @@ def _sector_mismatch(records: list[dict]) -> tuple[float | None, float | None]:
     )
 
 
+def _function_coverage(records: list[dict]) -> dict | None:
+    """Deterministic per-function recall, no judge involved.
+
+    Only over records that carry the Phase B functions_needed/
+    functions_uncovered pair (older runs predate this and are skipped
+    entirely — returns None if none of the records have the key).
+    """
+    have = [r for r in records if "functions_needed" in r]
+    if not have:
+        return None
+    covered = sum(1 for r in have if not (r.get("functions_uncovered") or []))
+    distinct_ids: set[str] = set()
+    uncovered_counter: Counter = Counter()
+    needed_counts: list[int] = []
+    for r in have:
+        needed = r.get("functions_needed") or []
+        needed_counts.append(len(needed))
+        for f in needed:
+            if isinstance(f, dict) and f.get("id"):
+                distinct_ids.add(f["id"])
+        for f in r.get("functions_uncovered") or []:
+            if isinstance(f, dict) and f.get("id"):
+                uncovered_counter[f["id"]] += 1
+    return {
+        "n": len(have),
+        "covered_rate": covered / len(have),
+        "distinct_functions": len(distinct_ids),
+        "mean_functions_needed": mean(needed_counts) if needed_counts else 0.0,
+        "top_uncovered": uncovered_counter.most_common(10),
+    }
+
+
 def write_report(jsonl_path: Path, md_path: Path, config_echo: str = "") -> Path:
     records = _load(jsonl_path)
     ok = [r for r in records if r.get("status") == "ok"]
@@ -105,6 +137,29 @@ def write_report(jsonl_path: Path, md_path: Path, config_echo: str = "") -> Path
         lines.append(f"- Mean overall ({track} track, n={len(tr)}): "
                      f"**{_fmt(_score_means(tr)['overall'])}**")
     lines.append("")
+
+    # ── function coverage (Phase B recall, deterministic) ───────────────────
+    lines += ["## Function coverage", "",
+              "Deterministic recall signal (no judge): does the candidate slate "
+              "structurally cover every business function the task decomposed into? "
+              "(`functions_needed` from `identify_functions`, `functions_uncovered` "
+              "= needed functions with zero seed roles in `role_functions`.)", ""]
+    fc = _function_coverage(ok)
+    if fc is None:
+        lines += ["_No records carry `functions_needed` (run predates Phase B)._", ""]
+    else:
+        lines += [
+            f"- Records with function data: **{fc['n']}**",
+            f"- Team-level recall (all needed functions covered): "
+            f"**{100 * fc['covered_rate']:.0f}%**",
+            f"- Distinct functions identified across run: **{fc['distinct_functions']}**",
+            f"- Mean functions_needed per task: **{_fmt(fc['mean_functions_needed'])}**",
+            "",
+            "Most common uncovered functions (taxonomy/tagging gaps to patch next):",
+            "",
+        ]
+        lines += [f"- `{fid}`: {n}" for fid, n in fc["top_uncovered"]] or ["- (none)"]
+        lines.append("")
 
     # ── per-sector ─────────────────────────────────────────────────────────
     by_sector: dict[str, list[dict]] = defaultdict(list)
