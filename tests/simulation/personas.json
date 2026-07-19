@@ -1,0 +1,1839 @@
+[
+  {
+    "name": "Diane Kowalski",
+    "occupation": "Office Manager",
+    "business_context": "Small independent accounting firm with 6 partners, handling tax returns and bookkeeping for local small businesses",
+    "task_utterance": "hey so i need to send out the quarterly tax reminder emails to all our clients again, last time i just did it from my outlook but half of them bounced or went to spam and my boss is asking why we havent heard back from like 30 people",
+    "style": "rambling",
+    "facts": [
+      "Sends quarterly tax filing reminders to roughly 220 clients",
+      "Uses a shared Outlook contact list that hasn't been cleaned up in over a year",
+      "About 30-40 emails bounced or went to spam last quarter",
+      "Boss wants confirmation receipts from every client before the filing deadline",
+      "The firm uses a paper-based client intake process but emails for reminders"
+    ],
+    "id": "financial-services-1",
+    "sector": "Financial Services"
+  },
+  {
+    "name": "Marcus Thorne",
+    "occupation": "Branch Operations Coordinator",
+    "business_context": "Regional credit union with 4 branches and about 8,000 members, offering savings accounts and personal loans",
+    "task_utterance": "need to pull the monthly delinquent loan report and get it to collections by friday",
+    "style": "terse",
+    "facts": [
+      "Runs the delinquent loan report on the 1st of every month",
+      "Report covers loans 30, 60, and 90 days past due across all 4 branches",
+      "Collections team is 3 people who need the report in PDF format",
+      "Usually takes about 2 hours to compile because data comes from two different systems",
+      "VP of Operations reviews it before it goes to collections"
+    ],
+    "id": "financial-services-2",
+    "sector": "Financial Services"
+  },
+  {
+    "name": "Priya Nair",
+    "occupation": "Compliance Administrator",
+    "business_context": "Mid-size wealth management advisory with 15 advisors managing portfolios for high-net-worth individuals",
+    "task_utterance": "So I've been trying to get all the advisors to submit their annual compliance training certificates and honestly it's like pulling teeth, some of them send screenshots, some forward emails, some just forget entirely and then the regulator is going to be on our backs in like six weeks",
+    "style": "chatty",
+    "facts": [
+      "15 advisors need to submit proof of annual compliance training completion",
+      "Regulator audit is in approximately 6 weeks",
+      "Advisors submit certificates in inconsistent formats: screenshots, PDFs, forwarded emails",
+      "Currently tracking submissions in a spreadsheet with colored cells for status",
+      "Last year 3 advisors were non-compliant and the firm got a warning letter"
+    ],
+    "id": "financial-services-3",
+    "sector": "Financial Services"
+  },
+  {
+    "name": "Derek Tan",
+    "occupation": "Operations Manager",
+    "business_context": "Small IT hardware distributor with about 25 staff, supplying networking gear and servers to local SMEs",
+    "task_utterance": "need to check which customers still owe us from last month, the accounts girl is on leave and i dunno where she keeps the list",
+    "style": "terse",
+    "facts": [
+      "Around 60-70 invoices go out each month to regular business customers",
+      "Accounts clerk maintains a shared Excel file on the office NAS drive",
+      "Payment terms are net 30 but many customers pay late, sometimes 60+ days",
+      "Derek usually just calls customers directly on their mobile to chase payment",
+      "Company uses QuickBooks for official accounts but the tracker is separate"
+    ],
+    "id": "infocomm-technology-1",
+    "sector": "Infocomm Technology"
+  },
+  {
+    "name": "Priya Nair",
+    "occupation": "Project Coordinator",
+    "business_context": "Mid-size software consultancy with 120 employees, doing custom app development and cloud migration projects for enterprise clients",
+    "task_utterance": "Hi! So I've been trying to get everyone's timesheets in for the Henderson project but you know how it is, the developers keep forgetting and then the client wants the monthly report by Friday and I'm running around like crazy trying to piece it all together from emails and Slack messages and half of them just write 'development work' with no details, honestly it's a nightmare every single month lol",
+    "style": "rambling",
+    "facts": [
+      "About 15 developers and consultants are assigned to the Henderson account",
+      "Timesheets are submitted through a web portal but compliance is usually around 60% by deadline",
+      "Client requires a detailed monthly breakdown showing hours per feature or module",
+      "Priya sends reminder emails every Wednesday and follows up on Slack Thursday mornings",
+      "The finance team needs approved timesheets by end of day Friday to generate the invoice"
+    ],
+    "id": "infocomm-technology-2",
+    "sector": "Infocomm Technology"
+  },
+  {
+    "name": "Marcus Lim",
+    "occupation": "Service Desk Supervisor",
+    "business_context": "Managed IT services provider with 40 staff, handling helpdesk and on-site support for about 80 small business clients on monthly contracts",
+    "task_utterance": "gotta do the technician roster for next week, someone called in sick",
+    "style": "vague",
+    "facts": [
+      "Team of 8 field technicians and 4 helpdesk staff covering Monday to Saturday",
+      "Roster is built in a Google Sheet that Marcus updates manually each Friday",
+      "Technicians are assigned based on geographic zones: east, west, and central",
+      "Minimum two helpdesk staff must be on shift at any time during business hours",
+      "Some clients have SLA guarantees requiring a technician on-site within 4 hours"
+    ],
+    "id": "infocomm-technology-3",
+    "sector": "Infocomm Technology"
+  },
+  {
+    "name": "Dale Morrison",
+    "occupation": "Operations Coordinator",
+    "business_context": "Mid-size solar panel installation company with about 35 field technicians across three regional depots.",
+    "task_utterance": "need to sort out next months install crews, some guys are on leave and i keep double booking the sparkies",
+    "style": "terse",
+    "facts": [
+      "Manages a rotating roster of roughly 35 electricians and roof installers",
+      "Uses a big shared Excel spreadsheet on the office server to track who's on which job",
+      "Has to make sure every install team has at least one licensed electrician assigned",
+      "Technicians submit leave requests by texting him directly, which he often forgets to log",
+      "Boss wants the roster finalised by the 20th of each month"
+    ],
+    "id": "energy-and-power-1",
+    "sector": "Energy and Power"
+  },
+  {
+    "name": "Priya Anand",
+    "occupation": "Accounts Administrator",
+    "business_context": "Family-owned electrical wholesale distributor supplying contractors and tradies, around 60 staff.",
+    "task_utterance": "Hi! So I've been meaning to ask about something that's been driving me a bit crazy haha — we have all these tradies who buy off us on account and they're supposed to pay within 30 days but honestly some of them are 60, 70 days overdue and I spend like half my week just ringing them and sending emails asking where the payment is. Is there a better way to keep on top of it all?",
+    "style": "chatty",
+    "facts": [
+      "Looks after roughly 200 trade credit accounts",
+      "Currently chases overdue invoices manually by phone and email using MYOB",
+      "About 40 accounts are regularly past due at any given time",
+      "Sends a polite reminder at 30 days, a firmer one at 45, then calls at 60",
+      "The owner's son recently started helping but doesn't know the regular customers yet"
+    ],
+    "id": "energy-and-power-2",
+    "sector": "Energy and Power"
+  },
+  {
+    "name": "Warren Keating",
+    "occupation": "Site Supervisor",
+    "business_context": "Diesel generator hire and maintenance firm servicing mining camps and remote construction sites, about 20 staff.",
+    "task_utterance": "gotta do the monthly fuel usage report for the gensets out at the pilbara sites, numbers never seem to add up",
+    "style": "vague",
+    "facts": [
+      "Responsible for 14 generator units spread across four remote mine sites",
+      "Fuel deliveries are logged on paper dockets that get mailed back to the office weekly",
+      "Has to reconcile fuel delivered against hours run and output for each unit",
+      "The client mining company requires the report in a specific PDF template by the 5th of each month",
+      "Some dockets go missing in transit and he has to ring the site storeman to get the numbers"
+    ],
+    "id": "energy-and-power-3",
+    "sector": "Energy and Power"
+  },
+  {
+    "name": "Diane Kowalski",
+    "occupation": "Office Manager",
+    "business_context": "Small independent radio station with about 15 staff, broadcasts local news and music.",
+    "task_utterance": "hey so i need to chase up the local businesses who haven't paid for their ad spots last month, it's always the same few and i keep losing track of who i already called",
+    "style": "chatty",
+    "facts": [
+      "Sells ad slots to roughly 30 local businesses per month",
+      "Tracks payments in a color-coded spreadsheet she built herself",
+      "Usually gives clients 14 days before following up",
+      "Station manager wants a weekly summary of outstanding payments every Friday"
+    ],
+    "id": "media-1",
+    "sector": "Media"
+  },
+  {
+    "name": "Marcus Webb",
+    "occupation": "Production Coordinator",
+    "business_context": "Mid-size video production company, about 40 employees, makes corporate videos and commercials.",
+    "task_utterance": "need the crew roster sorted for next week's shoot. 3 days, 2 locations, gotta make sure nobody's double-booked",
+    "style": "terse",
+    "facts": [
+      "Manages a pool of about 25 freelance and permanent crew members",
+      "Shoots typically need 6-10 crew per day depending on the job",
+      "Uses a shared Google Sheet that often has outdated availability info",
+      "Has to send the final roster to the client at least 48 hours before the first shoot day"
+    ],
+    "id": "media-2",
+    "sector": "Media"
+  },
+  {
+    "name": "Priya Nair",
+    "occupation": "Circulation Admin",
+    "business_context": "Regional newspaper publisher, around 60 staff, prints three weekly titles and runs a website.",
+    "task_utterance": "So basically every quarter we have to put together the readership numbers for the advertisers and I always end up pulling figures from like four different places and my editor keeps saying the format looks different each time which is embarrassing honestly",
+    "style": "rambling",
+    "facts": [
+      "Produces quarterly readership reports for about 20 regular advertisers",
+      "Pulls data from the print distributor, website analytics, and the subscriptions database",
+      "Last report was 12 pages with charts and tables",
+      "Advertisers compare the numbers to what they were promised when they signed their contracts"
+    ],
+    "id": "media-3",
+    "sector": "Media"
+  },
+  {
+    "name": "Derek Mallory",
+    "occupation": "Workshop Supervisor",
+    "business_context": "Small CNC machining shop (22 staff) making precision brackets and fittings for Tier 2 aerospace suppliers.",
+    "task_utterance": "need to sort next weeks shift roster got 3 guys on leave and a big order for boeing brackets due friday",
+    "style": "terse",
+    "facts": [
+      "Runs two shifts: 6am-2pm and 2pm-10pm, Monday to Friday",
+      "Has 14 machinists on the floor plus 2 quality inspectors per shift",
+      "Uses a whiteboard in the break room and a shared Google Sheet to track who's working when",
+      "Three machinists are on annual leave next week and one is off for a dental surgery",
+      "The Boeing bracket order is 800 units and must ship by end of day Friday"
+    ],
+    "id": "aerospace-1",
+    "sector": "Aerospace"
+  },
+  {
+    "name": "Priya Sandhu",
+    "occupation": "Contracts Administrator",
+    "business_context": "Mid-size MRO (maintenance, repair, overhaul) company servicing regional airline fleets, around 180 employees.",
+    "task_utterance": "Hey! So I've been chasing up three overdue invoices from our airline clients and honestly it's getting a bit ridiculous because two of them are over 60 days now and my manager is breathing down my neck about it lol. Can you help me draft some follow-up emails that sound firm but not rude??",
+    "style": "chatty",
+    "facts": [
+      "Handles billing for about 12 active airline maintenance contracts",
+      "Two invoices are 67 and 74 days overdue from the same regional carrier, totaling around $84,000",
+      "A third invoice from a different airline is 45 days overdue for about $31,000",
+      "Company policy is to send a polite reminder at 30 days, a firm one at 60, and escalate to the finance director at 90",
+      "She logs all invoice statuses in a spreadsheet because the accounting software only shows basic info"
+    ],
+    "id": "aerospace-2",
+    "sector": "Aerospace"
+  },
+  {
+    "name": "Graham Teale",
+    "occupation": "Stores Coordinator",
+    "business_context": "Aerospace fastener distributor with a single warehouse and 9 office/warehouse staff, supplying small parts to local manufacturers.",
+    "task_utterance": "im supposed to do the monthly stock count for the rivet and bolt lines but the numbers never match up with whats in the computer and i end up spending like two days on it every time its a nightmare",
+    "style": "vague",
+    "facts": [
+      "Warehouse holds roughly 1,200 different SKUs of aerospace-grade fasteners",
+      "The inventory system is an old desktop program called StockMaster that hasn't been updated in years",
+      "Monthly stock counts usually take him about a day and a half and he often finds 30-50 discrepancies",
+      "His boss wants the count report emailed as a PDF by the 3rd of every month",
+      "Two warehouse assistants help with the physical counting but they often misread the small part numbers"
+    ],
+    "id": "aerospace-3",
+    "sector": "Aerospace"
+  },
+  {
+    "name": "Derek Simmons",
+    "occupation": "Depot Supervisor",
+    "business_context": "Mid-sized regional bus company running about 80 buses across 12 routes in a commuter belt area.",
+    "task_utterance": "need to sort next weeks driver roster, got 3 lads off sick and a school contract starting monday",
+    "style": "terse",
+    "facts": [
+      "Manages a pool of 22 drivers across early, late, and split shifts",
+      "Uses a big printed whiteboard in the depot office plus a shared spreadsheet",
+      "School contract runs term-time only, needs two extra buses at 7:45 and 15:10",
+      "Drivers have union-agreed rest periods that must be 11 hours minimum between shifts",
+      "Usually does the roster every Thursday for the following week"
+    ],
+    "id": "public-transport-1",
+    "sector": "Public Transport"
+  },
+  {
+    "name": "Claire Okonkwo",
+    "occupation": "Fleet Compliance Coordinator",
+    "business_context": "A national train operating company with around 140 trains and 1,200 staff serving intercity routes.",
+    "task_utterance": "Hi! So I've got the quarterly safety audit coming up on the 18th and I need to pull together all the incident reports and maintenance sign-off sheets from the last three months — the auditors always ask for everything in a specific folder structure and last time I spent literally two whole days just renaming files and sorting them into the right places. Is there any way you can help me get ahead of it this time?",
+    "style": "rambling",
+    "facts": [
+      "Audit covers incident logs, maintenance certificates, and driver competency records",
+      "Reports come in from 6 different depot managers in mixed formats (PDF, Word, photos of handwritten forms)",
+      "Auditor requires files named with date prefix and category code like 2024-03-INC-0042",
+      "Last audit flagged 3 missing sign-off sheets which delayed certification by two weeks",
+      "Shares the final folder with the Head of Safety who reviews it before submission"
+    ],
+    "id": "public-transport-2",
+    "sector": "Public Transport"
+  },
+  {
+    "name": "Tomáš Varga",
+    "occupation": "Operations Admin",
+    "business_context": "Small private hire and coach company with 9 vehicles doing airport transfers, weddings, and corporate bookings.",
+    "task_utterance": "the monthly invoices for the airport contract are a mess again, some jobs missing off the sheet",
+    "style": "vague",
+    "facts": [
+      "Airport transfer contract is with a hotel chain, roughly 60-70 trips per month",
+      "Drivers log jobs on paper trip sheets that Tomáš collects every Friday",
+      "Sometimes drivers forget to hand in sheets or lose them in the cab",
+      "Boss sends invoices as PDFs with a simple itemised list, no fancy software",
+      "Hotel finance team usually queries at least 2 or 3 line items every month"
+    ],
+    "id": "public-transport-3",
+    "sector": "Public Transport"
+  },
+  {
+    "name": "Diane Kowalski",
+    "occupation": "Office Manager",
+    "business_context": "Small family-owned ferry company running 3 vessels on a coastal commuter route, 25 staff.",
+    "task_utterance": "hi! so i need to put together the crew roster for next month and honestly its a nightmare every time lol. can u help me sort out who's on which shift?",
+    "style": "chatty",
+    "facts": [
+      "Runs 3 ferries with morning, afternoon, and night shifts every day",
+      "Has about 18 deckhands and 6 captains to schedule across",
+      "Uses a big printed whiteboard in the office and a shared Google Sheet",
+      "Crew members text her constantly to swap shifts",
+      "Must give everyone at least one full weekend off per month"
+    ],
+    "id": "sea-transport-1",
+    "sector": "Sea Transport"
+  },
+  {
+    "name": "Marcus Webb",
+    "occupation": "Operations Coordinator",
+    "business_context": "Mid-size container shipping line operating 12 cargo vessels on regional Asia-Pacific routes, 200 employees.",
+    "task_utterance": "need to pull together the port arrival docs for the mv pacific trader ETA singapore thursday. bills of lading cargo manifest customs declaration the lot",
+    "style": "terse",
+    "facts": [
+      "Handles documentation for roughly 8 to 10 port arrivals per week",
+      "Singapore port authority requires submissions at least 24 hours before arrival",
+      "Gets cargo details from the ship's agent via email in PDF format",
+      "Uses a shared folder on the company server organized by vessel name",
+      "Boss insists every document must also be printed and filed in the cabinet"
+    ],
+    "id": "sea-transport-2",
+    "sector": "Sea Transport"
+  },
+  {
+    "name": "Tomás Herrera",
+    "occupation": "Workshop Supervisor",
+    "business_context": "Independent marine repair yard servicing fishing boats and recreational vessels, 12 mechanics and 4 admin staff.",
+    "task_utterance": "yeah so basically what happens is the boats come in and we write down what needs fixing on like a paper job card right, but then the cards get lost or someone spills coffee on them or they just sit on my desk for days and the customers start calling asking why their boat isnt ready yet and i feel like im always chasing my tail trying to figure out which jobs are done and which ones are still waiting for parts or whatever",
+    "style": "rambling",
+    "facts": [
+      "Handles about 30 to 40 repair jobs per month across all vessel types",
+      "Currently tracks jobs using handwritten paper cards and a notebook",
+      "Customers usually call the front desk to check on their boat's status",
+      "Parts are ordered from two main marine suppliers by phone",
+      "Average repair takes 5 to 7 working days from drop-off to pickup"
+    ],
+    "id": "sea-transport-3",
+    "sector": "Sea Transport"
+  },
+  {
+    "name": "Derek Mallory",
+    "occupation": "Operations Manager",
+    "business_context": "Regional cargo airline with 12 freighter aircraft serving domestic routes across Australia",
+    "task_utterance": "need to sort out next months crew roster, 4 pilots just flagged leave requests and i keep double booking ppl",
+    "style": "terse",
+    "facts": [
+      "Manages a pool of 38 pilots and 22 loadmasters",
+      "Uses a shared Excel spreadsheet with colour-coded shifts",
+      "FAA-style CASA regulations require minimum 11-hour rest between duties",
+      "About 200 flight sectors to cover per month",
+      "Boss wants the draft roster emailed by the 20th of each month"
+    ],
+    "id": "air-transport-1",
+    "sector": "Air Transport"
+  },
+  {
+    "name": "Priya Chandran",
+    "occupation": "Passenger Services Coordinator",
+    "business_context": "Mid-size international airline handling 3 million passengers a year on routes between Southeast Asia and the Middle East",
+    "task_utterance": "Hi! So I've been meaning to get on top of our denied-boarding compensation letters because we've had quite a few overbooked flights lately and the current template we use is honestly a bit of a mess and legal keeps asking me to update the wording but I never seem to get around to it before the next batch comes in lol",
+    "style": "rambling",
+    "facts": [
+      "Processes roughly 60-80 denied-boarding claims per month during peak season",
+      "Compensation amounts vary by route length under EU261-style rules",
+      "Current letter template was last updated in 2019",
+      "Legal department reviews every batch before letters go out",
+      "Passenger details are pulled from the Amadeus reservation system"
+    ],
+    "id": "air-transport-2",
+    "sector": "Air Transport"
+  },
+  {
+    "name": "Tom Eriksen",
+    "occupation": "Ground Handling Supervisor",
+    "business_context": "Third-party ground services company at a Scandinavian airport, servicing 14 different airlines",
+    "task_utterance": "gse maintenance log needs updating again.. forklifts and belt loaders inspection is overdue",
+    "style": "vague",
+    "facts": [
+      "Fleet includes 9 baggage tugs, 4 belt loaders, 6 pushback tractors, and 3 forklifts",
+      "Safety inspections are due every 500 operating hours per manufacturer guidelines",
+      "Logs are kept in a ring binder in the workshop office",
+      "Two mechanics on staff, one is on sick leave this week",
+      "Airport authority can audit GSE records at any time without notice"
+    ],
+    "id": "air-transport-3",
+    "sector": "Air Transport"
+  },
+  {
+    "name": "Diane Kowalski",
+    "occupation": "Office Manager",
+    "business_context": "Small family-run dental clinic with 3 dentists and 6 support staff in a suburban strip mall.",
+    "task_utterance": "hey so i need to send out appointment reminders to all the patients coming in next week, usually i just text them from my phone but its getting out of hand lol",
+    "style": "chatty",
+    "facts": [
+      "Clinic sees about 120 patients a week",
+      "Currently sends reminders manually via personal phone",
+      "Uses Dentrix for patient records",
+      "Patients range from kids to elderly, some prefer calls over texts",
+      "Dentist owner wants reminders sent at least 48 hours before appointments"
+    ],
+    "id": "healthcare-1",
+    "sector": "Healthcare"
+  },
+  {
+    "name": "Marcus Webb",
+    "occupation": "Care Home Shift Supervisor",
+    "business_context": "Medium-sized residential aged care facility with 80 beds and roughly 45 care staff across three shifts.",
+    "task_utterance": "need the roster sorted for next fortnight. two carers called in sick and i got gaps on nights tues and wed",
+    "style": "terse",
+    "facts": [
+      "Roster covers 24/7 across morning, afternoon, and night shifts",
+      "Minimum staffing ratio is 1 carer per 10 residents",
+      "Uses a printed whiteboard in the break room plus a shared Google Sheet",
+      "Night shift is hardest to fill, most staff prefer mornings",
+      "Manager requires any shift swaps to be approved 72 hours in advance"
+    ],
+    "id": "healthcare-2",
+    "sector": "Healthcare"
+  },
+  {
+    "name": "Priya Nair",
+    "occupation": "Practice Coordinator",
+    "business_context": "Multi-location physiotherapy group with 5 clinics and about 30 practitioners across the city.",
+    "task_utterance": "so basically every month i have to pull together how many sessions each clinic did and what the revenue was and send it to the regional director but honestly the spreadsheets never match up and i spend like two days just fixing stuff and he always wants it by the 5th which is... yeah",
+    "style": "rambling",
+    "facts": [
+      "Reports cover patient sessions, cancellations, and revenue per clinic",
+      "Each clinic manager sends their own numbers in different formats",
+      "Regional director wants a single consolidated PDF emailed by the 5th of each month",
+      "Last month two clinics submitted data late causing a backlog",
+      "Uses a mix of Excel, email attachments, and one clinic still faxes their report"
+    ],
+    "id": "healthcare-3",
+    "sector": "Healthcare"
+  },
+  {
+    "name": "Margie Kowalski",
+    "occupation": "Office Manager",
+    "business_context": "Family-run coach tour company with 12 buses, doing day trips and multi-day tours across the region.",
+    "task_utterance": "hiya, i need to get the driver roster sorted for next month but dave just told me he's got knee surgery and sharon wants every second saturday off now, its a nightmare every time honestly",
+    "style": "chatty",
+    "facts": [
+      "Has 9 full-time drivers and 4 casuals on the books",
+      "Uses a big printed wall chart in the office with coloured magnets for each driver",
+      "Must comply with fatigue management rules — no driver can do more than 10 hours in a shift",
+      "Peak season is October to April with up to 8 tours running daily",
+      "Boss Ron insists on approving the final roster before it goes out"
+    ],
+    "id": "tourism-1",
+    "sector": "Tourism"
+  },
+  {
+    "name": "Trent",
+    "occupation": "Operations Coordinator",
+    "business_context": "Mid-sized adventure tourism company offering kayaking, snorkelling, and bushwalking experiences, around 35 staff.",
+    "task_utterance": "need to chase up group bookings that havent paid their deposit yet",
+    "style": "terse",
+    "facts": [
+      "Keeps a shared Google Sheet with all upcoming group bookings and their payment status",
+      "Deposits are 30% and due 14 days before the experience date",
+      "Gets about 20-25 group bookings per month in peak season",
+      "Sends reminder emails manually from the company Gmail account",
+      "Has had 3 no-shows this season that cost the company over $4,000 total"
+    ],
+    "id": "tourism-2",
+    "sector": "Tourism"
+  },
+  {
+    "name": "Linda Pham",
+    "occupation": "Front Desk Supervisor",
+    "business_context": "Boutique beachfront resort with 42 rooms, part of a small hotel group with 3 properties.",
+    "task_utterance": "so basically every morning i have to go through and figure out which guests are checking out and then let housekeeping know which rooms to do first depending on what time the new people are arriving and its just a lot of back and forth on the walkie and sticky notes and i keep dropping the ball on it to be honest",
+    "style": "rambling",
+    "facts": [
+      "Average stay is 2-3 nights with around 30 checkouts on a busy morning",
+      "Housekeeping team has 6 cleaners and they start at 8am",
+      "Currently uses a printed arrivals/departures list from the property management system each morning",
+      "Early check-in requests come through the booking system and also via email and phone",
+      "The resort's TripAdvisor reviews have mentioned room-not-ready complaints 4 times in the last month"
+    ],
+    "id": "tourism-3",
+    "sector": "Tourism"
+  },
+  {
+    "name": "Diane Kowalski",
+    "occupation": "Program Coordinator",
+    "business_context": "Mid-sized nonprofit running after-school youth mentoring programs across 6 community centers.",
+    "task_utterance": "hi! so i need to send out the weekly reminder texts to all the parents about schedule changes for next week, usually i do it from my phone but honestly its gotten out of hand with like 80 families now lol. any ideas?",
+    "style": "chatty",
+    "facts": [
+      "Currently sends reminders manually from her personal phone",
+      "Has about 80 families enrolled across all 6 centers",
+      "Schedule changes happen almost every week due to staff availability",
+      "Parents prefer text messages over email",
+      "Uses a Google Sheet to track family contact info"
+    ],
+    "id": "social-service-1",
+    "sector": "Social Service"
+  },
+  {
+    "name": "Marcus Webb",
+    "occupation": "Operations Manager",
+    "business_context": "Small residential care home for adults with disabilities, 12 beds.",
+    "task_utterance": "need to sort next months staff roster. 14 workers, mix of full time and casuals. always a headache matching availability.",
+    "style": "terse",
+    "facts": [
+      "Has 14 care workers on the roster, 6 full-time and 8 casual",
+      "Must maintain minimum 3 staff on shift at all times per regulations",
+      "Casuals submit availability via text message, often late",
+      "Current roster is built in a printed Excel spreadsheet",
+      "Payroll deadline is the 25th of each month"
+    ],
+    "id": "social-service-2",
+    "sector": "Social Service"
+  },
+  {
+    "name": "Rita Chen",
+    "occupation": "Admin Officer",
+    "business_context": "Regional branch of a government-funded family counseling service with 9 counselors.",
+    "task_utterance": "ok so basically every month i have to pull together the numbers for our funding report, like how many clients we saw, how many sessions, that sort of thing, and i always end up chasing the counselors because they forget to log their notes and then im running around last minute trying to get everything into the spreadsheet before the deadline and my manager gets on my case about it",
+    "style": "rambling",
+    "facts": [
+      "Monthly funding report is due by the 5th of the following month",
+      "There are 9 counselors who are supposed to log sessions in a shared database",
+      "At least 3 counselors consistently forget to log their notes on time",
+      "The report requires client count, session count, and session type breakdown",
+      "Manager wants the final report as a PDF emailed to head office"
+    ],
+    "id": "social-service-3",
+    "sector": "Social Service"
+  },
+  {
+    "name": "Derek Malone",
+    "occupation": "Dispatch Coordinator",
+    "business_context": "Mid-size regional trucking company with about 60 drivers and a fleet of 45 trucks doing freight across the southeast.",
+    "task_utterance": "need to sort out next weeks driver roster, some guys are on leave and i keep double booking the same shifts",
+    "style": "terse",
+    "facts": [
+      "Uses a big printed whiteboard in the dispatch office plus a shared Google Sheet",
+      "Has to make sure drivers don't exceed legal hours limits",
+      "Roster covers about 60 drivers across day and night shifts",
+      "Three drivers are on annual leave next week and one is doing training",
+      "Boss wants the roster finalised by Thursday afternoon every week"
+    ],
+    "id": "logistics-1",
+    "sector": "Logistics"
+  },
+  {
+    "name": "Priya Nair",
+    "occupation": "Warehouse Admin",
+    "business_context": "Family-owned cold storage and distribution warehouse with 18 staff, handling chilled and frozen goods for local supermarkets and restaurants.",
+    "task_utterance": "Hi! So I've been meaning to get on top of our monthly stock counts because honestly the numbers never seem to match up with what the system says we've got and my manager is getting a bit frustrated with the write-offs lately 😅 any chance you could help me figure out a better way to do this?",
+    "style": "chatty",
+    "facts": [
+      "Stock count happens on the last Saturday of every month",
+      "They use a basic inventory system called StockEasy but staff often forget to scan items",
+      "Warehouse has about 1,200 product lines across three cold rooms",
+      "Write-offs last month were around $4,800 which upset the owner",
+      "Usually takes her and two warehouse hands about five hours to do a full count"
+    ],
+    "id": "logistics-2",
+    "sector": "Logistics"
+  },
+  {
+    "name": "Graham Telford",
+    "occupation": "Operations Manager",
+    "business_context": "Small courier and last-mile delivery firm with 12 vans serving e-commerce businesses in a metro area.",
+    "task_utterance": "i think we need something for the delivery manifests maybe? the drivers are complaining about the paperwork and i know we lose a few proof of delivery slips every week but not sure where to start really",
+    "style": "vague",
+    "facts": [
+      "Drivers currently carry printed manifest sheets in clipboards",
+      "They handle roughly 350 to 400 deliveries a day across the 12 vans",
+      "Customers sometimes call asking where their parcel is and Graham can't check quickly",
+      "About 10 to 15 proof of delivery slips go missing or come back unreadable each week",
+      "One of the bigger clients has been asking for digital tracking updates"
+    ],
+    "id": "logistics-3",
+    "sector": "Logistics"
+  },
+  {
+    "name": "Derek Moss",
+    "occupation": "Site Manager",
+    "business_context": "Mid-size commercial construction firm, around 60 staff, does office fitouts and retail builds across the city.",
+    "task_utterance": "gotta sort out the subcontractor sign-in sheets for the harbour st job, safety officer wants them by friday and half the sparkies havent even signed the new induction forms",
+    "style": "terse",
+    "facts": [
+      "Currently running three active sites but Harbour Street is the biggest with about 18 subcontractors on any given day",
+      "Uses a paper sign-in book at the site gate plus a shared folder on the company drive for scanned induction forms",
+      "The safety officer (Janine) sends a weekly email every Thursday chasing missing paperwork",
+      "Two of the electrical subcontractors are from a new firm that started last month and haven't done the company induction yet",
+      "Site manager has to personally verify each subcontractor's White Card and public liability insurance expiry dates"
+    ],
+    "id": "built-environment-1",
+    "sector": "Built Environment"
+  },
+  {
+    "name": "Priya Chandran",
+    "occupation": "Practice Administrator",
+    "business_context": "Small architecture studio with 11 people, mostly residential and some local council community projects.",
+    "task_utterance": "Hi! So I need to put together the expressions of interest for that council park upgrade tender, it's due in like two weeks and I'm still waiting on the team to send me their project experience summaries and honestly it's a bit of a scramble every time we do one of these lol",
+    "style": "chatty",
+    "facts": [
+      "The studio bids for roughly 4-5 council or government tenders per year and wins about 1 in 3",
+      "Uses a Word document template from a successful tender they submitted two years ago as the base",
+      "Each team member is supposed to write a half-page project summary for relevant past work but they usually need at least two reminder emails",
+      "The final submission needs to be uploaded to the council's online portal as a single PDF before 2pm on the due date",
+      "Priya keeps a spreadsheet of past projects with dates, values, and client names that she copies from when writing the tender herself"
+    ],
+    "id": "built-environment-2",
+    "sector": "Built Environment"
+  },
+  {
+    "name": "Graham Telford",
+    "occupation": "Facilities Coordinator",
+    "business_context": "Large property management company managing about 35 commercial buildings, roughly 200 staff.",
+    "task_utterance": "need to get the quarterly fire compliance inspection reports collated for the building owners group meeting next tuesday... some of the inspectors email pdfs some put them in the portal and i never know whats missing until i sit down and check each property one by one",
+    "style": "rambling",
+    "facts": [
+      "Responsible for tracking fire compliance across all 35 buildings which includes extinguishers, exit lights, hydrants, and alarm panels",
+      "Three different fire inspection contractors service different buildings and each sends reports in a different format",
+      "The building owners group is a committee of 6 investors who meet quarterly and expect a one-page summary per property",
+      "Graham uses a big Excel spreadsheet with a tab for each building colour-coded green for compliant and red for overdue",
+      "Last quarter two buildings had overdue exit light inspections and the committee was not happy about it in the meeting"
+    ],
+    "id": "built-environment-3",
+    "sector": "Built Environment"
+  },
+  {
+    "name": "Diane Kowalski",
+    "occupation": "Gallery Manager",
+    "business_context": "Small contemporary art gallery in a mid-sized city, 4 staff, hosts monthly exhibitions and sells original works.",
+    "task_utterance": "hey so i need to send out invites for our next exhibition opening but the list is all over the place, some in my email contacts some in a spreadsheet from last year... how do i even sort this out",
+    "style": "rambling",
+    "facts": [
+      "Keeps a Google Sheet of past buyers and collectors, last updated about 8 months ago",
+      "Also has around 200 relevant contacts scattered across her personal and gallery Gmail accounts",
+      "Usually sends invites via Mailchimp but her subscription lapsed 3 months ago",
+      "Next exhibition opening is in 5 weeks and the artist wants at least 150 guests",
+      "Her assistant usually handles this but is on leave until next month"
+    ],
+    "id": "arts-1",
+    "sector": "Arts"
+  },
+  {
+    "name": "Marcus Webb",
+    "occupation": "Workshop Coordinator",
+    "business_context": "Community arts centre running pottery, painting, and printmaking classes for adults and kids, 12 part-time tutors, roughly 300 students per term.",
+    "task_utterance": "need to sort next terms class schedule. tutors keep swapping days and its a nightmare",
+    "style": "terse",
+    "facts": [
+      "Uses a big printed whiteboard in the staff room plus a shared Excel file on the centre's Google Drive",
+      "Has 12 tutors, 4 of whom regularly request day swaps or room changes between terms",
+      "Runs classes across 3 rooms, each with different equipment (kiln room, wet room, dry studio)",
+      "Term starts in 6 weeks and the brochure needs to go to the printer in 3 weeks",
+      "Last term two classes got double-booked in the kiln room and students complained"
+    ],
+    "id": "arts-2",
+    "sector": "Arts"
+  },
+  {
+    "name": "Priya Sandhu",
+    "occupation": "Box Office Supervisor",
+    "business_context": "Regional touring theatre company, around 30 permanent staff plus casuals, performs a mix of drama and musicals across 4 venues in the county.",
+    "task_utterance": "So basically we've got this new show starting its tour next month and I have to get the ticket prices and seating plans set up for each venue but they're all different sizes and layouts and honestly I always end up going back and forth with the venue managers about how many comp tickets they want and it takes me ages, is there a quicker way?",
+    "style": "chatty",
+    "facts": [
+      "Uses a ticketing platform called Spektrix which she's been using for 3 years",
+      "Each of the 4 tour venues has a different capacity: 180, 320, 450, and 600 seats",
+      "Venue managers usually want between 8 and 20 complimentary tickets each, negotiated separately",
+      "Pricing tiers are set by the producer but she has to map them to each venue's seating layout manually",
+      "The tour has 7 performance dates across the 4 venues over 5 weeks"
+    ],
+    "id": "arts-3",
+    "sector": "Arts"
+  },
+  {
+    "name": "Derek Haines",
+    "occupation": "Operations Supervisor",
+    "business_context": "Mid-size oil refinery with about 200 staff processing crude into fuel products.",
+    "task_utterance": "need to sort out next months shift rota for the control room lads, someone always ends up double booked",
+    "style": "terse",
+    "facts": [
+      "Control room runs 24/7 with 4 teams of 3 operators each",
+      "Shift pattern is 12-hour days and nights rotating every 2 weeks",
+      "Uses a shared Excel spreadsheet saved on the operations drive",
+      "At least one person is always on annual leave or sick each month",
+      "Night shift differentials are paid at time-and-a-half"
+    ],
+    "id": "energy-and-chemicals-1",
+    "sector": "Energy and Chemicals"
+  },
+  {
+    "name": "Priya Sandhu",
+    "occupation": "Procurement Coordinator",
+    "business_context": "Specialty chemicals manufacturer with 80 employees producing industrial coatings and solvents.",
+    "task_utterance": "Hi! So I've been meaning to get on top of chasing up our raw material suppliers because we've had like three deliveries arrive late this month already and production is getting a bit frustrated with me honestly. I need to send reminder emails to about six different suppliers asking for updated delivery ETAs and also check if any of our open purchase orders have gone past the expected date. It's just a lot of back and forth and I keep losing track of who I've already emailed this week!",
+    "style": "rambling",
+    "facts": [
+      "Deals with roughly 12 regular raw material suppliers",
+      "Tracks purchase orders in a shared spreadsheet with about 40 open lines at any time",
+      "Late deliveries have caused two production stoppages this quarter",
+      "Sends follow-up emails from her Outlook using a template she wrote herself",
+      "Production manager asks her for a supplier status update every Friday morning"
+    ],
+    "id": "energy-and-chemicals-2",
+    "sector": "Energy and Chemicals"
+  },
+  {
+    "name": "Carl Brennan",
+    "occupation": "Site Administrator",
+    "business_context": "Wind farm operations company running 35 turbines across two sites with 25 field technicians.",
+    "task_utterance": "safety certs for some of the guys r expiring soon need to figure out who and when",
+    "style": "vague",
+    "facts": [
+      "Technicians need working-at-heights certification renewed every 2 years",
+      "About 8 of the 25 technicians have certifications expiring in the next 3 months",
+      "Records are kept in a paper folder in the site office and partly in an Outlook calendar",
+      "Booking a renewal course takes 2-3 weeks lead time through an external training provider",
+      "Site manager will pull anyone off turbine duty the day their cert expires"
+    ],
+    "id": "energy-and-chemicals-3",
+    "sector": "Energy and Chemicals"
+  },
+  {
+    "name": "Diane Kowalski",
+    "occupation": "Bookkeeper",
+    "business_context": "Solo bookkeeping practice serving about 30 small local businesses (cafés, tradies, hairdressers)",
+    "task_utterance": "hey so i need to chase up late invoices again, got a bunch of clients who haven't paid their monthly bookkeeping fee and i keep forgetting who's overdue",
+    "style": "chatty",
+    "facts": [
+      "Sends monthly invoices on the 1st via Xero",
+      "Usually about 8-10 clients are late each month",
+      "Currently tracks overdue payments in a handwritten notebook",
+      "Gives clients 14 days before sending a reminder email",
+      "Some clients prefer text reminders over email"
+    ],
+    "id": "accountancy-1",
+    "sector": "Accountancy"
+  },
+  {
+    "name": "Margie Kowalski",
+    "occupation": "Front Desk Manager",
+    "business_context": "Family-run 45-room motel off the interstate, mostly truckers and road-trippers, 8 staff.",
+    "task_utterance": "ugh i spend like two hours every morning just calling ppl who checked out yesterday to ask if they left a review on google, my boss says we need more reviews but nobody actually leaves them unless i bug them",
+    "style": "rambling",
+    "facts": [
+      "They use a basic property management system called Cloudbeds",
+      "Average about 30 checkouts per day",
+      "Currently on Google at 4.1 stars and boss wants to hit 4.5",
+      "Margie hand-writes the guest names and room numbers on a notepad each morning to track who she's called",
+      "They offer a 10% discount on next stay if guests leave a review"
+    ],
+    "id": "hotel-and-accommodation-services-1",
+    "sector": "Hotel and Accommodation Services"
+  },
+  {
+    "name": "Devon Marsh",
+    "occupation": "Housekeeping Coordinator",
+    "business_context": "Boutique 120-room hotel in a coastal tourist town, seasonal peaks, 22 housekeeping staff.",
+    "task_utterance": "need to sort out room cleaning assignments for tomorrow morning shift, 9 cleaners, gotta match it with the checkout and stayover list from front office",
+    "style": "terse",
+    "facts": [
+      "Front office emails her a spreadsheet of departures and arrivals by 6pm each evening",
+      "Deep cleans take 45 minutes, standard stayovers take 15 minutes",
+      "Two of the cleaners are new and only assigned standard rooms for now",
+      "She prints the assignment sheet and tapes it to the housekeeping closet door at 7am",
+      "Weekend shifts are always short-staffed because three cleaners have second jobs"
+    ],
+    "id": "hotel-and-accommodation-services-2",
+    "sector": "Hotel and Accommodation Services"
+  },
+  {
+    "name": "Priya Sundaram",
+    "occupation": "Events and Banquet Admin",
+    "business_context": "Large 200-room conference hotel in a city centre, hosts weddings and corporate events, events team of 6.",
+    "task_utterance": "So I've got three weddings and a corporate dinner booked for this weekend and I need to send out the final confirmation pack to each client — you know, the timing rundown, the menu choices they picked, dietary requirements, table plan, all of that. I keep losing track of which ones I've actually sent and which ones are still waiting on the chef to confirm the menu lol",
+    "style": "chatty",
+    "facts": [
+      "She uses a shared Outlook inbox for all event correspondence",
+      "The chef only confirms menus on Thursdays for the following weekend",
+      "Each confirmation pack is a Word document she builds from a template plus a seating chart PDF from the client",
+      "She tracks status in a colour-coded Excel sheet: red means waiting on info, green means sent",
+      "About 8 to 12 events per month on average, but December hits 20 plus"
+    ],
+    "id": "hotel-and-accommodation-services-3",
+    "sector": "Hotel and Accommodation Services"
+  },
+  {
+    "name": "Karen Whitfield",
+    "occupation": "Office Manager",
+    "business_context": "Small HVAC and mechanical services company with about 25 field technicians serving commercial buildings in the metro area.",
+    "task_utterance": "hiya so i need to get the timesheets sorted for the boys before friday payroll, some of them still send me photos of handwritten sheets and its doing my head in trying to match it all up",
+    "style": "chatty",
+    "facts": [
+      "Runs payroll every Friday for 25 technicians",
+      "Some technicians text photos of handwritten timesheets",
+      "Others fill in a shared Google Sheet but often forget",
+      "Uses MYOB for payroll processing",
+      "Has to cross-check site job numbers against the project manager's schedule"
+    ],
+    "id": "engineering-services-1",
+    "sector": "Engineering Services"
+  },
+  {
+    "name": "Derek Moss",
+    "occupation": "Workshop Supervisor",
+    "business_context": "Mid-size structural steel fabrication workshop with around 60 staff, producing steel frames and components for construction projects.",
+    "task_utterance": "need to do the monthly steel stocktake, got offcuts and full lengths mixed up again in the yard",
+    "style": "terse",
+    "facts": [
+      "Stocktake is done on the last Saturday of every month",
+      "Tracks mild steel, stainless, and aluminium separately",
+      "Uses a printed spreadsheet from the accounts system to tick off items",
+      "Offcuts over 1 metre long are supposed to be logged but often aren't",
+      "Reports discrepancies to the purchasing manager by Monday morning"
+    ],
+    "id": "engineering-services-2",
+    "sector": "Engineering Services"
+  },
+  {
+    "name": "Priya Sharma",
+    "occupation": "Tender Coordinator",
+    "business_context": "Large civil engineering consultancy with 200+ employees, bidding on government infrastructure and transport projects.",
+    "task_utterance": "I've got another tender closing in two weeks and I'm trying to pull together all the CVs and project experience summaries from different team leaders but nobody ever sends them back in the right format and honestly I spend half my life chasing people and reformatting word docs",
+    "style": "rambling",
+    "facts": [
+      "Typically manages 3-4 tender submissions per month",
+      "Needs CVs and project history summaries from discipline leads",
+      "Company has a standard two-page CV template but people ignore it",
+      "Stores past tender content in a shared SharePoint folder",
+      "Final submission goes through the bid manager for review before lodgement"
+    ],
+    "id": "engineering-services-3",
+    "sector": "Engineering Services"
+  },
+  {
+    "name": "Derek Huang",
+    "occupation": "Warehouse Supervisor",
+    "business_context": "Mid-sized food and beverage wholesaler distributing to restaurants and cafes across the state, about 85 staff.",
+    "task_utterance": "need to do the weekly stock count for the coolroom but the sheet from last time is missing sum rows",
+    "style": "terse",
+    "facts": [
+      "Coolroom holds about 300 different SKUs of perishable goods",
+      "Uses a printed spreadsheet from the shared drive to tally counts",
+      "Stock count happens every Sunday morning before deliveries arrive",
+      "Two junior warehouse staff help with the physical counting",
+      "Discrepancies over 5% get flagged to the purchasing manager"
+    ],
+    "id": "wholesale-trade-1",
+    "sector": "Wholesale Trade"
+  },
+  {
+    "name": "Priya Mehta",
+    "occupation": "Accounts Receivable Coordinator",
+    "business_context": "Family-owned building supplies wholesaler with 30 employees, supplying tradies and small construction firms.",
+    "task_utterance": "Hi! So I've got a bunch of overdue invoices again and I need to figure out which customers to chase first — my boss always says go after the big balances but some of those guys are just slow payers and it's not worth the hassle, know what I mean? Anyway I need to sort them out somehow.",
+    "style": "rambling",
+    "facts": [
+      "Around 120 active customer accounts at any given time",
+      "Invoices over 60 days overdue are considered priority for chasing",
+      "Uses MYOB for invoicing but tracks follow-ups in a personal notebook",
+      "Top 10 customers account for roughly half of outstanding receivables",
+      "Sends reminder emails first, then calls if no response within a week"
+    ],
+    "id": "wholesale-trade-2",
+    "sector": "Wholesale Trade"
+  },
+  {
+    "name": "Jake Thomson",
+    "occupation": "Sales and Ordering Admin",
+    "business_context": "Small wholesale party supplies distributor with 12 staff, selling to event planners and retail shops.",
+    "task_utterance": "gotta put together the order summary for our main supplier by friday, usual stuff",
+    "style": "vague",
+    "facts": [
+      "Places a bulk order with their primary overseas supplier every two weeks",
+      "Order summary is an Excel file emailed to the supplier's contact in Shenzhen",
+      "Typically includes 80 to 100 line items depending on seasonal demand",
+      "The boss reviews and approves the draft before it gets sent off",
+      "Supplier requires quantities in multiples of inner-carton pack sizes"
+    ],
+    "id": "wholesale-trade-3",
+    "sector": "Wholesale Trade"
+  },
+  {
+    "name": "Denise Kowalski",
+    "occupation": "Office Manager",
+    "business_context": "Small commercial landscaping and tree care company, about 18 employees serving local businesses and council contracts.",
+    "task_utterance": "hey so i need to put together the monthly safety inspection reports for all our trucks and chippers, the council keeps asking for them and i always end up chasing the crew leads for info last minute",
+    "style": "chatty",
+    "facts": [
+      "Has 11 vehicles and 4 pieces of heavy equipment to track",
+      "Council requires reports by the 5th of each month",
+      "Crew leads are supposed to fill out paper checklists but often lose them",
+      "Last year they got fined $800 for a late submission",
+      "Keeps a folder on her desktop with last year's reports as templates"
+    ],
+    "id": "environmental-services-1",
+    "sector": "Environmental Services"
+  },
+  {
+    "name": "Ray Tujang",
+    "occupation": "Operations Coordinator",
+    "business_context": "Mid-sized waste recycling and skip bin hire company, around 60 staff, services construction sites and residential areas across the metro region.",
+    "task_utterance": "need to sort out next fortnights driver roster. 38 shifts to fill",
+    "style": "terse",
+    "facts": [
+      "Has 14 drivers with different license classes (HR, HC, MC)",
+      "Three drivers are on approved leave this fortnight",
+      "Two trucks are in the shop for repairs so those runs are cancelled",
+      "Uses a big whiteboard in the office plus a shared Google Sheet",
+      "Union rules say no driver can do more than 5 consecutive days"
+    ],
+    "id": "environmental-services-2",
+    "sector": "Environmental Services"
+  },
+  {
+    "name": "Margie Holcombe",
+    "occupation": "Environmental Compliance Officer",
+    "business_context": "Regional water testing and remediation consultancy, about 25 staff, works with mining companies and local government on site contamination assessments.",
+    "task_utterance": "I've got to pull together the quarterly groundwater monitoring data for the old refinery site, the client wants it in the same format we used last quarter but honestly I can never remember which spreadsheet has the bore locations and which one has the actual lab results and then there's the chain of custody forms somewhere",
+    "style": "rambling",
+    "facts": [
+      "The refinery site has 22 monitoring bores across 3 aquifer zones",
+      "Lab results come back from two different NATA-accredited labs",
+      "Client contact is a guy named Darren who is very particular about table formatting",
+      "Chain of custody forms are scanned PDFs stored on the shared drive under project codes",
+      "Last quarter's report took her about 3 full days to compile"
+    ],
+    "id": "environmental-services-3",
+    "sector": "Environmental Services"
+  },
+  {
+    "name": "Derek Mullins",
+    "occupation": "Owner-Operator",
+    "business_context": "Independent fish and chip shop with 8 staff, open 6 days a week in a coastal town.",
+    "task_utterance": "need to sort next weeks roster, dave cant do friday and i need someone on the fryer who actually knows what theyre doing",
+    "style": "terse",
+    "facts": [
+      "Roster is handwritten on a whiteboard in the back office",
+      "Friday night is the busiest shift, usually needs 4 people on",
+      "Dave is the most experienced fry cook but has a dentist appointment",
+      "Two newer staff members (Jade and Tom) still need supervision on the fryer",
+      "Pays everyone weekly in cash on a Sunday"
+    ],
+    "id": "food-services-1",
+    "sector": "Food Services"
+  },
+  {
+    "name": "Priya Shah",
+    "occupation": "Catering Coordinator",
+    "business_context": "Mid-sized corporate catering company (35 employees) handling office lunches and event platters across the city.",
+    "task_utterance": "Hi! So I've got three big corporate gigs next week and I need to figure out all the dietary requirements before I finalise the menus with the chefs — one client sent back a spreadsheet, another just gave me a list in an email, and the third one hasn't even replied to my last two emails about allergies lol. It's a bit of a nightmare honestly!",
+    "style": "chatty",
+    "facts": [
+      "The three events are a 120-person conference lunch, a 45-person board meeting, and an 80-person product launch",
+      "One client uses a shared Google Sheet for dietary info, one emails a Word doc, one hasn't responded",
+      "Most common requests are vegetarian, gluten-free, and halal",
+      "Chef Marco needs final headcount and dietary breakdown by Thursday morning",
+      "The company uses a paper-based order form that Priya fills out by hand for the kitchen"
+    ],
+    "id": "food-services-2",
+    "sector": "Food Services"
+  },
+  {
+    "name": "Gerry Nolan",
+    "occupation": "Head Chef / Kitchen Manager",
+    "business_context": "Hotel restaurant in a 90-room regional hotel, serving breakfast and dinner, with a small banquet function room.",
+    "task_utterance": "trying to work out what we need to order from the suppliers for the weekend... we've got a wedding reception sat night and the usual sunday carvery but i cant remember if i already counted the walk-in coolroom or just the dry store",
+    "style": "vague",
+    "facts": [
+      "The wedding reception is for approximately 85 guests with a set three-course menu",
+      "Sunday carvery usually serves between 110 and 140 covers",
+      "Two main suppliers: FreshCo delivers produce daily, and Metro Foods does dry goods weekly on Thursdays",
+      "Stock counts are done on paper clipboards and filed in a lever-arch folder",
+      "The walk-in coolroom holds meat and dairy; the dry store holds pantry items and packaging"
+    ],
+    "id": "food-services-3",
+    "sector": "Food Services"
+  },
+  {
+    "name": "Claire Dunmore",
+    "occupation": "Studio Manager",
+    "business_context": "Boutique interior design studio with 8 staff, handling high-end residential projects across the city.",
+    "task_utterance": "hey so i need to send out those mood board presentation invites to our clients for next week, can u help me get that sorted?",
+    "style": "chatty",
+    "facts": [
+      "Has 3 client presentations scheduled for next Tuesday and Thursday",
+      "Uses a shared Google Calendar that the whole studio can see",
+      "Clients usually want the mood boards emailed as PDFs before the meeting",
+      "The studio assistant normally handles printing the physical sample boards",
+      "One client is overseas so needs a Zoom link instead of an in-person meeting"
+    ],
+    "id": "design-1",
+    "sector": "Design"
+  },
+  {
+    "name": "Derek Haines",
+    "occupation": "Owner / Lead Architect",
+    "business_context": "Small architecture practice with 4 employees, mostly doing commercial fit-out and council submission work.",
+    "task_utterance": "need to chase up outstanding invoices from Q3 some of these jobs finished months ago",
+    "style": "terse",
+    "facts": [
+      "About 12 unpaid invoices totalling roughly $87,000",
+      "Biggest debtor is a property developer who owes for two completed fit-out projects",
+      "Uses Xero for invoicing but tracks follow-ups in a spreadsheet",
+      "Council approval fees are passed through to clients and sometimes cause billing disputes",
+      "Usually gives clients 14-day payment terms but some are now 60+ days overdue"
+    ],
+    "id": "design-2",
+    "sector": "Design"
+  },
+  {
+    "name": "Priya Anand",
+    "occupation": "Design Coordinator",
+    "business_context": "Mid-size signage and wayfinding company with around 35 staff, manufacturing and installing signs for hospitals, universities, and shopping centres.",
+    "task_utterance": "um so basically we have this thing where we need to keep track of all the materials we order for each project like the acrylics and the vinyl and the aluminium composite and sometimes stuff goes missing or we order too much and it just sits in the warehouse and nobody knows where it came from so i was wondering if theres a way to like keep on top of that better because at the moment im using this massive spreadsheet and its kind of a mess tbh",
+    "style": "rambling",
+    "facts": [
+      "Manages materials for 6-8 active installation projects at any given time",
+      "Orders from about 5 regular suppliers plus occasional one-off specialist vendors",
+      "The warehouse team does a manual stock count every Friday afternoon",
+      "Project managers often grab leftover materials from other jobs without logging it",
+      "The accounts team needs material costs broken down per project for client billing"
+    ],
+    "id": "design-3",
+    "sector": "Design"
+  },
+  {
+    "name": "Derek Simmons",
+    "occupation": "Warehouse Supervisor",
+    "business_context": "Mid-sized electronics distributor with 60 staff, supplying components to repair shops and small manufacturers across the region.",
+    "task_utterance": "need to sort out the weekly stock count sheet for the capacitors and resistors aisle, numbers never match what the system says",
+    "style": "terse",
+    "facts": [
+      "Does a physical stock count every Friday afternoon for high-turnover components",
+      "Uses a printed spreadsheet from the old ERP system and marks discrepancies by hand",
+      "Capacitors and resistors aisle has around 300 SKUs",
+      "Discrepancies are usually 5-15 items off per count",
+      "Sends the completed sheet to the purchasing manager every Monday morning"
+    ],
+    "id": "electronics-1",
+    "sector": "Electronics"
+  },
+  {
+    "name": "Priya Mehta",
+    "occupation": "Office Manager",
+    "business_context": "Small family-run TV and appliance repair shop with 8 employees, serving local residential customers for over 20 years.",
+    "task_utterance": "So I've got to chase up about a dozen customers who picked up their repaired tellys and microwaves last month but still haven't paid their invoices, the boss is getting really antsy about the cash flow and I keep forgetting who I already called because I'm writing it all on sticky notes honestly it's a nightmare",
+    "style": "rambling",
+    "facts": [
+      "Around 12-18 unpaid invoices at any given time, averaging £60-£150 each",
+      "Customers pick up items from the front counter and are handed a paper invoice",
+      "Currently tracks who she's called on sticky notes stuck to the side of her monitor",
+      "The owner wants her to call each customer at least twice before sending a letter",
+      "Most overdue payments are from jobs done 4-8 weeks ago"
+    ],
+    "id": "electronics-2",
+    "sector": "Electronics"
+  },
+  {
+    "name": "Claire Novak",
+    "occupation": "Procurement Coordinator",
+    "business_context": "Large consumer electronics retail chain with 45 stores and a 200-person head office, selling branded gadgets and accessories.",
+    "task_utterance": "hiya! just wondering if there's an easier way to pull together the monthly supplier performance scores, i spend like two whole days copying delivery times and defect rates from different emails into the big spreadsheet and it's honestly draining lol",
+    "style": "chatty",
+    "facts": [
+      "Scores around 30 active suppliers each month on a 1-5 scale",
+      "Delivery time data comes from emails sent by the logistics team every Friday",
+      "Defect rate data comes from the returns department's shared Google Sheet",
+      "The final report goes to the Head of Buying by the 5th of each month",
+      "Uses a colour-coded Excel template that was set up by her predecessor three years ago"
+    ],
+    "id": "electronics-3",
+    "sector": "Electronics"
+  },
+  {
+    "name": "Karen Mitchell",
+    "occupation": "Centre Director",
+    "business_context": "Privately owned long daycare centre with 85 places across 4 rooms, employing 18 staff in suburban Melbourne.",
+    "task_utterance": "hi! i need to sort out next fortnights roster again, jenny called in sick and i have to shuffle everyone around without going over ratio in the toddler room 😩",
+    "style": "chatty",
+    "facts": [
+      "Must maintain 1:4 educator-to-child ratio in toddler room and 1:11 in preschool room at all times",
+      "Uses a printed roster template pinned to the staffroom wall, updated in pencil",
+      "Fortnightly roster covers 18 staff across 4 rooms, Monday to Friday 6:30am to 6:30pm",
+      "Three staff are currently on approved leave this fortnight",
+      "Relief staff cost $55/hour and the owner wants to keep casual spend under $2000 per fortnight"
+    ],
+    "id": "early-childhood-1",
+    "sector": "Early Childhood"
+  },
+  {
+    "name": "Dave Nguyen",
+    "occupation": "Admin Officer",
+    "business_context": "Small community-run kindergarten with 22 enrolled children and 5 staff in regional Victoria.",
+    "task_utterance": "need help chasing up late fee payments again",
+    "style": "terse",
+    "facts": [
+      "About 6 out of 22 families are currently behind on their weekly fees",
+      "Fees are $95 per day, invoiced every Friday via email as PDF attachments",
+      "Two families have been overdue for more than 4 weeks and the committee wants them sent a formal reminder letter",
+      "Payments are tracked in a shared Google Sheet that the treasurer checks monthly",
+      "Some parents pay by bank transfer, others use the centre's EFTPOS terminal at drop-off"
+    ],
+    "id": "early-childhood-2",
+    "sector": "Early Childhood"
+  },
+  {
+    "name": "Simone O'Brien",
+    "occupation": "Nominated Supervisor / Room Leader",
+    "business_context": "Not-for-profit early learning centre with 60 places, part of a church-run organisation with three centres across Adelaide.",
+    "task_utterance": "so basically im trying to get all the learning stories and observations together for the end of term portfolios but some of the educators havent uploaded their bits yet and the parents are asking when theyll get them and honestly im a bit overwhelmed with where everything is at the moment",
+    "style": "rambling",
+    "facts": [
+      "Portfolios are compiled once per term for all 60 children and printed as physical booklets for parents",
+      "Each child needs at least 8 documented observations linked to the Early Years Learning Framework outcomes",
+      "Four out of nine educators still have not submitted their observations for this term",
+      "The centre uses a shared folder on the office computer to store photos and written observations",
+      "The organisation's regional manager wants all portfolios finalised by the last Friday of the term for quality compliance review"
+    ],
+    "id": "early-childhood-3",
+    "sector": "Early Childhood"
+  },
+  {
+    "name": "Denise Kowalski",
+    "occupation": "Production Shift Supervisor",
+    "business_context": "Mid-size generic injectables manufacturer, ~300 employees, two production lines",
+    "task_utterance": "hey so i need to put together next month's shift rotation for the fill-finish line and honestly im dreading it cuz theres like 22 operators and everyone wants different days off lol",
+    "style": "chatty",
+    "facts": [
+      "Runs a 3-shift rotation covering 24/7 operations on the fill-finish line",
+      "Has 22 operators reporting to her across three shifts",
+      "Uses a printed whiteboard and an Excel spreadsheet to draft schedules",
+      "Must ensure at least 2 certified aseptic-trained operators per shift",
+      "Union rules require 48 hours notice for any schedule changes"
+    ],
+    "id": "biopharmaceuticals-manufacturing-1",
+    "sector": "BioPharmaceuticals Manufacturing"
+  },
+  {
+    "name": "Raj Patel",
+    "occupation": "Warehouse Coordinator",
+    "business_context": "Small contract manufacturing org (CMO), ~80 staff, produces clinical trial materials for pharma clients",
+    "task_utterance": "need help w the cold chain temp logs again, auditor coming in 2 weeks and mine are a mess",
+    "style": "terse",
+    "facts": [
+      "Manages 4 walk-in cold rooms and 12 ultra-low freezers for raw materials and finished product",
+      "Temperature logs are kept in a mix of paper printouts from data loggers and a shared Google Sheet",
+      "Last audit flagged 3 gaps in temperature records from a weekend power blip",
+      "Ships to 6 different clinical sites across the US and EU",
+      "Has to reconcile about 200 temperature readings per week before audits"
+    ],
+    "id": "biopharmaceuticals-manufacturing-2",
+    "sector": "BioPharmaceuticals Manufacturing"
+  },
+  {
+    "name": "Margaret Holloway",
+    "occupation": "Regulatory Affairs Associate",
+    "business_context": "Large biologics manufacturer, ~2000 employees, produces monoclonal antibody therapies",
+    "task_utterance": "so I've been trying to get the batch records from manufacturing for the last three lots of the new subcutaneous formulation because we need to compile the comparability section of our variation submission and honestly every time I email them someone different replies and I'm not even sure which version of the template they're using anymore because it changed twice since January",
+    "style": "rambling",
+    "facts": [
+      "Working on a Type II variation submission to the EMA due in 8 weeks",
+      "Needs executed batch records for 3 consecutive validation lots",
+      "The batch record template was revised in January and again in March this year",
+      "Manufacturing department has 4 different document controllers who rotate",
+      "Her manager insists all submission dossiers follow the company's internal CTD formatting guide from 2021"
+    ],
+    "id": "biopharmaceuticals-manufacturing-3",
+    "sector": "BioPharmaceuticals Manufacturing"
+  },
+  {
+    "name": "Diane Kowalski",
+    "occupation": "Production Scheduler",
+    "business_context": "Mid-size bakery supplying supermarkets with sliced bread and pastries, about 120 staff across two shifts.",
+    "task_utterance": "i need to put together next weeks shift roster for the packing line girls, someone called in sick and now its a mess",
+    "style": "terse",
+    "facts": [
+      "Runs two shifts Monday to Saturday on the packing line",
+      "Has a team of 18 packers across both shifts",
+      "Uses a printed whiteboard in the break room plus a spreadsheet she keeps on her desktop",
+      "Company policy says no one can do more than six days in a row",
+      "Temp agency can send cover workers but needs 48 hours notice"
+    ],
+    "id": "food-manufacturing-1",
+    "sector": "Food Manufacturing"
+  },
+  {
+    "name": "Marcus Avery",
+    "occupation": "Owner / General Manager",
+    "business_context": "Small family-run smoked meats and sausage company, 14 employees, sells to local delis and farmers markets.",
+    "task_utterance": "Hey! So I've been meaning to get on top of this for ages — we do a big stock count of all our raw materials and packaging at the end of every month and honestly it takes me half a Saturday just sitting in the cool room with a clipboard ticking things off and then I have to type it all into the computer after and I always end up finding we're short on something we thought we had plenty of, last month it was natural casings and we had to rush order from the supplier which cost us extra delivery fees so I really want to sort this out properly",
+    "style": "rambling",
+    "facts": [
+      "Does the stock count himself on the last Saturday of every month",
+      "Tracks roughly 60 SKUs of raw meat, spices, casings, and packaging",
+      "Currently uses a handwritten clipboard then types numbers into an Excel file",
+      "Main casing supplier is three hours away and charges $80 for emergency deliveries",
+      "His daughter helps with the typing part sometimes but she is only there weekdays"
+    ],
+    "id": "food-manufacturing-2",
+    "sector": "Food Manufacturing"
+  },
+  {
+    "name": "Priya Nair",
+    "occupation": "Quality Assurance Coordinator",
+    "business_context": "Contract manufacturer of shelf-stable sauces and condiments, around 45 staff, produces private-label products for several grocery chains.",
+    "task_utterance": "i have to chase up the batch test results from the lab before we can ship tuesday's production run and they still havent sent the certificate of analysis",
+    "style": "vague",
+    "facts": [
+      "Every production batch must have a signed certificate of analysis before it ships",
+      "External lab is supposed to return results within 48 hours of sample pickup",
+      "Tuesday's run was three sauce SKUs for a major supermarket client",
+      "The warehouse manager will not release pallets without the paperwork filed",
+      "Lab contact is a woman named Helen who only checks email in the mornings"
+    ],
+    "id": "food-manufacturing-3",
+    "sector": "Food Manufacturing"
+  },
+  {
+    "name": "Derek Hannon",
+    "occupation": "Workshop Manager",
+    "business_context": "Small marine diesel engine repair shop, 12 staff, servicing commercial fishing vessels and workboats in a regional port.",
+    "task_utterance": "need to sort out next months shift rota for the lads, we got 3 jobs coming in and one engine rebuild that has to be done by the 18th",
+    "style": "terse",
+    "facts": [
+      "Has 8 fitters and 4 apprentices to schedule across two shifts",
+      "Uses a whiteboard in the workshop and a shared Google Sheet his daughter set up",
+      "The engine rebuild is for a prawn trawler that needs to be back out for the summer season",
+      "Two of the senior fitters are on pre-booked leave the second week of the month",
+      "Boss wants overtime kept under 20 hours total for the month"
+    ],
+    "id": "marine-and-offshore-1",
+    "sector": "Marine and Offshore"
+  },
+  {
+    "name": "Priya Mehta",
+    "occupation": "Charter Coordinator",
+    "business_context": "Mid-size offshore vessel chartering company, 45 employees, brokers supply boats and anchor handlers to oil and gas operators in the North Sea.",
+    "task_utterance": "Hi! So I've been chasing three of our clients for outstanding invoices again, it's the same ones every month honestly and I'm a bit fed up with it to be fair. One of them is nearly 90 days overdue now and my MD is asking me for an update before Friday's board meeting 😩",
+    "style": "chatty",
+    "facts": [
+      "Sends charter hire invoices monthly to about 14 active clients",
+      "Three clients consistently pay late, averaging 45-90 days past due",
+      "Uses Sage for invoicing but tracks payment follow-ups in a personal Excel spreadsheet",
+      "The 90-day overdue invoice is for roughly £187,000 from a drilling contractor",
+      "MD wants a written summary of all debts over 60 days before every quarterly board meeting"
+    ],
+    "id": "marine-and-offshore-2",
+    "sector": "Marine and Offshore"
+  },
+  {
+    "name": "Tomás O'Sullivan",
+    "occupation": "Safety and Compliance Officer",
+    "business_context": "Offshore wind farm operations and maintenance contractor, 120 employees, provides turbine servicing crews transferred by crew transfer vessels.",
+    "task_utterance": "just trying to get all the crew certs together for the next campaign, some lads medicals are expiring and i think maybe two or three need their GWO refresher but not sure which ones exactly, the client wants the full compliance pack before we mobilise",
+    "style": "vague",
+    "facts": [
+      "Manages certifications for roughly 60 offshore technicians across multiple wind farm contracts",
+      "Required certs include GWO Basic Safety Training, offshore medicals, and CA-EBS",
+      "Keeps cert expiry dates in a colour-coded spreadsheet last updated about 6 weeks ago",
+      "The upcoming campaign is a 3-week blade inspection job starting in 11 days",
+      "Client requires a full personnel compliance dossier submitted at least 5 working days before mobilisation"
+    ],
+    "id": "marine-and-offshore-3",
+    "sector": "Marine and Offshore"
+  },
+  {
+    "name": "Diane Kowalski",
+    "occupation": "Membership Coordinator",
+    "business_context": "Regional chamber of commerce with about 600 member businesses, mostly small retailers and service providers.",
+    "task_utterance": "Hey! So I've got our annual renewal season coming up and I need to get reminder emails out to all our members whose memberships expire in the next 60 days. Last year I did it in batches and it was a nightmare keeping track of who I'd already contacted lol. Any ideas?",
+    "style": "chatty",
+    "facts": [
+      "Renewal season runs January through March",
+      "Sends reminders at 60 days, 30 days, and 7 days before expiry",
+      "Uses a spreadsheet exported from their membership database",
+      "About 150 members have renewals due each month during peak season",
+      "Some members pay annually, others quarterly"
+    ],
+    "id": "trade-associations-and-chambers-1",
+    "sector": "Trade Associations and Chambers"
+  },
+  {
+    "name": "Marcus Webb",
+    "occupation": "Office Manager",
+    "business_context": "State-level trade association for electrical contractors, roughly 200 member firms.",
+    "task_utterance": "need to pull together the agenda + board papers for our quarterly board meeting. always end up chasing committee chairs for their reports last minute",
+    "style": "terse",
+    "facts": [
+      "Board meets four times a year, next meeting is in three weeks",
+      "Seven committee chairs need to submit reports",
+      "Uses a Word template from last meeting that the president approved",
+      "Papers need to go out at least 10 days before the meeting",
+      "Two of the chairs always submit late"
+    ],
+    "id": "trade-associations-and-chambers-2",
+    "sector": "Trade Associations and Chambers"
+  },
+  {
+    "name": "Greta Pham",
+    "occupation": "Events and Communications Assistant",
+    "business_context": "Small industry association for independent pharmacies, about 90 members across two states.",
+    "task_utterance": "um so we're doing our annual conference in like four months and I'm supposed to start getting the sponsor packages out and tracking who's signed up for which tier but honestly I'm not even sure what we offered last year because the person who did it before me left and didn't really leave any notes or anything",
+    "style": "rambling",
+    "facts": [
+      "Conference typically has 12 to 18 sponsors across three tiers",
+      "Top tier sponsors get a speaking slot and booth, lower tiers just get a booth and logo placement",
+      "Last year's conference had about 220 attendees",
+      "She found an old folder on the shared drive with a half-finished sponsor list",
+      "The president's wife helps with event logistics informally"
+    ],
+    "id": "trade-associations-and-chambers-3",
+    "sector": "Trade Associations and Chambers"
+  },
+  {
+    "name": "Diane Kowalski",
+    "occupation": "Office Manager",
+    "business_context": "Family-owned landscaping company with about 35 seasonal and full-time crew members.",
+    "task_utterance": "hey so i need to get all the summer crew paperwork sorted before they start monday, last year it was a mess and the boss nearly lost it when half the i-9s were missing lol. can u help me figure out what i need from each person?",
+    "style": "chatty",
+    "facts": [
+      "Hires 12-15 seasonal workers every spring",
+      "Uses a manila folder per employee kept in a locked cabinet",
+      "Owner requires copies of IDs and signed W-4s before first day",
+      "Last year 4 workers started without completed I-9 forms",
+      "Has a printed checklist from 2019 she tries to follow but keeps losing it"
+    ],
+    "id": "human-resource-1",
+    "sector": "Human Resource"
+  },
+  {
+    "name": "Marcus Webb",
+    "occupation": "HR Coordinator",
+    "business_context": "Mid-size regional hospital network with roughly 800 employees across three facilities.",
+    "task_utterance": "need to pull overtime hours for all nursing staff from last pay period for the compliance report",
+    "style": "terse",
+    "facts": [
+      "Runs this report every two weeks on the Monday after payday",
+      "Pulls data from the ADP portal and pastes it into a shared Excel tracker",
+      "Compliance officer needs it by Wednesday close of business",
+      "Covers RNs, LPNs, and CNAs across all three locations",
+      "Usually about 60-80 employees have overtime each period"
+    ],
+    "id": "human-resource-2",
+    "sector": "Human Resource"
+  },
+  {
+    "name": "Priya Nair",
+    "occupation": "People & Culture Lead",
+    "business_context": "Boutique marketing agency with around 50 staff, mostly remote or hybrid.",
+    "task_utterance": "ok so basically we do these quarterly check-ins where managers are supposed to sit down with their direct reports and go through this whole feedback thing but honestly half the managers just skip it or do it super last minute and then the forms are all over the place... i need to somehow track who's actually done theirs and nudge the ones who havent without sounding like a nag you know?",
+    "style": "rambling",
+    "facts": [
+      "Uses Google Forms for the check-in submissions",
+      "There are 8 managers each with 4-8 direct reports",
+      "CEO wants a completion summary before the all-hands meeting each quarter",
+      "Sends reminder emails manually from her Gmail",
+      "Last quarter only 60% of forms were submitted on time"
+    ],
+    "id": "human-resource-3",
+    "sector": "Human Resource"
+  },
+  {
+    "name": "Derek Simmons",
+    "occupation": "Store Manager",
+    "business_context": "Independent hardware store with 12 staff in a suburban shopping strip",
+    "task_utterance": "need to do the roster for next fortnight, someone called in sick and i gotta shuffle everyone around again",
+    "style": "terse",
+    "facts": [
+      "Uses a whiteboard in the back office and takes a photo to text to the team",
+      "Roster covers 7 days with morning and afternoon shifts",
+      "Three casuals, five part-time, four full-time staff",
+      "Must give at least one weekend day off per person per fortnight",
+      "Store opens 7am to 6pm weekdays, 8am to 5pm weekends"
+    ],
+    "id": "retail-1",
+    "sector": "Retail"
+  },
+  {
+    "name": "Priya Mehta",
+    "occupation": "Owner-Operator",
+    "business_context": "Boutique women's clothing shop with 3 employees in an inner-city laneway",
+    "task_utterance": "Hi there! So I've just had my seasonal stock delivery arrive from three different suppliers and I really need to get everything counted and entered before we open tomorrow morning, it's such a faff every time honestly. Would love a hand figuring out the quickest way to get it all sorted!",
+    "style": "chatty",
+    "facts": [
+      "Receives deliveries from three main suppliers roughly every six weeks",
+      "Currently tracks stock in a spreadsheet she built herself about four years ago",
+      "Average delivery is around 150 to 200 individual items",
+      "Her part-time assistant Jess usually helps count but she's on holiday this week",
+      "Tags every item with a handwritten price sticker before putting it on the floor"
+    ],
+    "id": "retail-2",
+    "sector": "Retail"
+  },
+  {
+    "name": "Craig Dunn",
+    "occupation": "Operations Coordinator",
+    "business_context": "Regional chain of 8 garden centre and nursery locations with about 60 staff total",
+    "task_utterance": "um so basically i need to chase up the stores for their weekly wastage numbers, some of them never send it in on time and head office keeps asking me where the report is",
+    "style": "vague",
+    "facts": [
+      "Each store manager is supposed to email wastage figures every Friday by 3pm",
+      "Usually only 4 or 5 out of 8 stores actually submit on time",
+      "Head office wants a consolidated summary by Monday morning",
+      "Wastage includes damaged plants, expired potting mix, and broken pots",
+      "He currently chases people by phone call and text message"
+    ],
+    "id": "retail-3",
+    "sector": "Retail"
+  },
+  {
+    "name": "Derek Moss",
+    "occupation": "Owner",
+    "business_context": "Small landscaping crew of 6, mostly residential mowing, hedging, and garden clean-ups in a suburban area.",
+    "task_utterance": "need to sort out next weeks mowing rounds, couple guys called in sick and i gotta reshuffle who goes where",
+    "style": "terse",
+    "facts": [
+      "Runs two vans with three-person crews",
+      "Has about 80 regular mowing clients on a weekly or fortnightly rotation",
+      "Uses a whiteboard in the office to map out the weekly schedule",
+      "Two crew members called in sick this week",
+      "Biggest client is a housing estate with 14 plots every Tuesday"
+    ],
+    "id": "landscape-1",
+    "sector": "Landscape"
+  },
+  {
+    "name": "Pauline Garrett",
+    "occupation": "Office Administrator",
+    "business_context": "Mid-size commercial landscaping firm with around 30 staff, handling council contracts, school grounds, and business parks.",
+    "task_utterance": "Hi there! I'm trying to pull together the monthly maintenance report for the council contract — they want photos, job sheets, all that sort of thing bundled up nicely. It takes me ages every month and I just wondered if there's a quicker way to get it all collated?",
+    "style": "chatty",
+    "facts": [
+      "The council contract covers 22 public parks and playgrounds",
+      "She collects job sheets and before/after photos from the field crews",
+      "The report is due by the 5th of every month",
+      "Currently she copies everything into a Word document manually",
+      "The council wants a summary table of hours spent per site"
+    ],
+    "id": "landscape-2",
+    "sector": "Landscape"
+  },
+  {
+    "name": "Kev",
+    "occupation": "Yard Supervisor",
+    "business_context": "Landscape supplies depot selling bulk bags of aggregate, topsoil, mulch, and paving to trade and public customers.",
+    "task_utterance": "gotta do stock count on the bulk bags again... boss reckons the numbers never add up and its doing my head in",
+    "style": "vague",
+    "facts": [
+      "The yard holds roughly 15 different types of bulk bag products",
+      "Stock count is supposed to happen every Friday afternoon",
+      "Deliveries from suppliers often arrive mid-count and throw things off",
+      "The boss uses a spreadsheet but Kev writes his counts on paper first",
+      "Last month there was a discrepancy of about 40 bags unaccounted for"
+    ],
+    "id": "landscape-3",
+    "sector": "Landscape"
+  },
+  {
+    "name": "Derek Mallory",
+    "occupation": "Workshop Manager",
+    "business_context": "Small CNC machining shop with 18 staff, makes custom metal parts for aerospace subcontractors.",
+    "task_utterance": "morning shift handover notes are a mess, half the lads write stuff on whiteboard and it gets wiped before i even see it. need a better way to pass on job info between shifts",
+    "style": "rambling",
+    "facts": [
+      "Two shifts per day, 6am-2pm and 2pm-10pm",
+      "Currently uses a whiteboard in the break room plus the odd text message",
+      "About 12 active jobs on the floor at any time",
+      "Machine breakdowns and tool changes are the main things that need passing on",
+      "Lost a £4k batch last month because night shift didn't know a tolerance change"
+    ],
+    "id": "precision-engineering-1",
+    "sector": "Precision Engineering"
+  },
+  {
+    "name": "Sandra Vickers",
+    "occupation": "Office Administrator",
+    "business_context": "Family-run precision grinding firm, 9 employees, does contract work for automotive suppliers.",
+    "task_utterance": "hiya, im trying to get our delivery notes sorted for this weeks shipments but dave keeps changing the schedule on me lol. can you help me keep track of whats going out when?",
+    "style": "chatty",
+    "facts": [
+      "Sends out roughly 15-20 deliveries a week",
+      "Uses a paper job book that sits on her desk",
+      "Dave is the owner and changes priorities without telling her",
+      "Customers expect delivery notes emailed same day as dispatch",
+      "Biggest customer is a Tier 2 automotive firm that wants everything in their own template"
+    ],
+    "id": "precision-engineering-2",
+    "sector": "Precision Engineering"
+  },
+  {
+    "name": "Kev",
+    "occupation": "Quality Inspector",
+    "business_context": "Mid-size precision turned parts manufacturer, 45 staff, supplies medical device companies.",
+    "task_utterance": "need to log inspection results faster. taking me ages writing them out by hand then typing up at end of day",
+    "style": "terse",
+    "facts": [
+      "Inspects around 30 batches per day",
+      "Currently fills out paper inspection sheets then enters data into an Excel spreadsheet",
+      "Medical customers require full traceability records kept for 10 years",
+      "Boss wants inspection certs emailed to customers within 24 hours",
+      "Uses a micrometer, CMM machine, and go/no-go gauges daily"
+    ],
+    "id": "precision-engineering-3",
+    "sector": "Precision Engineering"
+  },
+  {
+    "name": "Diane Kowalski",
+    "occupation": "Office Manager",
+    "business_context": "Small patent attorney firm with 6 lawyers, handling trademark and patent filings for local startups and inventors.",
+    "task_utterance": "I need to chase up clients who havent paid their renewal fees before the deadline hits, some of them are real hard to get a hold of",
+    "style": "rambling",
+    "facts": [
+      "Tracks renewal deadlines in a shared Outlook calendar with colour-coded reminders",
+      "Sends reminder emails at 60 days, 30 days, and 7 days before the deadline",
+      "About 25-30 patent and trademark renewals come due each month",
+      "Some clients only respond to phone calls, not emails",
+      "Late payment means the IP right lapses and reinstatement costs the client thousands"
+    ],
+    "id": "intellectual-property-1",
+    "sector": "Intellectual Property"
+  },
+  {
+    "name": "Marcus Chen",
+    "occupation": "IP Coordinator",
+    "business_context": "Mid-size manufacturing company (~400 staff) that designs and sells industrial kitchen equipment, holds around 120 patents globally.",
+    "task_utterance": "need to log new invention disclosures from our engineers and check they filled out the form properly",
+    "style": "terse",
+    "facts": [
+      "Engineers submit invention disclosure forms via a shared network drive folder",
+      "Gets about 5-8 new disclosures per month from the R&D team",
+      "The form asks for a description, drawings, date of conception, and any prior public disclosures",
+      "Missing information on forms causes delays of 2-3 weeks on average",
+      "Reports a monthly summary to the Head of Legal every first Friday"
+    ],
+    "id": "intellectual-property-2",
+    "sector": "Intellectual Property"
+  },
+  {
+    "name": "Priya Sharma",
+    "occupation": "Paralegal",
+    "business_context": "Boutique trademark agency with 3 staff, mostly helping small food and beverage brands register their names and logos.",
+    "task_utterance": "So basically I have to do these trademark searches every time a new client comes in and wants to register their brand name, and I look through the database and also just Google and stuff to see if anyone else is already using something similar, and then I write up a little report for the client saying whether it's clear or risky, it takes forever honestly",
+    "style": "chatty",
+    "facts": [
+      "Searches the national IP office database and also does Google and social media checks",
+      "Handles roughly 12-15 new trademark search requests per month",
+      "Writes a 1-2 page clearance report in a Word template with screenshots",
+      "Classifies goods and services using the Nice Classification system",
+      "Boss reviews every report before it goes to the client"
+    ],
+    "id": "intellectual-property-3",
+    "sector": "Intellectual Property"
+  },
+  {
+    "name": "Derek Mallory",
+    "occupation": "Operations Manager",
+    "business_context": "Mid-sized contract security firm with about 120 guards covering retail sites, warehouses, and office buildings across three counties.",
+    "task_utterance": "need to sort out next weeks guard roster, couple of lads called in sick and i still have gaps on the night shifts at the distribution centre",
+    "style": "terse",
+    "facts": [
+      "Manages a rotating roster of roughly 45 guards across 12 client sites",
+      "Night shifts at the distribution centre require a minimum of 3 guards per shift",
+      "Two guards, Paul and Asif, phoned in sick this morning for next week",
+      "Uses a big printed whiteboard in the office plus a WhatsApp group to swap shifts",
+      "Has to email the finalised roster to each site manager by Friday afternoon"
+    ],
+    "id": "security-1",
+    "sector": "Security"
+  },
+  {
+    "name": "Sharon Keegan",
+    "occupation": "Office Administrator",
+    "business_context": "Small family-run locksmith and alarm installation company with 8 staff serving residential and small business customers in a suburban area.",
+    "task_utterance": "Hi there! I'm trying to chase up some unpaid invoices from last month, we've got a few customers who still haven't settled and the boss is getting a bit twitchy about cash flow to be honest. Would love some help getting reminders out if that's something you can do?",
+    "style": "chatty",
+    "facts": [
+      "Sends invoices using a basic accounting package called Wave",
+      "There are currently 7 overdue invoices totalling about £2,400",
+      "The biggest overdue one is £680 from a café owner who keeps saying the card machine is broken",
+      "Boss (her father-in-law, Terry) wants reminders sent as polite emails first, then a phone call",
+      "Usually does invoicing and chasing on Tuesday and Thursday mornings"
+    ],
+    "id": "security-2",
+    "sector": "Security"
+  },
+  {
+    "name": "Marcus Webb",
+    "occupation": "Compliance Coordinator",
+    "business_context": "National guarding and surveillance company with around 800 employees providing manned security and CCTV monitoring for critical infrastructure and government contracts.",
+    "task_utterance": "so basically the SIA licence renewals are coming up for a bunch of the officers and i need to make sure everyones documentation is in order before the deadlines hit, its a bit of a nightmare keeping track of who needs what and when especially since some of them havent even sent me their updated ID photos yet",
+    "style": "rambling",
+    "facts": [
+      "Tracks SIA licence expiry dates for approximately 320 licensed officers in a shared spreadsheet",
+      "Licences cost £190 each to renew and the company pays for them upfront",
+      "About 40 officers have renewals due in the next 8 weeks",
+      "Needs a passport-style photo, proof of address, and a DBS check for each renewal",
+      "The Home Office contract requires all guards to hold a valid licence at all times or the company faces penalties"
+    ],
+    "id": "security-3",
+    "sector": "Security"
+  },
+  {
+    "name": "Diane",
+    "occupation": "Office Manager",
+    "business_context": "Small independent training provider (12 staff) delivering workplace health & safety courses to local businesses.",
+    "task_utterance": "hiya, i need to sort out the attendance sheets for next months courses, we've got about 8 sessions running and i keep losing track of which learners are booked onto which one. any ideas?",
+    "style": "chatty",
+    "facts": [
+      "Currently uses a mix of paper sign-in sheets and a Google Sheet that several trainers edit at once",
+      "Runs roughly 8-10 open courses per month with 10-15 learners each",
+      "Learners sometimes swap sessions last minute and she finds out via phone call",
+      "Has to email certificates to learners within 3 days of course completion",
+      "Her boss insists on keeping a printed backup of every register in a filing cabinet"
+    ],
+    "id": "training-and-adult-education-1",
+    "sector": "Training and Adult Education"
+  },
+  {
+    "name": "Marcus",
+    "occupation": "Compliance Coordinator",
+    "business_context": "Mid-sized national apprenticeship provider (around 200 staff) placing apprentices with employers across construction and engineering.",
+    "task_utterance": "need to chase employers for signed commitment statements before ofsted visit",
+    "style": "terse",
+    "facts": [
+      "Has about 140 active apprentices spread across 60 different employer partners",
+      "Uses a spreadsheet tracker colour-coded red/amber/green for document status",
+      "Ofsted inspection is expected within the next 6-8 weeks",
+      "Roughly 35 employer commitment statements are still missing or unsigned",
+      "Usually chases by email first, then phone call, then escalates to his line manager"
+    ],
+    "id": "training-and-adult-education-2",
+    "sector": "Training and Adult Education"
+  },
+  {
+    "name": "Priya",
+    "occupation": "Course Administrator",
+    "business_context": "University continuing education department (part of a large public university) offering evening and weekend adult learning classes in arts, languages, and humanities.",
+    "task_utterance": "so basically every term i have to go through and check which classes have enough people enrolled to actually run and which ones we need to cancel because like if there's fewer than 8 people signed up the tutor contract says we have to give them four weeks notice or we still owe them the full fee and honestly i always end up doing it way too close to the deadline and then it's a nightmare emailing everyone and the tutors get really annoyed especially the ones who've been teaching here for years and feel like they deserve better treatment so yeah i just need a better way of keeping on top of it all really",
+    "style": "rambling",
+    "facts": [
+      "Manages around 90 classes per term across 12 subject areas",
+      "Minimum viable class size is 8 enrolled learners per the tutor contract",
+      "Must give tutors 4 weeks' written notice if a class is cancelled",
+      "Currently checks enrolment numbers manually in the student records system every Monday morning",
+      "Sends cancellation emails from a shared departmental Outlook inbox"
+    ],
+    "id": "training-and-adult-education-3",
+    "sector": "Training and Adult Education"
+  },
+  {
+    "name": "Diane Kowalski",
+    "occupation": "Operations Manager",
+    "business_context": "Small carbon offset project developer (12 staff) running reforestation and cookstove projects in East Africa",
+    "task_utterance": "hey so i need to pull together the quarterly monitoring report for our kenya cookstove project, the verifier wants photos and fuelwood survey data from the field team but they keep sending me stuff in whatsapp messages and random spreadsheets",
+    "style": "rambling",
+    "facts": [
+      "Verifier audit is in 6 weeks",
+      "Field team has 5 people on the ground in Kisumu",
+      "Last quarter's report was 47 pages",
+      "Uses a shared Google Drive with folders by project",
+      "Fuelwood surveys are done on paper forms then typed up"
+    ],
+    "id": "carbon-services-and-trading-1",
+    "sector": "Carbon Services and Trading"
+  },
+  {
+    "name": "Marcus Tan",
+    "occupation": "Carbon Desk Coordinator",
+    "business_context": "Mid-size commodities trading house (200+ employees) with a voluntary carbon trading desk",
+    "task_utterance": "need to reconcile our position sheet against the registry transfers before end of day",
+    "style": "terse",
+    "facts": [
+      "Tracks positions in a shared Excel file updated manually",
+      "Uses Verra and Gold Standard registries",
+      "Desk does about 30-40 trades a week",
+      "Two other analysts on the desk besides him",
+      "Boss needs the reconciled sheet emailed by 5pm London time"
+    ],
+    "id": "carbon-services-and-trading-2",
+    "sector": "Carbon Services and Trading"
+  },
+  {
+    "name": "Priya Nair",
+    "occupation": "Sustainability Compliance Officer",
+    "business_context": "Large manufacturing company (1,500 employees) that buys carbon credits to offset its Scope 1 emissions",
+    "task_utterance": "Hi! I'm trying to get all the retirement certificates from last year organised so I can match them up against our emissions inventory for the annual sustainability report — our comms team is already asking me for the numbers and I haven't even finished checking the serial numbers yet, it's a bit of a nightmare honestly!",
+    "style": "chatty",
+    "facts": [
+      "Company retired about 85,000 tonnes of credits last year across 4 registries",
+      "Annual report goes to the board in March",
+      "Keeps certificates as PDFs in a SharePoint folder",
+      "Works with one junior analyst who helps with data entry",
+      "Comms team needs headline figures for the press release draft"
+    ],
+    "id": "carbon-services-and-trading-3",
+    "sector": "Carbon Services and Trading"
+  },
+  {
+    "name": "Diane Kowalski",
+    "occupation": "Office Manager",
+    "business_context": "Small family-run law firm with 6 attorneys handling estate planning and real estate closings in a mid-sized suburb.",
+    "task_utterance": "hi! so i need to get all our client intake forms updated before monday, we switched the liability clause language and now every template is wrong and partners are gonna kill me if i miss even one lol",
+    "style": "chatty",
+    "facts": [
+      "There are 14 different intake form templates across practice areas (wills, trusts, residential closings, commercial leases, etc.)",
+      "The liability clause change was mandated by their malpractice insurance carrier last Thursday",
+      "Forms are stored as Word documents in a shared network drive organized by practice area folders",
+      "Two of the six attorneys still print forms and have clients fill them out by hand in the lobby",
+      "Diane has a part-time assistant named Marco who can help with formatting but doesn't know legal terminology"
+    ],
+    "id": "legal-services-1",
+    "sector": "Legal Services"
+  },
+  {
+    "name": "Terrence Hall",
+    "occupation": "Court Filing Coordinator",
+    "business_context": "Mid-size litigation firm with 35 lawyers specializing in commercial disputes and employment law across three offices.",
+    "task_utterance": "need to track which filings got e-filed vs mailed this week, court rejected two and nobody told me",
+    "style": "terse",
+    "facts": [
+      "The firm files an average of 60-80 documents per week across state and federal courts",
+      "Three paralegals and two junior associates submit filings independently and are supposed to copy Terrence on confirmations",
+      "Rejected filings have a 48-hour correction window before deadlines are missed",
+      "Terrence uses a color-coded spreadsheet on his desktop to log every filing with date, case number, method, and status",
+      "The managing partner wants a Friday summary email every week showing any missed or rejected filings"
+    ],
+    "id": "legal-services-2",
+    "sector": "Legal Services"
+  },
+  {
+    "name": "Priya Mehta",
+    "occupation": "Legal Aid Intake Specialist",
+    "business_context": "Nonprofit legal aid organization with 12 staff attorneys and 8 volunteer lawyers serving low-income clients in housing and family law matters.",
+    "task_utterance": "ok so basically we have these people who call in and they're like really stressed about eviction or custody stuff and i have to figure out if they even qualify for our help before i can schedule them with a lawyer, but the eligibility rules keep changing based on funding and i lose track of who i already talked to and what i told them, it's a mess honestly because sometimes they call back and i don't remember their situation at all",
+    "style": "rambling",
+    "facts": [
+      "The organization receives roughly 200 inbound calls per month but can only take on about 40 new cases",
+      "Eligibility depends on income thresholds (currently 125% of federal poverty line), case type, and whether the opposing party is already represented by a pro bono partner firm",
+      "Priya writes quick notes on sticky pads and transfers them to a shared Google Sheet at the end of each day, but often forgets details",
+      "Funding from two county grants is up for renewal in March, and income thresholds may shift depending on which grants are renewed",
+      "Clients frequently call back two or three times before getting a callback from an attorney, and Priya has no reliable way to pull up prior conversations"
+    ],
+    "id": "legal-services-3",
+    "sector": "Legal Services"
+  },
+  {
+    "name": "Derek Mallory",
+    "occupation": "Site Supervisor",
+    "business_context": "Mid-size commercial construction company, about 120 employees, builds office blocks and retail parks across the region.",
+    "task_utterance": "need to get all the toolbox talk records off the lads for this week, some of em still handing me crumpled paper sheets",
+    "style": "terse",
+    "facts": [
+      "Runs 4 active sites at once",
+      "Around 35 subcontractors rotate through each week",
+      "Toolbox talks are supposed to happen every Monday morning",
+      "Paper sign-off sheets often get lost or damaged on site",
+      "Head office needs records uploaded by Friday COB"
+    ],
+    "id": "workplace-safety-and-health-1",
+    "sector": "Workplace Safety and Health"
+  },
+  {
+    "name": "Priya Sandhu",
+    "occupation": "Health and Safety Coordinator",
+    "business_context": "Large food manufacturing plant with 400+ staff, produces ready meals for supermarket chains.",
+    "task_utterance": "Hi! So I've got the quarterly PPE audit coming up and honestly the spreadsheets from each department are always in different formats and half the managers forget to fill in the damaged items column so I end up chasing people for days, it's a nightmare lol",
+    "style": "chatty",
+    "facts": [
+      "PPE audit covers 12 departments across the plant",
+      "Uses a shared SharePoint folder but managers upload whatever they want",
+      "Damaged items column was added last year after an HSE inspection",
+      "Around 600 PPE items tracked in total",
+      "Audit report goes to the plant director and the external HSE consultant"
+    ],
+    "id": "workplace-safety-and-health-2",
+    "sector": "Workplace Safety and Health"
+  },
+  {
+    "name": "Graham Fellows",
+    "occupation": "Facilities Manager",
+    "business_context": "Small property management firm with 8 staff, looks after a portfolio of 20-something commercial buildings in the city centre.",
+    "task_utterance": "trying to sort out the fire extinguisher inspection schedule i think some of them are overdue but not sure which buildings the guy visited last time",
+    "style": "vague",
+    "facts": [
+      "Fire extinguisher inspections are legally required every 12 months",
+      "Uses an external contractor for inspections but schedules them by email",
+      "Last inspection round was roughly 11 months ago",
+      "Portfolio includes offices, a small shopping arcade, and two warehouses",
+      "Keeps a rough spreadsheet but admits it is probably out of date"
+    ],
+    "id": "workplace-safety-and-health-3",
+    "sector": "Workplace Safety and Health"
+  },
+  {
+    "name": "Derek Hallam",
+    "occupation": "Yard Manager",
+    "business_context": "Family-run arable farm, 800 acres, grows wheat barley and oilseed rape in East Yorkshire",
+    "task_utterance": "need to sort out the grain delivery slots for next wk, harvest is coming in fast and the co-op keeps changing the booking times on us",
+    "style": "terse",
+    "facts": [
+      "Delivers to two co-op depots, one in Driffield and one in Market Weighton",
+      "Usually sends 3-4 lorry loads a day during harvest",
+      "Uses a whiteboard in the farm office to track which trailer is going where",
+      "Co-op sends booking confirmations by email but they often arrive late",
+      "Has two drivers, one only works mornings"
+    ],
+    "id": "agrifood-1",
+    "sector": "Agrifood"
+  },
+  {
+    "name": "Priya Kotecha",
+    "occupation": "Production Coordinator",
+    "business_context": "Mid-size ready-meal manufacturer, 120 staff, supplies supermarkets and food service across the Midlands",
+    "task_utterance": "Hiya, so I've got to pull together the daily production plan for the kitchen team tomorrow and honestly it's a nightmare because sales keep updating the orders right up until 5pm and then I'm running around trying to figure out if we've got enough chicken tikka marinade in stock and whether the night shift can handle the extra volume, it's every single day like this lol",
+    "style": "rambling",
+    "facts": [
+      "Produces around 35,000 meal units per day across 12 product lines",
+      "Sales team uses a shared spreadsheet on the company server for orders",
+      "Stock levels for raw ingredients are checked manually from the freezer store clipboard",
+      "Night shift has 18 staff, day shift has 40",
+      "The big four supermarkets each have different labeling and dispatch deadline requirements"
+    ],
+    "id": "agrifood-2",
+    "sector": "Agrifood"
+  },
+  {
+    "name": "Tomás Oliveira",
+    "occupation": "Owner-Operator",
+    "business_context": "Small artisan cheese producer, 4 staff, sells at farmers markets and to independent delis in Somerset",
+    "task_utterance": "how do i keep track of which delis owe me money? some of them take ages to pay and i lose the invoices",
+    "style": "vague",
+    "facts": [
+      "Supplies roughly 15 independent delis and farm shops on 30-day payment terms",
+      "Currently keeps invoices in a cardboard folder sorted by customer name",
+      "Makes about 8-10 deliveries a week in the refrigerated van",
+      "Wife does the bookkeeping on Saturday mornings using a basic spreadsheet",
+      "Some customers pay cash on delivery, others pay by bank transfer weeks later"
+    ],
+    "id": "agrifood-3",
+    "sector": "Agrifood"
+  }
+]
