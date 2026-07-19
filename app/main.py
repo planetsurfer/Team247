@@ -15,6 +15,7 @@ import pathlib
 
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from app import settings, db
 from app.logging_setup import configure_logging
@@ -25,6 +26,13 @@ from app.routers import catalog, health, intake, team
 # and still opens standalone when double-clicked. Serving it through the app
 # just adds a `GET /` that returns its text.
 _DEMO_HTML = pathlib.Path(__file__).resolve().parent.parent / "demo.html"
+
+# The React + Vite chat frontend builds its bundle into `app/static/`
+# (`web/` → `npm run build`). When present, FastAPI serves it at `/` and the
+# hashed assets under `/assets`. The legacy dark-theme SPA stays at `/legacy`.
+_STATIC = pathlib.Path(__file__).resolve().parent / "static"
+_STATIC_INDEX = _STATIC / "index.html"
+_STATIC_ASSETS = _STATIC / "assets"
 
 
 def create_app() -> FastAPI:
@@ -56,12 +64,27 @@ def create_app() -> FastAPI:
     app.include_router(intake.router)
     app.include_router(team.router)
 
-    # Serve the SPA shell at `/`. demo.html stays a standalone-openable file;
-    # this just exposes it through the running app so the API + SPA share one
-    # origin (the SPA's fetch('/api/…') calls need same-origin in real deploys).
+    # Serve the SPA at `/`. Prefer the built Vite bundle (`app/static/`,
+    # produced by `web/` → `npm run build`); fall back to the legacy demo.html
+    # so the app still works without a frontend build. Both expose the SPA
+    # through the running app so the SPA's fetch('/api/…') calls are same-origin.
+    def _spa_html_text() -> str:
+        if _STATIC_INDEX.exists():
+            return _STATIC_INDEX.read_text()
+        return _DEMO_HTML.read_text() if _DEMO_HTML.exists() else ""
+
+    @app.get("/", include_in_schema=False)
+    def _spa_root() -> HTMLResponse:
+        return HTMLResponse(_spa_html_text())
+
+    # Vite emits hashed JS/CSS under /assets/; mount them when a build exists.
+    if _STATIC_ASSETS.is_dir():
+        app.mount("/assets", StaticFiles(directory=str(_STATIC_ASSETS)), name="assets")
+
+    # Keep the legacy dark-theme SPA accessible at /legacy.
     if _DEMO_HTML.exists():
-        @app.get("/", include_in_schema=False)
-        def _spa_root() -> HTMLResponse:
+        @app.get("/legacy", include_in_schema=False)
+        def _legacy() -> HTMLResponse:
             return HTMLResponse(_DEMO_HTML.read_text())
 
     @app.on_event("startup")

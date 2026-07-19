@@ -1,0 +1,21 @@
+/* Team247 chat frontend — global resets + a couple of reusable utility classes.
+   Per-component styling is inline (matching the design reference's per-element
+   style strings) so each card stays pixel-faithful to the handoff tokens. */
+
+* { box-sizing: border-box; }
+
+:root {
+  /* design tokens (see theme.ts — these defaults match; overridden at runtime) */
+  --t-bg: #faf9f7;
+  --t-ink: #1c1c1a;
+  --t-accent: #0e7a70;
+}
+
+html, body, #root { height: 100%; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #e2dfd6; border-radius: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+.tnum { font-variant-numeric: tabular-nums; }
+.mono { font-family: ui-monospace, Menlo, monospace; }

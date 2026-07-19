@@ -1,0 +1,1 @@
+*{box-sizing:border-box}:root{--t-bg: #faf9f7;--t-ink: #1c1c1a;--t-accent: #0e7a70}html,body,#root{height:100%}::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#e2dfd6;border-radius:6px}::-webkit-scrollbar-track{background:transparent}.tnum{font-variant-numeric:tabular-nums}.mono{font-family:ui-monospace,Menlo,monospace}

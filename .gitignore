@@ -15,6 +15,16 @@ agent_team_specs.zip
 data/cache/
 data/role_enrichment.json
 
+# Frontend build tooling (built bundle IS committed at app/static/)
+web/node_modules/
+web/tsconfig.tsbuildinfo
+
+# Design handoff drop (extracted + implemented in web/; archive not tracked)
+Simple chatGPT-style frontend (1).zip
+
+# Human-user simulation harness outputs (python -m tests.simulation)
+sim_results/
+
 # Production app runtime DB + backups (FastAPI app at app/)
 data/agentproof.db
 data/agentproof.db-journal
