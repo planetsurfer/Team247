@@ -1,8 +1,9 @@
-// Fixed 52px thread header — accent square + Team247 + right caption.
+// Fixed 52px thread header — the 1D wordmark + right caption.
 import { C } from "../theme";
 import { HEADER_CAPTION } from "../theme";
+import { Logo } from "./Logo";
 
-export function Header({ accent }: { accent: string }) {
+export function Header(_props: { accent: string }) {
   return (
     <div
       style={{
@@ -15,8 +16,7 @@ export function Header({ accent }: { accent: string }) {
         borderBottom: `1px solid ${C.headerDivider}`,
       }}
     >
-      <span style={{ width: 10, height: 10, borderRadius: 3, background: accent }} />
-      <span style={{ fontSize: 14, fontWeight: 650 }}>Team247</span>
+      <Logo size={18} />
       <span
         style={{
           marginLeft: "auto",

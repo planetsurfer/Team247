@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { C, R, SH, TASK_CHIPS, ROLE_CHIPS, copy, type Theme } from "../theme";
 import { catalogSearch, isApiError } from "../api";
+import { Logo } from "./Logo";
 import type { CatalogItem } from "../types";
 
 interface LandingProps {
@@ -94,20 +95,8 @@ export function Landing({
         padding: 24,
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          fontSize: 15,
-          fontWeight: 650,
-          marginBottom: 36,
-        }}
-      >
-        <span
-          style={{ width: 11, height: 11, borderRadius: 3.5, background: theme.accent }}
-        />
-        Team247
+      <div style={{ marginBottom: 36 }}>
+        <Logo size={24} />
       </div>
       <h1
         style={{
