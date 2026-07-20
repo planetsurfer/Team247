@@ -2,6 +2,20 @@
 
 _Newest first. Auto-stamped by the SessionEnd hook; fill in each Summary._
 
+## 2026-07-20 — Skill-bundle loop (scaffolds) — MEASURE GATE → STOP (endpoint NOT built; generator good, pipeline upstream-capped)
+- **Eval:** 10 diverse tasks → recommend → wire → compose_team_bundles = 28 bundles, all via service layer (host venv, kimi). 3 Sonnet workers judged grounding-coverage + task-fit in parallel; Opus aggregated + cross-checked.
+- **Deterministic:** well-formedness **100% (28/28)**; team-coherence 100% on wired teams (trivial/structural). **3/10 teams FAILED to wire** — `ValueError: non-feedback handoff graph has a cycle` (quotation, incident, data-migration): the LLM `wire_handoffs` produced a cyclic graph `validate_handoff_graph` rejects → those 9 agents got NO I/O contract (the wiring-gap signal caught them exactly: isolated=9/no_inbound=9/no_outbound=9). This is a SECOND wire defect, distinct from the UNIQUE-dup one already fixed.
+- **Judged (bar: grounding≥75%, task-fit≥3.5/5):**
+  | cohort | n | grounding | task-fit |
+  |---|---|---|---|
+  | OVERALL | 28 | 86.3% ✅ | **3.29 ❌** |
+  | WIRED (has I/O contract) | 19 | 84.6% | **3.58 ✅** |
+  | UNWIRED (wire-cycle failed) | 9 | 89.9% | 2.67 ❌ |
+  Judges cross-validated the deterministic finding: they independently marked `has_io=false` for exactly the 9 bundles on the 3 wire-failed teams.
+- **DIAGNOSIS — the generator MEETS the bar; the miss is entirely UPSTREAM.** On properly-wired teams the scaffold scores grounding 84.6% + task-fit 3.58 (both above bar). The overall 3.29 is dragged down ONLY by (1) the 30% wire-cycle failures (no I/O → generic → 2.67), and (2) composer role-mismatch on a few wired teams (weak fits: b06 wealth-advisory Agency Mgr on onboarding, b07 IoT/pricing on campaign, b18 recruiter with no sourcing abilities) — echoing the iter-1 role-distinctiveness finding. Both are recommendation/handoff-quality issues the bundle generator faithfully inherits, not generates.
+- **GATE DECISION: STOP; do NOT build the endpoint (iter-5) yet** — per the stop rule (overall task-fit 3.29 < 3.5). Rationale: shipping now would emit low-value generic bundles for ~30% of teams. The single highest-leverage fix is **making `wire()` robust to cyclic LLM handoff graphs** (retry / relax-to-feedback / break-cycle — a DESIGN choice for the owner, not a safe unilateral fix like the dedup was); that alone would lift the 9 unwired bundles from ~2.67 toward the wired 3.58, moving OVERALL to ~3.58 and CLEARING the bar. Secondary lever: composer role-fit.
+- **Net: scaffold generator built + validated (iters 0-3), meets quality bar conditional on a wired team. End-to-end blocked on upstream wire-cycle robustness. Owner decision needed: fix wire-cycle (then ship endpoint) vs ship endpoint gated to wired-teams-only vs stop.** All commits local (cb30c50, 906e45a, b349be3, a0c6ef5, 07fd1a6), nothing pushed.
+
 ## 2026-07-20 — Skill-bundle loop (scaffolds) — ITER 3 (whole-team composition + coherence)
 - **Iter 3 (done):** `compose_team_bundles(team_id, use_case, artifacts_needed=)` (compose_bundle for every agent, off the same wired handoff graph) + `check_team_coherence(team_id)` (deterministic, no LLM). Only `skill_bundle_service.py` touched for this.
 - **Verified independently (Opus, 4 tasks incl. "handle a customer complaint"):** all bundles 100% well-formed; coherence 100%; no wiring gaps on the small teams tested.
