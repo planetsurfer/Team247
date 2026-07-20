@@ -54,18 +54,27 @@ def llm_chat(messages, temperature=0.3, json_mode=False, max_tokens=4096, purpos
     raise last
 
 def llm_json(messages, temperature=0.2, validate=None, retries=2, max_tokens=4096, purpose=None):
-    """Strict JSON with client-side validate-and-retry (§0.5 bug 5)."""
+    """Strict JSON with client-side validate-and-retry (§0.5 bug 5).
+
+    On a parse/validation failure the retry is NOT a blind re-ask: the concrete
+    failure reason (the validator's own ValueError message) is appended as a
+    corrective turn, so the model sees WHY it was rejected and converges in one
+    retry instead of exhausting all of them on the same mistake."""
     import json as _json
     last = None
+    msgs = list(messages)
     for _ in range(retries + 1):
         try:
-            obj = _json.loads(llm_chat(messages, temperature, json_mode=True,
+            obj = _json.loads(llm_chat(msgs, temperature, json_mode=True,
                                         max_tokens=max_tokens, purpose=purpose))
             if validate is None or validate(obj):
                 return obj
             last = "validation failed"
         except Exception as e:
             last = str(e)
+        msgs = msgs + [{"role": "user",
+                        "content": f"Your previous reply was rejected: {last}. "
+                                   "Return corrected STRICT JSON only."}]
     raise ValueError(f"llm_json failed after retries: {last}")
 
 # Code execution: local subprocess runner (replaces the former Daytona sandbox backend).

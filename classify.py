@@ -3,6 +3,14 @@ from collections import Counter
 import framework
 from config import llm_json
 
+
+class NoDatasetRoleMatch(Exception):
+    """No catalog role matched the task (empty keyword slate + no seeds). Raised
+    instead of SystemExit so it surfaces as a normal error the caller maps to a
+    4xx — a SystemExit here propagated through the ASGI threadpool and killed the
+    uvicorn worker."""
+
+
 _STOP = set(("a an the and or of to for in on with is are be this that it i we my our need "
              "want into from by as at").split())
 
@@ -93,7 +101,7 @@ def recommend_roles(task, k=3, preferred_sectors=None, must_include=None):
     # reverse-alphabetically and bias the slate toward 'W...' role names.
     scored.sort(key=lambda s: s[0], reverse=True)
     if not scored and not must_include:
-        raise SystemExit("Task matched no dataset role — rephrase, or use --role (Mode A).")
+        raise NoDatasetRoleMatch("Task matched no dataset role — rephrase, or use --role (Mode A).")
 
     # Dedup must_include pairs up front (caller may hand duplicates across
     # functions — e.g. the same Accounts Executive seeded for two functions).

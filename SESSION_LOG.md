@@ -15,6 +15,15 @@ M Dockerfile
 ```
 - **Summary:** _(fill in: what changed · why · key decisions · follow-ups)_
 
+## 2026-07-20 — Composer-selection loop — ITER 3 (hardening)
+- **Three small fixes, all verified live:**
+  1. **422 on empty input** — `/api/team/recommend` now rejects a missing/blank `use_case` with no `brief` (422) instead of running the pipeline on nothing and returning a confident-but-irrelevant team with 200. This closes the `{"task": ...}` wrong-field trap found during the Docker test.
+  2. **No more worker-killing `SystemExit`** — `classify.recommend_roles` raises a new `classify.NoDatasetRoleMatch` (not `SystemExit`, which propagated through the ASGI threadpool and crashed the uvicorn worker); the router maps it to 422. Verified: zero-match path returns cleanly and the worker stays up (health 200 after).
+  3. **Retry-with-feedback** — `config.llm_json` appends the validator's actual failure reason as a corrective turn before each retry, so the model converges instead of repeating the same mistake. Verified: a validator that fails once then passes recovered on attempt 2 (and the model acted on the reason — added the named missing field).
+- **Live checks (server :8022, RATE_LIMIT_PER_MIN=120):** `{"task":...}`→422, `{"use_case":"  "}`→422, valid→200, zero-match→handled without crash, worker survived. `NoDatasetRoleMatch`→422 mapping also unit-verified directly (the HTTP zero-match case now gets seeded by identify_functions so it 200s with a team — the mapping fires only when both keyword match AND seeds are empty).
+- **Files:** `classify.py`, `config.py`, `app/routers/team.py`. No behavior change on the happy path.
+- **Next (Iter 4 — the keep/revert GATE):** n=24 persona battery, `LLM_MODEL=kimi-k2.6`, measure SLATE-AWARE missing_key_role + composite vs banked 3.38/5 (qwen3.7-max). Decide keep vs revert on the paired delta.
+
 ## 2026-07-20 — Composer-selection loop — ITER 2 (repair step)
 - **Iter 2 (done): primary-function repair.** Added `must_cover` param to `llm_contracts.team_recommend` (a corrective clause naming the slate list-numbers that cover a key function). In `team_service.recommend`, after the composer returns: if the PRIMARY coverable function is unstaffed, do (1) one targeted re-prompt, then (2) force-add the top covering **slate** candidate. Helpers: `_role_id_for`, `_team_role_ids_of`, `_slate_covering_ns`. Scoped to the PRIMARY function ONLY (mandating every function regressed into bloat before). Best-effort; never breaks the guarantee.
 - **Measured (n=5, kimi):** primary-missing 1/5 (was: onboard's `learning-development` fixed via re-prompt → now staffed by a Talent Management/L&D role). Avg team size **2.2 (unchanged — no bloat)**.

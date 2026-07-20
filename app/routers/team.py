@@ -8,6 +8,7 @@ from app import db, jobs, settings
 from app.ratelimit import llm_rate_limit
 from app.services import handoff_service, render_service, team_service, verify_service
 from app.services.team_service import TeamNotFound
+import classify
 
 router = APIRouter()
 
@@ -43,10 +44,21 @@ class WireIn(BaseModel):
 
 @router.post("/api/team/recommend", dependencies=[Depends(llm_rate_limit)])
 def recommend(body: RecommendIn):
-    return team_service.recommend(
-        use_case=body.use_case, brief=body.brief,
-        intake_session_id=body.intake_session_id,
-    )
+    # Reject empty input up front: without a use_case or a brief the pipeline runs
+    # on nothing and returns a real-but-irrelevant team with 200 (the {"task": ...}
+    # wrong-field trap). Fail loudly instead.
+    if not (body.use_case and body.use_case.strip()) and not body.brief:
+        raise HTTPException(status_code=422, detail="use_case (or a brief) is required")
+    try:
+        return team_service.recommend(
+            use_case=body.use_case, brief=body.brief,
+            intake_session_id=body.intake_session_id,
+        )
+    except classify.NoDatasetRoleMatch:
+        raise HTTPException(
+            status_code=422,
+            detail="could not match your request to any role — please rephrase",
+        )
 
 
 @router.get("/api/teams")
