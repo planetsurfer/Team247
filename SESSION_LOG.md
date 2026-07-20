@@ -2,6 +2,11 @@
 
 _Newest first. Auto-stamped by the SessionEnd hook; fill in each Summary._
 
+## 2026-07-20 08:22 +08 — Team247_private
+- **Session:** 43ad6f03-2e6b-4321-85f0-d86c4413c699 (ended: other)
+- **Git:** not a git repo
+- **Summary:** _(fill in: what changed · why · key decisions · follow-ups)_
+
 ## 2026-07-19→20 — Function-indexed retrieval (decompose-then-retrieve) via Opus-orchestrated / Sonnet-worker loop
 - **Git:** commits `aa170a0` (v5 union fix), `a768813` (function-index feature). Branch pushed.
 - **Goal:** attack the v5 ceiling's dominant failure — `missing_key_role` (142/200) / `generic_team` — where keyword+IDF retrieval can't surface a role sharing no vocabulary with the task. Plan in `FUNCTION_INDEX_PLAN.md`. Orchestrated by Opus 4.8 (phase-gating + measurement decisions) with Sonnet 5 worker subagents doing each build increment.
