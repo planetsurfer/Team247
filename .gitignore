@@ -34,3 +34,6 @@ data/agentproof.db-shm
 
 # generated Agent Skill scaffolds (regenerate via skill_bundle_service)
 data/skill_cache/
+
+# SSM-fetched prod secrets (deploy/fetch_secrets.sh writes this; NEVER commit it)
+deploy/secrets.env

@@ -25,6 +25,11 @@ def connect() -> sqlite3.Connection:
     conn = sqlite3.connect(settings.APP_DB_PATH, timeout=30, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    # WAL (PRODUCTION_ROADMAP.md P0 #4: SQLite on EBS with WAL). journal_mode is a
+    # persistent, per-database-file setting (survives after the first connection
+    # sets it), but re-issuing the pragma on every connect() is cheap and keeps this
+    # correct even against a fresh/rolled-back DB file — harmless to repeat.
+    conn.execute("PRAGMA journal_mode = WAL")
     return conn
 
 

@@ -1,0 +1,50 @@
+# Production compose — closed beta on a single EC2 t4g.small (PRODUCTION_ROADMAP.md
+# P0 #3/#4). Caddy fronts this on 443 in iteration 3; for now the app only listens on
+# 127.0.0.1 — nothing external reaches it until the reverse proxy lands.
+#
+# Secrets: env_file points at deploy/secrets.env, written by deploy/fetch_secrets.sh
+# from SSM Parameter Store on the EC2 box. deploy/secrets.env is gitignored — it must
+# NEVER be committed, and this file must never inline a secret value.
+#
+# Host ./data must be writable by uid 10001 (the non-root `app` user baked into the
+# image by the Dockerfile):
+#   - macOS Docker Desktop (local verification): bind-mount permissions are mapped
+#     loosely — no host chown needed.
+#   - Amazon Linux 2023 EC2 (real deploy): `sudo chown -R 10001:10001 ./data` once,
+#     before the first `docker compose -f docker-compose.prod.yml up`.
+#
+# Run:  docker compose -f docker-compose.prod.yml up -d --build
+services:
+  app:
+    build: .
+    image: team247:prod
+    container_name: team247-prod
+    environment:
+      # Closed beta: every LLM-driving endpoint requires a beta or admin token
+      # (app/auth.py). This is the one setting the test compose deliberately
+      # overrides — prod must never run with it off.
+      BETA_AUTH: "on"
+    env_file:
+      - deploy/secrets.env
+    ports:
+      # Bind to loopback only — Caddy (iteration 3) is the only thing that should
+      # ever reach this port from outside the box.
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./data:/app/data
+    restart: always
+    # Read-only root FS (P0 #3). The app writes nowhere on disk except
+    # /app/data (the bind mount above, exempt from read_only) and /tmp
+    # (LocalRunner's `tempfile.mkdtemp()` in config.py, used by /verify) —
+    # tmpfs covers the latter.
+    read_only: true
+    tmpfs:
+      - /tmp
+    # t4g.small is 2 vCPU / 2GB; leave headroom for the OS + Caddy (iter 3).
+    mem_limit: 1500m
+    cpus: "1.5"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
