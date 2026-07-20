@@ -110,13 +110,13 @@ export function copy(tone: Tone) {
   if (tone === "technical") {
     return {
       title: "Request an agent",
-      sub: "Free-text task or SkillsFuture role → skill loadout → sandbox-verified benchmark → delivered spec and scorecard.",
+      sub: "Free-text task or SkillsFuture role → skill loadout → sandbox-verified benchmark → drop-in agent file (SKILL.md) for Claude, Codex, or any agent harness.",
       placeholder: "Task description or role name…",
     };
   }
   return {
     title: "What should your agent get done?",
-    sub: "Describe the task in plain words, or name a role. Team247 builds the specialist, proves every skill by running real code in a sandbox, and hands you the receipts.",
+    sub: "Describe the task in plain words, or name a role. Team247 builds the specialist, proves every skill by running real code in a sandbox, and hands you a drop-in agent — a ready-to-use file you can load straight into Claude, Codex, or any agent harness.",
     placeholder: "Describe a task, or type a role…",
   };
 }
