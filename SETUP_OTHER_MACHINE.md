@@ -49,7 +49,7 @@ In another terminal:
 curl -s http://127.0.0.1:8000/api/catalog?q=account | head -c 200
 curl -s -X POST http://127.0.0.1:8000/api/team/recommend \
   -H 'Content-Type: application/json' \
-  -d '{"task":"prepare a quotation","artifacts_needed":[]}' | head -c 300
+  -d '{"use_case":"prepare a quotation"}' | head -c 300
 ```
 
 ## 5. Tests (the 100%-team guarantee)

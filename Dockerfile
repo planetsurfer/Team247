@@ -17,4 +17,4 @@ ENV PYTHONPATH=/app
 EXPOSE 8000
 
 # Run migrations, idempotently seed the catalog, then serve the FastAPI app on localhost.
-ENTRYPOINT ["sh", "-c", "alembic -c app/alembic/alembic.ini upgrade head && python -m app.seed_catalog --idempotent && uvicorn app.main:app --host 127.0.0.1 --port 8000"]
+ENTRYPOINT ["sh", "-c", "alembic -c app/alembic/alembic.ini upgrade head && python -m app.seed_catalog --idempotent && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
