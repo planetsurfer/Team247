@@ -8,17 +8,17 @@ threadpool; LLM calls dominate latency, DB is local sqlite3):
     GET  /api/catalog/{role_id}
     GET  /api/catalog/{role_id}/card         (cold roles distill synchronously)
     GET  /api/catalog/{role_id}/battery
-    POST /api/catalog/{role_id}/distill      (admin-token-gated)
+    POST /api/catalog/{role_id}/distill      (beta-token-gated; admin token also accepted)
 
 All reads delegate to `app.services.card_service`; this router is a thin
-HTTP adapter — validation, 404s, admin gating. The router is registered by
+HTTP adapter — validation, 404s, beta/admin gating. The router is registered by
 the orchestrator in `app.main` (do NOT register it here).
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app import settings
+from app.auth import require_beta
 from app.services import card_service
 
 router = APIRouter()
@@ -83,20 +83,15 @@ def get_battery(role_id: str) -> list:
     return card_service.battery_items(rid)
 
 
-@router.post("/api/catalog/{role_id}/distill")
-def distill_role(role_id: str, request: Request) -> dict:
-    """ADMIN-GATED: force-distill a role's responsibilities synchronously.
+@router.post("/api/catalog/{role_id}/distill", dependencies=[Depends(require_beta)])
+def distill_role(role_id: str) -> dict:
+    """BETA-GATED: force-distill a role's responsibilities synchronously.
 
-    Requires `Authorization: Bearer <APP_ADMIN_TOKEN>`. 401 if missing/wrong.
-    Returns {status, distilled} where status is card_service's distill result
-    ('done'|'failed'|…). role_id validated to int (422 on bad).
+    Requires `Authorization: Bearer <beta token>` (or the admin token, which
+    is a strict superset — see app.auth.require_beta). 401 if missing/unknown/
+    revoked. Returns {status, distilled} where status is card_service's
+    distill result ('done'|'failed'|…). role_id validated to int (422 on bad).
     """
     rid = _parse_role_id(role_id)
-    if not settings.admin_token_ok(request.headers.get("authorization", "")):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="admin token required",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
     status_value, bullets = card_service.distill_role_sync(rid)
     return {"status": status_value, "distilled": bullets}
