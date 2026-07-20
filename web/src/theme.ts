@@ -110,7 +110,7 @@ export function copy(tone: Tone) {
   if (tone === "technical") {
     return {
       title: "Request an agent",
-      sub: "Free-text task or SkillsFuture role → skill loadout → sandbox-verified benchmark → drop-in agent file (SKILL.md) for Claude, Codex, or any agent harness.",
+      sub: "Free-text task or verified catalogue role → skill loadout → sandbox-verified benchmark → drop-in agent file (SKILL.md) for Claude, Codex, or any agent harness.",
       placeholder: "Task description or role name…",
     };
   }
@@ -137,4 +137,4 @@ export const ROLE_CHIPS = [
 ];
 
 export const THREAD_PLACEHOLDER = "Describe another task or role…";
-export const HEADER_CAPTION = "SkillsFuture-grounded · sandbox-verified";
+export const HEADER_CAPTION = "verified role catalogue · sandbox-proven";

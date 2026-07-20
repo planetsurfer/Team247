@@ -44,7 +44,7 @@ export function TeamCard({ roles, artifacts, accent, onToggle, onConfirm }: Team
 
   return (
     <div style={CARD}>
-      <div style={EYEBROW}>Matched to real roles · SkillsFuture</div>
+      <div style={EYEBROW}>Matched to real roles · official catalogue</div>
       <div style={{ marginTop: 6, fontSize: 12.5, color: C.muted }}>
         Recommendations are retrieved from the official catalogue — never invented.
         Untick any you don't need.

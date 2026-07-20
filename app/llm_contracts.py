@@ -132,7 +132,10 @@ def intake(transcript):
     prompt = (
         "You are conducting an adaptive intake interview to gather enough context to "
         "assemble an optimal multi-agent team for a user's use case. You have the "
-        "conversation so far. Decide ONE of:\n"
+        "conversation so far. Everything you write is shown directly to the user — "
+        "never cite internal skill codes, job codes, SSOC, SkillsFuture, or any "
+        "competency-framework name; refer to roles, sectors, and skills by plain "
+        "name only. Decide ONE of:\n"
         "  A) Ask 1-3 MORE tailored follow-up questions to close gaps (e.g. scale, "
         "domain, existing tools, compliance, timeline, team size, must-haves). Return "
         '{"ready": false, "questions": ["...", ...]}.\n'
@@ -246,7 +249,7 @@ def team_recommend(brief, candidates, functions_needed=None, must_cover=None):
     prompt = (
         "A user wants to staff a multi-agent team. Their intake brief (JSON):\n"
         f"{brief_txt}\n"
-        "REAL SkillsFuture roles available — choose ONLY from these, by list number:\n"
+        "REAL catalogue roles available — choose ONLY from these, by list number:\n"
         f"{listing}\n\n"
         "Assemble a team of 1-8 agents to deliver the brief end-to-end. For each agent:\n"
         "- n: the list number of the chosen role (must be one of the numbers above);\n"
@@ -255,7 +258,9 @@ def team_recommend(brief, candidates, functions_needed=None, must_cover=None):
         "- squad: a short squad name (e.g. 'Data & AI', 'Build & Platform', 'Delivery')\n"
         "- skill_level_overrides: {code: level} ONLY for the few skills whose default\n"
         "  required level the brief clearly changes; empty {} if none\n"
-        "- rationale: one short sentence\n"
+        "- rationale: one short sentence. User-facing — never cite internal skill\n"
+        "  codes, job codes, SSOC, SkillsFuture, or any competency-framework name;\n"
+        "  refer to roles and skills by name only\n"
         "Team sizing: first list (mentally) the DISTINCT FUNCTIONS the brief needs\n"
         "— e.g. gather inputs, do the core work, check/report — then staff ONE agent\n"
         "per distinct function. Use the smallest team that covers every function:\n"

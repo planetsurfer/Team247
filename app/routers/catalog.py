@@ -1,4 +1,4 @@
-"""Catalog router: browse the 1910-role SkillsFuture catalog + per-role cards.
+"""Catalog router: browse the 1910-role verified catalogue + per-role cards.
 
 Endpoints (all sync `def` handlers — DB + lazy-distill run in FastAPI's
 threadpool; LLM calls dominate latency, DB is local sqlite3):

@@ -9,7 +9,7 @@ def generate_agent(role, skills, context, custom_instructions="", sector=""):
                     for c in context["critical_work_functions"][:6])
     prompt = f"""Write an agent specification in markdown for an AI agent performing this role.
 
-Role: {role} (source: SkillsFuture Skills Framework, sector: {sector})
+Role: {role} (source: verified role catalogue, sector: {sector})
 Role description: {context['description']}
 
 Official required skills — reproduce EXACTLY this table; never add, drop, or rename a skill:

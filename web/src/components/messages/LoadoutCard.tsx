@@ -121,12 +121,6 @@ export function LoadoutCard({
                 <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: nameColor }}>
                   {k.name}
                 </span>
-                <span
-                  className="mono"
-                  style={{ display: "block", fontSize: 10, color: C.faint, marginTop: 1 }}
-                >
-                  {k.code}
-                </span>
               </span>
               <span style={{ width: 66, flex: "none", fontSize: 10, color: trackColor }}>
                 {trackLabel}

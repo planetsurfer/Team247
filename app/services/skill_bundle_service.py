@@ -45,7 +45,7 @@ MAX_BACKGROUND = 2      # at most this many ability-less skills kept as backgrou
 # subsections, or the overlay LLM prompt's required sections) changes, so
 # cached overlay LLM sections from an older template are never reused for a
 # newer one — see _overlay_grounding_hash.
-_OVERLAY_TEMPLATE_VERSION = 3
+_OVERLAY_TEMPLATE_VERSION = 4
 
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 _HASH_LINE_RE = re.compile(r"^<!--\s*grounding-hash:\s*([0-9a-f]+)\s*-->\s*$", re.M)
@@ -64,8 +64,12 @@ def _base_grounding(role: str) -> dict:
     skill, purely as background context. The combined list is capped at
     MAX_SKILLS to keep the generation prompt focused.
 
-    Returns {role, skills:[{name, code, level, exec, proficiency,
-    abilities:[...], knowledge:[...]}]}.
+    Returns {role, skills:[{name, level, exec, proficiency,
+    abilities:[...], knowledge:[...]}]}. Deliberately excludes the internal
+    skill `code` — this payload is the grounding fed into an LLM prompt whose
+    output is user-facing, and the code must never surface there (presentation
+    scrub only; `code` remains available internally via teamspec.skill_rows for
+    anything keyed by it, e.g. skill_level_overrides).
     """
     rows = teamspec.skill_rows(role)
     with_ability, without_ability = [], []
@@ -73,7 +77,6 @@ def _base_grounding(role: str) -> dict:
         know, able, _other = teamspec._split_ka(r["ka"])
         entry = {
             "name": r["nm"],
-            "code": r["code"],
             "level": r["lvl"],
             "exec": bool(r["exec"]),
             "proficiency": r["prof"],
@@ -121,7 +124,9 @@ def _build_prompt(role: str, grounding: dict) -> list:
         "those belong to a later, task-specific layer, not here.\n"
         "- Knowledge-only items (listed separately from abilities) describe "
         "things the role should know, not things it does step-by-step; use them "
-        "only as light background, never as the basis for an instruction.\n\n"
+        "only as light background, never as the basis for an instruction.\n"
+        "- Never mention internal skill codes, SSOC, SkillsFuture, or any "
+        "competency-framework name in the output.\n\n"
         "OUTPUT FORMAT — return ONLY the SKILL.md file content, nothing else "
         "(no commentary, no code fence wrapping the whole file):\n\n"
         "---\n"
@@ -484,6 +489,8 @@ def _build_overlay_prompt(use_case: str, agent_context: dict, base_md: str) -> l
         "structure). Do NOT invent org-specific field names, numeric "
         "thresholds, tool/system names, or example values presented as if "
         "they were real data.\n"
+        "- Never mention internal skill codes, SSOC, SkillsFuture, or any "
+        "competency-framework name in the output.\n"
         "- Write ONLY the following three sections, in this exact order, "
         "nothing else (no preamble, no extra sections):\n\n"
         "### Applying this capability to the task\n"

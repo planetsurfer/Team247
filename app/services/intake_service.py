@@ -21,7 +21,7 @@ from app.services import card_service
 # interview; the answer is matched against the OFFICIAL catalog sector names so
 # brief.sector carries a verbatim official name that team_service can use
 # directly (exact match → no inference guesswork on ambiguous task text).
-SECTOR_QUESTION_MARKER = "official SkillsFuture sector"
+SECTOR_QUESTION_MARKER = "official catalogue sector"
 
 
 def _official_sectors() -> list[str]:
@@ -58,7 +58,7 @@ def _sector_question(user_text: str, names: list[str]) -> str:
             if guesses else " For example: Accountancy, Logistics, Food Services, Retail.")
     return (
         "So we match you with officially recognised roles: which industry are "
-        "you in? Please reply with the specific official SkillsFuture sector "
+        "you in? Please reply with the specific official catalogue sector "
         f"name.{hint}"
     )
 
