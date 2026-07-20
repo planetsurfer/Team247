@@ -1,0 +1,19 @@
+# Iteration 3: TLS-terminating reverse proxy, run alongside docker-compose.prod.yml
+# on the beta EC2 box (not part of the app's own compose stack, since Caddy needs
+# host networking to reach the app's 127.0.0.1:8000 published port).
+#
+# Run:  docker compose -f deploy/docker-compose.caddy.yml up -d
+services:
+  caddy:
+    image: caddy:2
+    container_name: team247-caddy
+    network_mode: host
+    restart: always
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,19 @@
+# Iteration 3: Caddy fronts the app on 443, terminates TLS via Let's Encrypt
+# (automatic — Caddy issues/renews certs for team247.io once DNS resolves to
+# this box), and reverse-proxies to the app container which only listens on
+# 127.0.0.1:8000 (see docker-compose.prod.yml). HTTP->HTTPS redirect is
+# automatic in Caddy; no explicit :80 block is needed for that.
+team247.io {
+	encode gzip
+
+	reverse_proxy 127.0.0.1:8000 {
+		transport http {
+			read_timeout 300s
+			write_timeout 300s
+		}
+	}
+}
+
+www.team247.io {
+	redir https://team247.io{uri} permanent
+}

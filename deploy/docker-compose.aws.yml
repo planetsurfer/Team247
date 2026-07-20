@@ -1,0 +1,16 @@
+# Iteration 3: AWS-only override for docker-compose.prod.yml — swaps the app
+# service's logging driver from local json-file to awslogs, shipping container
+# logs to CloudWatch Logs group /team247/beta. Not usable outside AWS (the
+# awslogs driver needs the instance's IAM role / AWS credentials to authenticate).
+#
+# Run on the EC2 box:
+#   docker compose -f docker-compose.prod.yml -f deploy/docker-compose.aws.yml up -d --build
+services:
+  app:
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: /team247/beta
+        awslogs-region: ap-southeast-1
+        awslogs-create-group: "false"
+        tag: team247-app
