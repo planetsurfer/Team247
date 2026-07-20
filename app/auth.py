@@ -57,13 +57,18 @@ def _bearer_token(request: Request) -> str | None:
 
 
 # ── minting / management (used by app.mint_token; no plaintext ever stored) ──
-def mint(label: str, daily_quota: int | None = None) -> str:
-    """Create a new active beta token, store only its hash, return the plaintext once."""
+def mint(label: str, daily_quota: int | None = None,
+         total_quota: int | None = None) -> str:
+    """Create a new active beta token, store only its hash, return the plaintext once.
+
+    daily_quota caps generations per UTC day; total_quota caps them for the
+    token's lifetime (both NULL = unlimited, enforced in consume_quota).
+    """
     token = _TOKEN_PREFIX + secrets.token_urlsafe(24)
     db.execute(
-        "INSERT INTO beta_tokens (token_hash, label, active, created_at, last_used_at, daily_quota) "
-        "VALUES (?, ?, 1, ?, NULL, ?)",
-        (_hash(token), label, _now(), daily_quota),
+        "INSERT INTO beta_tokens (token_hash, label, active, created_at, last_used_at, "
+        "daily_quota, total_quota) VALUES (?, ?, 1, ?, NULL, ?, ?)",
+        (_hash(token), label, _now(), daily_quota, total_quota),
     )
     return token
 
@@ -93,8 +98,10 @@ def list_tokens() -> list[dict]:
     enough to identify a token to `revoke()` without ever exposing the full hash.
     """
     rows = db.query(
-        "SELECT token_hash, label, active, created_at, last_used_at, daily_quota "
-        "FROM beta_tokens ORDER BY created_at DESC"
+        "SELECT t.token_hash, t.label, t.active, t.created_at, t.last_used_at, "
+        "t.daily_quota, t.total_quota, COALESCE(SUM(u.count), 0) AS used "
+        "FROM beta_tokens t LEFT JOIN beta_token_usage u ON u.token_hash = t.token_hash "
+        "GROUP BY t.token_hash ORDER BY t.created_at DESC"
     )
     return [
         {
@@ -104,6 +111,8 @@ def list_tokens() -> list[dict]:
             "created_at": r["created_at"],
             "last_used_at": r["last_used_at"],
             "daily_quota": r["daily_quota"],
+            "total_quota": r["total_quota"],
+            "used": r["used"],
         }
         for r in rows
     ]
@@ -126,6 +135,7 @@ def require_beta(request: Request) -> None:
         request.state.is_admin = True
         request.state.token_hash = "admin"
         request.state.daily_quota = None
+        request.state.total_quota = None
         return
 
     token = _bearer_token(request)
@@ -134,7 +144,7 @@ def require_beta(request: Request) -> None:
 
     token_hash = _hash(token)
     row = db.query(
-        "SELECT active, daily_quota FROM beta_tokens WHERE token_hash = ?",
+        "SELECT active, daily_quota, total_quota FROM beta_tokens WHERE token_hash = ?",
         (token_hash,),
         one=True,
     )
@@ -144,6 +154,7 @@ def require_beta(request: Request) -> None:
     request.state.is_admin = False
     request.state.token_hash = token_hash
     request.state.daily_quota = row["daily_quota"]
+    request.state.total_quota = row["total_quota"]
 
     try:
         db.execute(
@@ -189,7 +200,8 @@ def consume_quota(request: Request) -> None:
 
     token_hash = getattr(request.state, "token_hash", None)
     quota = getattr(request.state, "daily_quota", None)
-    if not token_hash or quota is None:
+    total_quota = getattr(request.state, "total_quota", None)
+    if not token_hash or (quota is None and total_quota is None):
         return  # unlimited token, or require_beta didn't run (nothing to meter)
 
     day = _today()
@@ -199,8 +211,15 @@ def consume_quota(request: Request) -> None:
             (token_hash, day),
         ).fetchone()
         current = row["count"] if row else 0
-        if current + 1 > quota:
+        if quota is not None and current + 1 > quota:
             raise HTTPException(status_code=429, detail="daily quota exceeded")
+        if total_quota is not None:
+            lifetime = conn.execute(
+                "SELECT COALESCE(SUM(count), 0) AS n FROM beta_token_usage "
+                "WHERE token_hash = ?", (token_hash,),
+            ).fetchone()["n"]
+            if lifetime + 1 > total_quota:
+                raise HTTPException(status_code=429, detail="generation quota exhausted")
         if row:
             conn.execute(
                 "UPDATE beta_token_usage SET count = count + 1 WHERE token_hash = ? AND day = ?",

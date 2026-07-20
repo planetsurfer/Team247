@@ -212,7 +212,8 @@ CREATE TABLE IF NOT EXISTS beta_tokens (
   active        INTEGER NOT NULL DEFAULT 1,
   created_at    TEXT NOT NULL,
   last_used_at  TEXT,
-  daily_quota   INTEGER             -- NULL = unlimited
+  daily_quota   INTEGER,            -- NULL = unlimited (per UTC day)
+  total_quota   INTEGER             -- NULL = unlimited (lifetime cap)
 );
 
 CREATE TABLE IF NOT EXISTS beta_token_usage (
