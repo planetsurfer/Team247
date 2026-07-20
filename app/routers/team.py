@@ -1,12 +1,18 @@
 """Team lifecycle + Phase 1-2 (recommend / edit) routes: /api/team/*."""
+import io
+import re
+import zipfile
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
 
-from app import db, jobs, settings
+from app import db, jobs, llm_contracts, settings
 from app.ratelimit import llm_rate_limit
-from app.services import handoff_service, render_service, team_service, verify_service
+from app.services import (
+    handoff_service, render_service, skill_bundle_service, team_service, verify_service,
+)
 from app.services.team_service import TeamNotFound
 import classify
 
@@ -40,6 +46,12 @@ class UpdateAgentIn(BaseModel):
 
 class WireIn(BaseModel):
     use_case: Optional[str] = None
+
+
+class SkillBundlesIn(BaseModel):
+    use_case: Optional[str] = None
+    artifacts_needed: Optional[list] = None
+    format: Optional[str] = "json"
 
 
 @router.post("/api/team/recommend", dependencies=[Depends(llm_rate_limit)])
@@ -202,3 +214,69 @@ def get_verify(team_id: str, agent_id: str, request: Request):
     if r is None:
         raise HTTPException(status_code=404, detail="no verify run")
     return r
+
+
+# ── Iteration 5: skill-bundle export (admin-gated) ──────────────────────────
+def _slugify_role(role: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", (role or "").lower()).strip("-")
+    return slug or "role"
+
+
+@router.post("/api/team/{team_id}/skill-bundles", dependencies=[Depends(llm_rate_limit)])
+def skill_bundles(team_id: str, body: SkillBundlesIn, request: Request):
+    if not settings.admin_token_ok(request.headers.get("authorization", "")):
+        raise HTTPException(
+            status_code=401, detail="admin token required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    try:
+        team = team_service.get_team(team_id)
+    except TeamNotFound:
+        raise HTTPException(status_code=404, detail="team not found")
+
+    use_case = body.use_case or team.get("use_case") or ""
+
+    if not handoff_service.get_handoffs(team_id):
+        try:
+            handoff_service.wire(team_id, use_case)
+        except Exception:
+            pass  # best-effort — bundles just won't have an I/O contract
+
+    if body.artifacts_needed is not None:
+        artifacts_needed = body.artifacts_needed
+    else:
+        try:
+            artifacts_needed = llm_contracts.identify_artifacts(use_case)
+        except Exception:
+            artifacts_needed = []
+
+    result = skill_bundle_service.compose_team_bundles(team_id, use_case, artifacts_needed)
+
+    seen_slugs = {}
+    for bundle in result["bundles"]:
+        slug = _slugify_role(bundle["role"])
+        if slug in seen_slugs:
+            slug = f"{slug}-{bundle['agent_id']}"
+        seen_slugs[slug] = True
+        bundle["filename"] = f"{slug}/SKILL.md"
+
+    if body.format == "zip":
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for bundle in result["bundles"]:
+                zf.writestr(bundle["filename"], bundle["skill_md"])
+        buf.seek(0)
+        return StreamingResponse(
+            buf,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f'attachment; filename="team-{team_id}-skills.zip"'
+            },
+        )
+
+    return {
+        "team_id": result["team_id"],
+        "use_case": result["use_case"],
+        "coherence": skill_bundle_service.check_team_coherence(team_id),
+        "bundles": result["bundles"],
+    }
