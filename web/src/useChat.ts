@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   asVerifyResult,
+  authStatus,
   catalogCard,
   catalogSearch,
   getAdminToken,
@@ -19,6 +20,7 @@ import {
   renderAsync,
   seedTokenFromUrl,
   setAdminToken as persistToken,
+  setBetaToken as persistBetaToken,
   skillBundlesZip,
   specMd as fetchSpecMd,
   teamSkills,
@@ -53,6 +55,11 @@ interface ChatState {
   adminToken: string;
   tokenRejected?: boolean;
   bundleBusy?: boolean;   // drop-in agent zip is being generated server-side
+  // beta-access gate (closed beta — PRODUCTION_ROADMAP.md P0 #1)
+  betaChecked: boolean;        // has the initial /api/auth/status probe resolved?
+  betaAuth: boolean;           // server has BETA_AUTH on
+  betaAuthenticated: boolean;  // true when betaAuth is off, or a valid token is stored
+  betaTokenError?: string;
 }
 
 const INITIAL: ChatState = {
@@ -67,6 +74,9 @@ const INITIAL: ChatState = {
   artifacts: [],
   copied: false,
   adminToken: "",
+  betaChecked: false,
+  betaAuth: false,
+  betaAuthenticated: true,
 };
 
 export function useChat() {
@@ -90,6 +100,34 @@ export function useChat() {
       if (renderPollRef.current) renderPollRef.current.stop();
       if (putTimerRef.current) clearTimeout(putTimerRef.current);
       if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    };
+  }, []);
+
+  // beta-access gate: probe /api/auth/status once on mount (uses whatever
+  // beta token is already in localStorage, if any). If the server doesn't
+  // require beta auth, or the stored token is already valid, the gate never
+  // shows and Landing renders normally.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const r = await authStatus();
+      if (cancelled) return;
+      if (isApiError(r)) {
+        // network blip — fail open on the check itself (don't strand the UI
+        // in a perpetual loading state); the endpoints themselves still
+        // enforce the real gate server-side.
+        setState((s) => ({ ...s, betaChecked: true }));
+        return;
+      }
+      setState((s) => ({
+        ...s,
+        betaAuth: r.beta_auth,
+        betaAuthenticated: r.beta_auth ? r.authenticated : true,
+        betaChecked: true,
+      }));
+    })();
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -499,6 +537,22 @@ export function useChat() {
     setState((s) => ({ ...s, adminToken: t, tokenRejected: false }));
   }, []);
 
+  // ── beta-access token gate: submit from the Landing gate form ────────────
+  // Validates against /api/auth/status BEFORE persisting — an invalid/revoked
+  // token is never written to localStorage, so the gate re-shows an inline
+  // error instead of silently storing a token that will just 401 later.
+  const submitBetaToken = useCallback(async (token: string) => {
+    const clean = token.trim();
+    if (!clean) return;
+    const r = await authStatus(clean);
+    if (!isApiError(r) && r.authenticated) {
+      persistBetaToken(clean);
+      setState((s) => ({ ...s, betaAuthenticated: true, betaTokenError: undefined }));
+    } else {
+      setState((s) => ({ ...s, betaTokenError: "invalid or revoked token" }));
+    }
+  }, []);
+
   return {
     state,
     send,
@@ -519,6 +573,7 @@ export function useChat() {
     onInput,
     onKey,
     setAdminTokenState,
+    submitBetaToken,
   };
 }
 

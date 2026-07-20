@@ -53,11 +53,25 @@ from fastapi import HTTPException, Request
 _hits: dict = collections.defaultdict(list)
 
 
+def _rate_key(request: Request) -> str:
+    """Beta-token hash when the request is beta/admin-authed (set by
+    app.auth.require_beta on request.state), else per-client-IP — same
+    fallback as before beta auth existed. Keying by token (not IP) fixes the
+    LB-spoofing problem: a shared token is limited per-token, not per-egress-IP.
+    """
+    token_hash = getattr(request.state, "token_hash", None)
+    if token_hash:
+        return f"tok:{token_hash}"
+    return f"ip:{request.client.host if request.client else 'anon'}"
+
+
 def llm_rate_limit(request: Request):
-    """Per-IP sliding 60s window. 429 with Retry-After once RATE_LIMIT_PER_MIN is hit."""
-    ip = request.client.host if request.client else "anon"
+    """Sliding 60s window, keyed per beta-token (falls back to per-IP when
+    unauthed / BETA_AUTH off). 429 with Retry-After once RATE_LIMIT_PER_MIN is hit.
+    """
+    key = _rate_key(request)
     now = time.time()
-    window = [t for t in _hits[ip] if t > now - 60]
+    window = [t for t in _hits[key] if t > now - 60]
     if len(window) >= settings.RATE_LIMIT_PER_MIN:
         raise HTTPException(
             status_code=429,
@@ -65,4 +79,4 @@ def llm_rate_limit(request: Request):
             headers={"Retry-After": "60"},
         )
     window.append(now)
-    _hits[ip] = window
+    _hits[key] = window

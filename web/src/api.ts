@@ -22,6 +22,21 @@ export function setAdminToken(t: string): void {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
+// ── beta-access token (closed beta — PRODUCTION_ROADMAP.md P0 #1) ──────────
+// Separate from the admin token: this is the per-user token minted by
+// `python -m app.mint_token`, gating every LLM-driving endpoint when the
+// server has BETA_AUTH on. Attached to every /api request by `api()` /
+// `apiVerify()` below.
+const BETA_TOKEN_KEY = "team247.betaToken";
+
+export function getBetaToken(): string {
+  return localStorage.getItem(BETA_TOKEN_KEY) ?? "";
+}
+export function setBetaToken(t: string): void {
+  if (t) localStorage.setItem(BETA_TOKEN_KEY, t);
+  else localStorage.removeItem(BETA_TOKEN_KEY);
+}
+
 // On first mount: a one-shot ?token= share param seeds the token, then is
 // stripped from the URL so it doesn't linger in history.
 export function seedTokenFromUrl(): string {
@@ -77,14 +92,23 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T | ApiError> {
   }
 }
 
-// JSON GET/POST to /api/<path>. Returns parsed JSON or {error}.
+// JSON GET/POST to /api/<path>. Attaches Authorization: Bearer <betaToken>
+// when one is stored (closed beta — PRODUCTION_ROADMAP.md P0 #1); a caller
+// that already set its own Authorization header (e.g. apiVerify) wins.
 export function api<T>(path: string, opts?: RequestInit): Promise<T | ApiError> {
-  return req<T>("/api" + path, opts);
+  const headers: Record<string, string> = {
+    ...(opts?.headers as Record<string, string> | undefined),
+  };
+  const betaToken = getBetaToken();
+  if (betaToken && !headers["Authorization"]) headers["Authorization"] = "Bearer " + betaToken;
+  return req<T>("/api" + path, { ...opts, headers });
 }
 
-// Drop-in agent bundle: admin-gated POST /team/{id}/skill-bundles?format=zip.
-// Returns the zip Blob (one <role-slug>/SKILL.md per agent — loadable into
-// Claude/Codex or any Agent Skills harness) or ApiError (401 -> re-prompt token).
+// Drop-in agent bundle: beta-gated POST /team/{id}/skill-bundles?format=zip
+// (admin token also accepted — it's a strict superset). Returns the zip Blob
+// (one <role-slug>/SKILL.md per agent — loadable into Claude/Codex or any
+// Agent Skills harness) or ApiError (401 -> re-prompt token). `token` (admin)
+// wins when set; otherwise falls back to the stored beta token.
 // use_case is omitted on purpose: the server falls back to the team's stored one.
 export async function skillBundlesZip(
   teamId: string,
@@ -92,7 +116,8 @@ export async function skillBundlesZip(
 ): Promise<Blob | ApiError> {
   try {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (token) headers["Authorization"] = "Bearer " + token;
+    const effective = token || getBetaToken();
+    if (effective) headers["Authorization"] = "Bearer " + effective;
     const r = await fetch(`/api/team/${teamId}/skill-bundles`, {
       method: "POST",
       headers,
@@ -109,8 +134,13 @@ export async function skillBundlesZip(
 
 // Plaintext GET (for /specs/{agent_id} which is PlainTextResponse).
 export async function apiText(path: string, opts?: RequestInit): Promise<string | ApiError> {
+  const headers: Record<string, string> = {
+    ...(opts?.headers as Record<string, string> | undefined),
+  };
+  const betaToken = getBetaToken();
+  if (betaToken && !headers["Authorization"]) headers["Authorization"] = "Bearer " + betaToken;
   try {
-    const r = await fetch("/api" + path, opts ?? {});
+    const r = await fetch("/api" + path, { ...opts, headers });
     const text = await r.text();
     if (!r.ok) return { error: String(r.status), status: r.status, detail: text };
     return text;
@@ -119,8 +149,12 @@ export async function apiText(path: string, opts?: RequestInit): Promise<string 
   }
 }
 
-// Admin-gated call — injects Authorization: Bearer <token>. Returns ApiError
-// with status=401 / 429 distinctly so the UI can clear/re-prompt the token.
+// Admin-gated call — injects Authorization: Bearer <token>. `token` (admin)
+// wins when set; otherwise falls back to the stored beta token, so admin-only
+// endpoints (verify) still correctly 401 for a beta-only caller while
+// beta-relaxed endpoints called through this helper still authenticate.
+// Returns ApiError with status=401 / 429 distinctly so the UI can
+// clear/re-prompt the token.
 export async function apiVerify<T>(
   path: string,
   token: string,
@@ -130,7 +164,8 @@ export async function apiVerify<T>(
     "Content-Type": "application/json",
     ...(opts?.headers as Record<string, string> | undefined),
   };
-  if (token) headers["Authorization"] = "Bearer " + token;
+  const effective = token || getBetaToken();
+  if (effective) headers["Authorization"] = "Bearer " + effective;
   return req<T>("/api" + path, { ...opts, headers });
 }
 
@@ -142,6 +177,23 @@ export function isApiError<T>(v: T | ApiError): v is ApiError {
     typeof (v as ApiError).error === "string"
   );
 }
+
+// ── beta-access status (GET /api/auth/status — open, no LLM) ───────────────
+export interface AuthStatus {
+  beta_auth: boolean;
+  authenticated: boolean;
+}
+
+// Checks a specific token (defaults to the stored one) against the server
+// without persisting it — the caller decides whether/when to store it via
+// setBetaToken(). Used both by the startup gate check and by the Landing
+// beta-gate form's submit handler.
+export const authStatus = (token?: string) => {
+  const headers: Record<string, string> = {};
+  const t = token ?? getBetaToken();
+  if (t) headers["Authorization"] = "Bearer " + t;
+  return req<AuthStatus>("/api/auth/status", { headers });
+};
 
 // ── typed endpoint helpers ──────────────────────────────────────────────────
 export const catalogSearch = (q: string, size = 10) =>

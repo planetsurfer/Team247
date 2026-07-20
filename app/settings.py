@@ -12,6 +12,12 @@ APP_BASE_URL = os.getenv("APP_BASE_URL", "/")
 SPEC_TTL_DAYS = int(os.getenv("SPEC_TTL_DAYS", "7"))  # team_spec_versions freshness before forced re-render
 PRE_DISTILL_POPULAR = int(os.getenv("PRE_DISTILL_POPULAR", "50"))  # top-N roles to pre-distill at startup
 
+# Closed-beta token auth (PRODUCTION_ROADMAP.md P0 #1). Fail-secure default: beta
+# auth is ON unless explicitly turned off (BETA_AUTH=off), so a missing env var
+# in a deployed environment never accidentally opens the gate.
+BETA_AUTH = os.getenv("BETA_AUTH", "on") != "off"
+BETA_TOKEN_SALT = os.getenv("BETA_TOKEN_SALT", "")  # mixed into every token hash
+
 
 def admin_token_ok(header_value: str) -> bool:
     """True if the Authorization header carries the configured admin token."""

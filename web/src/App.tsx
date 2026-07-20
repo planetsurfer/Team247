@@ -13,7 +13,18 @@ export function App() {
   const { state } = chat;
   const landing = state.messages.length === 0;
 
-  const showTokenBar = !state.adminToken || !!state.tokenRejected;
+  // AdminTokenBar only surfaces on an explicit ?admin=1 (or once an admin
+  // call is actually rejected) — it used to show by default to every visitor,
+  // which doesn't fit a closed-beta audience that isn't admin.
+  const adminRequested =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("admin") === "1";
+  const showTokenBar = (adminRequested && !state.adminToken) || !!state.tokenRejected;
+
+  // beta-access gate (closed beta — PRODUCTION_ROADMAP.md P0 #1): hold the
+  // landing view until the initial /api/auth/status probe resolves, so an
+  // ungated task input never flashes before we know whether one is required.
+  const betaGated = state.betaChecked && state.betaAuth && !state.betaAuthenticated;
 
   return (
     <div
@@ -30,7 +41,9 @@ export function App() {
           onSave={chat.setAdminTokenState}
         />
       )}
-      {landing ? (
+      {!state.betaChecked ? (
+        <div style={{ flex: 1 }} />
+      ) : landing ? (
         <Landing
           theme={theme}
           input={state.input}
@@ -38,6 +51,9 @@ export function App() {
           onKey={chat.onKey}
           onSend={chat.send}
           onPickRole={chat.pickRole}
+          gate={betaGated}
+          gateError={state.betaTokenError}
+          onSubmitBetaToken={chat.submitBetaToken}
         />
       ) : (
         <Thread chat={chat} accent={theme.accent} />

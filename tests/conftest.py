@@ -16,9 +16,17 @@ implementations land.
 """
 from __future__ import annotations
 
+import os
 import pathlib
 import sqlite3
 import sys
+
+# Default the whole suite to the pre-beta-auth open behavior (BETA_AUTH=off),
+# same as docker-compose.test.yml. Set via os.environ.setdefault, BEFORE any
+# `app.settings` import, so a caller that explicitly exports BETA_AUTH=on
+# (e.g. to exercise tests/test_beta_auth.py's own fixtures against a live
+# server) is never silently overridden.
+os.environ.setdefault("BETA_AUTH", "off")
 
 import pytest
 

@@ -1,0 +1,21 @@
+# Local testing override — NOT the production compose.
+# - host port 8247 (8000 is taken by another project), bound to localhost only
+# - bind-mounts the real ./data so the container runs with the full DB
+#   (roles=1910, role_functions=14126) instead of a fresh roles-only seed
+# Run:  docker compose -f docker-compose.test.yml up --build -d
+services:
+  app:
+    build: .
+    image: team247:test
+    container_name: team247-test
+    ports:
+      - "127.0.0.1:8247:8000"
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
+    environment:
+      # Preserves the local container's pre-beta-auth open behavior — this is
+      # a local testing override, not the beta/production deploy.
+      BETA_AUTH: "off"
+    restart: "no"

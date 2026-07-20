@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import sqlite3
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 from app import settings
+from app.auth import is_authenticated
 
 router = APIRouter()
 
@@ -56,4 +57,17 @@ def health() -> dict:
         "ok": True,
         "roles_count": _roles_count(),
         "ka_warmed": _ka_warmed(),
+    }
+
+
+@router.get("/api/auth/status")
+def auth_status(request: Request) -> dict:
+    """Open (unauthenticated) probe the UI polls to decide whether to show the
+    beta-access gate: {beta_auth, authenticated}. Cheap — no DB seed reads, no
+    LLM. `authenticated` reflects whatever Authorization header (if any) came
+    with this request, without mutating last_used_at (see app.auth.is_authenticated).
+    """
+    return {
+        "beta_auth": settings.BETA_AUTH,
+        "authenticated": is_authenticated(request) if settings.BETA_AUTH else True,
     }

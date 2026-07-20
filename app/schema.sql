@@ -201,3 +201,23 @@ CREATE TRIGGER IF NOT EXISTS role_skills_au AFTER UPDATE ON role_skills BEGIN
   INSERT INTO role_skills_fts(role_skills_fts, rowid, skill) VALUES('delete', old.rs_id, old.skill);
   INSERT INTO role_skills_fts(rowid, skill) VALUES (new.rs_id, new.skill);
 END;
+
+-- ── Closed-beta token auth (PRODUCTION_ROADMAP.md P0 #1) ────────────────────────
+-- Only salted SHA-256 hashes are ever stored — never plaintext tokens. Minted /
+-- inspected via `python -m app.mint_token` (app/auth.py); consumed by
+-- app.auth.require_beta / consume_quota as FastAPI dependencies.
+CREATE TABLE IF NOT EXISTS beta_tokens (
+  token_hash    TEXT PRIMARY KEY,   -- sha256(BETA_TOKEN_SALT + plaintext)
+  label         TEXT NOT NULL,
+  active        INTEGER NOT NULL DEFAULT 1,
+  created_at    TEXT NOT NULL,
+  last_used_at  TEXT,
+  daily_quota   INTEGER             -- NULL = unlimited
+);
+
+CREATE TABLE IF NOT EXISTS beta_token_usage (
+  token_hash  TEXT NOT NULL,
+  day         TEXT NOT NULL,        -- UTC 'YYYY-MM-DD'
+  count       INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (token_hash, day)
+);

@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from app import db, jobs, llm_contracts, settings
+from app.auth import consume_quota, require_beta
 from app.ratelimit import llm_rate_limit
 from app.services import (
     handoff_service, render_service, skill_bundle_service, team_service, verify_service,
@@ -54,7 +55,10 @@ class SkillBundlesIn(BaseModel):
     format: Optional[str] = "json"
 
 
-@router.post("/api/team/recommend", dependencies=[Depends(llm_rate_limit)])
+@router.post(
+    "/api/team/recommend",
+    dependencies=[Depends(require_beta), Depends(llm_rate_limit), Depends(consume_quota)],
+)
 def recommend(body: RecommendIn):
     # Reject empty input up front: without a use_case or a brief the pipeline runs
     # on nothing and returns a real-but-irrelevant team with 200 (the {"task": ...}
@@ -134,7 +138,10 @@ def skills(team_id: str, agent_id: str):
 
 
 # ── Phase 3: wire + deliver ────────────────────────────────────────────────
-@router.post("/api/team/{team_id}/wire", dependencies=[Depends(llm_rate_limit)])
+@router.post(
+    "/api/team/{team_id}/wire",
+    dependencies=[Depends(require_beta), Depends(llm_rate_limit)],
+)
 def wire(team_id: str, body: WireIn):
     try:
         return handoff_service.wire(team_id, body.use_case)
@@ -142,7 +149,10 @@ def wire(team_id: str, body: WireIn):
         raise HTTPException(status_code=404, detail="team not found")
 
 
-@router.post("/api/team/{team_id}/render", dependencies=[Depends(llm_rate_limit)])
+@router.post(
+    "/api/team/{team_id}/render",
+    dependencies=[Depends(require_beta), Depends(llm_rate_limit)],
+)
 def render_team(team_id: str, force: bool = False, async_mode: bool = False):
     try:
         if async_mode:
@@ -216,19 +226,17 @@ def get_verify(team_id: str, agent_id: str, request: Request):
     return r
 
 
-# ── Iteration 5: skill-bundle export (admin-gated) ──────────────────────────
+# ── Iteration 5: skill-bundle export (beta-gated — item 5, PRODUCTION_ROADMAP.md P0 #1) ──
 def _slugify_role(role: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", (role or "").lower()).strip("-")
     return slug or "role"
 
 
-@router.post("/api/team/{team_id}/skill-bundles", dependencies=[Depends(llm_rate_limit)])
-def skill_bundles(team_id: str, body: SkillBundlesIn, request: Request):
-    if not settings.admin_token_ok(request.headers.get("authorization", "")):
-        raise HTTPException(
-            status_code=401, detail="admin token required",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+@router.post(
+    "/api/team/{team_id}/skill-bundles",
+    dependencies=[Depends(require_beta), Depends(llm_rate_limit)],
+)
+def skill_bundles(team_id: str, body: SkillBundlesIn):
     try:
         team = team_service.get_team(team_id)
     except TeamNotFound:
