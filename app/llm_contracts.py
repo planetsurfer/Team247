@@ -282,6 +282,82 @@ def team_recommend(brief, candidates, functions_needed=None, must_cover=None):
     return TeamRecommend.model_validate(raw)
 
 
+def _relabel_backedges_to_feedback(wh, agent_ids):
+    """Deterministically relabel the minimal set of cycle-closing edges in
+    `wh.handoffs` as the ceremony 'feedback loop', so the graph of remaining
+    non-feedback edges is acyclic. Mutates `wh` in place. Returns the count
+    of handoffs relabeled.
+
+    Only edges that count toward the DAG are considered: ceremony !=
+    'feedback loop' AND both endpoints are real agent_ids (not 'external').
+    This includes self-loops (from == to), which are trivially back-edges.
+
+    A single DFS pass over the internal non-feedback edges, visiting nodes
+    and adjacency lists in sorted order for determinism, finds every edge
+    that closes a cycle (points at a node currently on the recursion stack)
+    and relabels the underlying Handoff objects.
+    """
+    nodes = sorted(agent_ids)
+    node_set = set(agent_ids)
+
+    # Build adjacency: node -> sorted list of (to_node, handoff_index) for
+    # internal, non-feedback edges (self-loops included).
+    adj = {a: [] for a in nodes}
+    for idx, h in enumerate(wh.handoffs):
+        if h.ceremony == "feedback loop":
+            continue
+        if h.from_agent not in node_set or h.to_agent not in node_set:
+            continue
+        adj[h.from_agent].append((h.to_agent, idx))
+    for a in nodes:
+        adj[a].sort(key=lambda pair: pair[0])
+
+    state = {a: 0 for a in nodes}  # 0=unvisited, 1=on-stack, 2=done
+    backedge_indices = set()
+
+    def dfs(u):
+        state[u] = 1
+        for v, idx in adj[u]:
+            if idx in backedge_indices:
+                continue
+            if state[v] == 1 or u == v:
+                backedge_indices.add(idx)
+            elif state[v] == 0:
+                dfs(v)
+        state[u] = 2
+
+    for a in nodes:
+        if state[a] == 0:
+            dfs(a)
+
+    for idx in backedge_indices:
+        wh.handoffs[idx].ceremony = "feedback loop"
+
+    # Safety net: confirm the remaining non-feedback subgraph is acyclic.
+    remaining_adj = {a: set() for a in nodes}
+    indeg = {a: 0 for a in nodes}
+    for idx, h in enumerate(wh.handoffs):
+        if idx in backedge_indices or h.ceremony == "feedback loop":
+            continue
+        if h.from_agent not in node_set or h.to_agent not in node_set:
+            continue
+        if h.to_agent not in remaining_adj[h.from_agent]:
+            remaining_adj[h.from_agent].add(h.to_agent)
+            indeg[h.to_agent] += 1
+    queue = [a for a in nodes if indeg[a] == 0]
+    seen = 0
+    while queue:
+        n = queue.pop()
+        seen += 1
+        for m in remaining_adj[n]:
+            indeg[m] -= 1
+            if indeg[m] == 0:
+                queue.append(m)
+    assert seen == len(nodes), "back-edge relabeling failed to make the graph acyclic"
+
+    return len(backedge_indices)
+
+
 def _validate_wire_handoffs(o):
     wh = WireHandoffs.model_validate(o)
     # ceremony enum + from/to are strings (graph check is server-side in the service
@@ -330,12 +406,17 @@ def wire_handoffs(composition, use_case, agent_ids):
         max_tokens=2048,
     )
     wh = WireHandoffs.model_validate(raw)
+    # The LLM sometimes produces a cyclic handoff graph. Deterministically and
+    # losslessly relabel the minimal cycle-closing edges as 'feedback loop'
+    # (the ceremony validate_handoff_graph already exempts as the allowed
+    # back-edge) instead of dropping edges or crashing the wire.
+    _relabel_backedges_to_feedback(wh, agent_ids)
     handoff_dicts = [
         {"from_agent": h.from_agent, "to_agent": h.to_agent, "ceremony": h.ceremony,
          "artifact": h.artifact, "description": h.description}
         for h in wh.handoffs
     ]
-    validate_handoff_graph(handoff_dicts, agent_ids)  # raises on a non-feedback cycle
+    validate_handoff_graph(handoff_dicts, agent_ids)  # safety net: should now pass
     return wh
 
 
