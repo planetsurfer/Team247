@@ -2,6 +2,13 @@
 
 _Newest first. Auto-stamped by the SessionEnd hook; fill in each Summary._
 
+## 2026-07-20 — Skill-bundle loop (REFRAMED: scaffolds) — ITER 1 (base-skill generator)
+- **Owner chose "build the scaffold generator"** after the iter-0 gate. Scope: task-conditioned skill SCAFFOLDS (capability + handoff I/O contract + required-inputs manifest); NO sandbox-proof pillar. Opus orchestrated, Sonnet 5 worker built.
+- **Iter 1 (done): role-level BASE skill generator.** New module `app/services/skill_bundle_service.py` (nothing else touched; no DB schema change): `_base_grounding(role)` reuses `teamspec.skill_rows` + `_split_ka`, prioritizes ability-bearing skills (caps ~8, ≤2 knowledge-only as background); `generate_base_skill(role, force=)` → canonical Agent Skills SKILL.md (YAML frontmatter name+description + grounded capability body) via ONE `llm_chat(purpose="skill_base")`, cached to `data/skill_cache/base/<slug>.md` keyed by a grounding-hash; `validate_skill_md(md)` deterministic well-formedness (pyyaml). Added `pyyaml` to requirements.txt (was only transitive); gitignored `data/skill_cache/`.
+- **Verified independently (Opus, fresh roles):** well-formedness 100% on the 3 roles tried (Credit&Lending Ops, Sales Executive, Contract Specialist); frontmatter valid; cache reuse ~0.004s byte-identical.
+- **Grounding-quality finding (for the eval, not a bug):** base-skill DISTINCTIVENESS varies by role — Credit&Lending Ops grounded specific (collateral/margin/financial-transaction), but Contract Specialist came out GENERIC (stakeholder/systems-thinking/change) because that role's framework TSCs are generic, not contract-specific. The generator faithfully grounds in the framework data; role-distinctiveness is a data property to quantify (grounding-coverage metric) in the measure iteration.
+- **Next (Iter 2):** task overlay — thin per-team adapter on the base: inputs (artifacts_needed + what this agent CONSUMES per handoffs), deliverable (what it PRODUCES), success criteria, conditioned on the brief. Keep base reusable + overlay per-task.
+
 ## 2026-07-20 — Skill-bundle enhancement loop — ITER 0 DE-RISK GATE → HALTED (reframe needed)
 - **Goal probed:** task-conditioned agent SKILL bundles (real Agent Skills SKILL.md), grounded, base+overlay, off the handoff graph, sandbox-verified. Opus orchestrated, Sonnet 5 worker built one real bundle. Model kimi-k2.6.
 - **Grounding audit (the gate's real job) — what EXISTS vs what's MISSING:**

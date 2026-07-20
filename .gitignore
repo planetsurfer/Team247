@@ -31,3 +31,6 @@ data/agentproof.db-journal
 data/agentproof.db-wal
 data/agentproof.db-shm
 *.bak
+
+# generated Agent Skill scaffolds (regenerate via skill_bundle_service)
+data/skill_cache/
