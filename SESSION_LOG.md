@@ -2,6 +2,16 @@
 
 _Newest first. Auto-stamped by the SessionEnd hook; fill in each Summary._
 
+## 2026-07-20 — Skill-bundle enhancement loop — ITER 0 DE-RISK GATE → HALTED (reframe needed)
+- **Goal probed:** task-conditioned agent SKILL bundles (real Agent Skills SKILL.md), grounded, base+overlay, off the handoff graph, sandbox-verified. Opus orchestrated, Sonnet 5 worker built one real bundle. Model kimi-k2.6.
+- **Grounding audit (the gate's real job) — what EXISTS vs what's MISSING:**
+  - RICH ENOUGH (universal): `role_skills` (43k) + `ka_items` (150k, ability statements ARE action-oriented) + the wired `team_handoffs` I/O contract (consumes/produces + artifact names) + `artifacts_needed`. → supports a grounded task-conditioned **scaffold**.
+  - TOO THIN for "runnable/proven": `card_battery_items` = **3 rows total** (the executable/gradeable grounding the sandbox-proof pillar needs is essentially empty); `cards` enriched for only **35/1910** roles and NULL for the roles actually recommended (no tools, no distilled responsibilities). Org-operational specifics (escalation cadence, message templates, $/day thresholds, system/tool names) are by-design NOT in the system.
+- **Probe result (Credit & Lending Ops Analyst, task "chase unpaid invoices"):** the built bundle is genuinely useful as a **process scaffold + honest capability map** — the handoff I/O contract and role boundaries (won't close accounts itself; receives the list, produces the confirmation) are tightly grounded and uniquely enabled by the wired-team data. But the load-bearing procedure is absent from grounding; the worker correctly refused to invent it and emitted a gaps manifest. ~60% of the SKILL.md backbone tightly grounded; the rest required interpretive stretch (flagged inline). NO executable script (no basis) → nothing for phase-4 sandbox to verify.
+- **GATE DECISION: HALT the loop.** The chartered "sandbox-verified RUNNABLE skill" (phases 3-4 + the proof/moat framing) would be built on sand — the executable/tool grounding does not exist at scale. What IS viable is a REFRAMED product: **task-conditioned skill SCAFFOLDS** = grounded capability + handoff I/O contract + required-real-inputs manifest (honest gaps), portable Agent Skills format. That is a material scope change (scaffold you must complete with your data, vs a "proven agent") + it affects the agentproof "proof" claim → it's the owner's call, not an auto-pivot.
+- **To make the RUNNABLE/PROVEN version real, the missing grounding is:** (1) a populated `card_battery_items` (executable task_prompt+grader per skill) at scale — itself a prerequisite LLM-heavy project, currently 3 rows; (2) `cards` enrichment (tools + distilled responsibilities) for the recommended roles, currently 35/1910; (3) a way to ingest org-specific policy/templates/thresholds (user-supplied inputs). Until (1)-(3), the generator can only emit scaffolds.
+- **No repo code changed this iteration** (probe artifacts in scratchpad/skill_bundle_probe/). Loop STOPPED pending owner decision on the reframed scope.
+
 ## 2026-07-20 09:59 +08 — Team247_private
 - **Branch:** feat/per-agent-specs-ka-guidance
 - **Session:** 7182caaa-f5c2-48eb-af17-dae9381cb5ef (ended: other)
