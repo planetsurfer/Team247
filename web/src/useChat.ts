@@ -19,6 +19,7 @@ import {
   renderAsync,
   seedTokenFromUrl,
   setAdminToken as persistToken,
+  skillBundlesZip,
   specMd as fetchSpecMd,
   teamSkills,
   verifyAsync,
@@ -51,6 +52,7 @@ interface ChatState {
   specReady?: boolean;
   adminToken: string;
   tokenRejected?: boolean;
+  bundleBusy?: boolean;   // drop-in agent zip is being generated server-side
 }
 
 const INITIAL: ChatState = {
@@ -441,6 +443,28 @@ export function useChat() {
     URL.revokeObjectURL(a.href);
   }, [loadSpec]);
 
+  // Drop-in agent bundle (the landing-page promise): zip of <role-slug>/SKILL.md
+  // files, loadable into Claude/Codex or any Agent Skills harness. Admin-gated
+  // + LLM-generated server-side (first call per team takes a while; cached after).
+  const downloadBundle = useCallback(async () => {
+    if (!state.teamId || state.bundleBusy) return;
+    patch({ bundleBusy: true });
+    const r = await skillBundlesZip(state.teamId, state.adminToken);
+    if (isApiError(r)) {
+      patch({
+        bundleBusy: false,
+        tokenRejected: r.status === 401 ? true : state.tokenRejected,
+      });
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(r);
+    a.download = "team247-agent-skills.zip";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    patch({ bundleBusy: false });
+  }, [state.teamId, state.adminToken, state.bundleBusy, state.tokenRejected, patch]);
+
   const copy = useCallback(async () => {
     const md = await loadSpec();
     if (!md) return;
@@ -489,6 +513,7 @@ export function useChat() {
     onMax,
     generate,
     download,
+    downloadBundle,
     copy,
     adjust,
     onInput,

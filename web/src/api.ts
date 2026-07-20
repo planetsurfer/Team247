@@ -82,6 +82,31 @@ export function api<T>(path: string, opts?: RequestInit): Promise<T | ApiError> 
   return req<T>("/api" + path, opts);
 }
 
+// Drop-in agent bundle: admin-gated POST /team/{id}/skill-bundles?format=zip.
+// Returns the zip Blob (one <role-slug>/SKILL.md per agent — loadable into
+// Claude/Codex or any Agent Skills harness) or ApiError (401 -> re-prompt token).
+// use_case is omitted on purpose: the server falls back to the team's stored one.
+export async function skillBundlesZip(
+  teamId: string,
+  token: string
+): Promise<Blob | ApiError> {
+  try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = "Bearer " + token;
+    const r = await fetch(`/api/team/${teamId}/skill-bundles`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ format: "zip" }),
+    });
+    if (!r.ok) {
+      return { error: String(r.status), status: r.status, detail: await r.text() };
+    }
+    return await r.blob();
+  } catch (e) {
+    return { error: "network", detail: String(e) };
+  }
+}
+
 // Plaintext GET (for /specs/{agent_id} which is PlainTextResponse).
 export async function apiText(path: string, opts?: RequestInit): Promise<string | ApiError> {
   try {

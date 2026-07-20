@@ -89,7 +89,9 @@ export function Thread({ chat, accent }: ThreadProps) {
                   skills={state.skills}
                   copied={state.copied}
                   accent={accent}
+                  bundleBusy={!!state.bundleBusy}
                   onDownload={chat.download}
+                  onDownloadBundle={chat.downloadBundle}
                   onCopy={chat.copy}
                   onAdjust={chat.adjust}
                 />

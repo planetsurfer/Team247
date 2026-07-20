@@ -11,7 +11,9 @@ interface DeliverCardProps {
   skills: SkillState[];
   copied: boolean;
   accent: string;
+  bundleBusy: boolean;
   onDownload: () => void;
+  onDownloadBundle: () => void;
   onCopy: () => void;
   onAdjust: () => void;
 }
@@ -36,7 +38,9 @@ export function DeliverCard({
   skills,
   copied,
   accent,
+  bundleBusy,
   onDownload,
+  onDownloadBundle,
   onCopy,
   onAdjust,
 }: DeliverCardProps) {
@@ -96,9 +100,10 @@ export function DeliverCard({
         isolated sandbox, graded against the official K&amp;A rubric. ○ skills
         are rubric-judged and never blended with executed scores.
       </div>
-      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+      <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
         <button
-          onClick={onDownload}
+          onClick={onDownloadBundle}
+          disabled={bundleBusy}
           style={{
             border: "none",
             background: accent,
@@ -107,10 +112,26 @@ export function DeliverCard({
             padding: "9px 16px",
             fontSize: 13,
             fontWeight: 600,
+            cursor: bundleBusy ? "wait" : "pointer",
+            opacity: bundleBusy ? 0.7 : 1,
+          }}
+        >
+          {bundleBusy ? "⏳ Preparing agent…" : "⬇ Drop-in agent (SKILL.md)"}
+        </button>
+        <button
+          onClick={onDownload}
+          style={{
+            border: `1px solid ${C.pillBorder}`,
+            background: "#fff",
+            color: "#3c3a33",
+            borderRadius: 10,
+            padding: "9px 16px",
+            fontSize: 13,
+            fontWeight: 600,
             cursor: "pointer",
           }}
         >
-          ⬇ Download agent spec
+          ⬇ Agent spec
         </button>
         <button
           onClick={onCopy}
