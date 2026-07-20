@@ -96,7 +96,7 @@ export function Landing({
       }}
     >
       <div style={{ marginBottom: 36 }}>
-        <Logo size={24} />
+        <Logo size={38} />
       </div>
       <h1
         style={{

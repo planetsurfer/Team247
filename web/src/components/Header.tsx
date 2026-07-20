@@ -16,7 +16,7 @@ export function Header(_props: { accent: string }) {
         borderBottom: `1px solid ${C.headerDivider}`,
       }}
     >
-      <Logo size={18} />
+      <Logo size={24} />
       <span
         style={{
           marginLeft: "auto",
