@@ -13,8 +13,12 @@ import os
 from datetime import datetime, timezone
 from uuid import uuid4
 
+import structlog
+
 from app import db, llm_contracts
 import classify, framework, teamspec
+
+_log = structlog.get_logger("app")
 
 
 class TeamNotFound(Exception):
@@ -81,6 +85,30 @@ def _seed_candidates_for_functions(function_ids, preferred_sectors):
                 seen_pairs.add(pair)
                 must_include.append(pair)
     return must_include, uncovered
+
+
+def _coverage_gaps(function_ids, team_role_ids):
+    """B3 (deterministic, no LLM): which of the identified functions have NO
+    covering role on the FINAL team, via role_functions. Returns the list of
+    uncovered function_ids.
+
+    This is the composer-selection signal. Retrieval is solved — per-function
+    recall is 100%, so the covering role is provably in the slate `must_include`
+    seeded above; a gap here means the composer (llm_contracts.team_recommend)
+    looked at the right role and didn't pick it. Callers should exclude
+    functions already in `functions_uncovered` (no catalog role performs them —
+    not the composer's fault) before treating a gap as a real miss.
+    """
+    if not function_ids or not team_role_ids:
+        return list(function_ids or [])
+    placeholders = ",".join("?" for _ in team_role_ids)
+    rows = db.query(
+        "SELECT DISTINCT function_id FROM role_functions "
+        f"WHERE role_id IN ({placeholders})",
+        tuple(team_role_ids),
+    )
+    covered = {r["function_id"] for r in rows}
+    return [fid for fid in function_ids if fid not in covered]
 
 
 def _loads(raw, default):
@@ -242,6 +270,28 @@ def recommend(use_case=None, brief=None, intake_session_id=None):
             "matched_on": cand.get("matched_on"),
         })
 
+    # B3 — deterministic composer-coverage check: of the coverable functions
+    # (functions_needed minus functions_uncovered), which did the composer leave
+    # with no covering role on the final team? Retrieval already put the covering
+    # role in the slate, so a gap here is a composer omission (the residual
+    # missing_key_role). Logged + returned for observability; the repair step
+    # (B4) acts on it. Pure DB — never breaks the team guarantee.
+    _team_role_ids = [a["role_id"] for a in agents_out]
+    _uncovered_ids = {f["id"] for f in functions_uncovered}
+    functions_missing_in_team = [
+        f for f in functions_needed
+        if f["id"] in set(_coverage_gaps([x["id"] for x in functions_needed], _team_role_ids))
+        and f["id"] not in _uncovered_ids
+    ]
+    if functions_missing_in_team:
+        _log.info(
+            "composer_coverage_gap",
+            team_id=team_id,
+            use_case=(use_case or "")[:120],
+            missing=[f["id"] for f in functions_missing_in_team],
+            team_role_ids=_team_role_ids,
+        )
+
     # Identify the input artifacts the user should provide (the "is a sample needed?"
     # capability). Best-effort — a failure here must never break the team guarantee;
     # fall back to an empty list so /recommend still returns a team.
@@ -256,6 +306,7 @@ def recommend(use_case=None, brief=None, intake_session_id=None):
         "artifacts_needed": artifacts,
         "functions_needed": functions_needed,
         "functions_uncovered": functions_uncovered,
+        "functions_missing_in_team": functions_missing_in_team,
         "recommendation_raw": {"team": [a.model_dump() for a in tr.team],
                                "candidates": candidates},
     }

@@ -2,6 +2,13 @@
 
 _Newest first. Auto-stamped by the SessionEnd hook; fill in each Summary._
 
+## 2026-07-20 — Composer-selection loop (close missing_key_role) — ITER 1
+- **Goal:** cut residual `missing_key_role` (last 44%) by closing the composer-selection gap. Retrieval is solved (per-function recall 100%); the covering role is provably in the slate, `llm_contracts.team_recommend` just omits it. Self-paced loop, model `kimi-k2.6`.
+- **Iter 1 (done): deterministic coverage check, no LLM.** Added `team_service._coverage_gaps(function_ids, team_role_ids)` (single `role_functions IN (...)` lookup) + post-composition check in `recommend()`: `functions_missing_in_team` = coverable functions (needed − `functions_uncovered`) with no covering role on the final team. Logged as `composer_coverage_gap` and returned in the response. Pure addition — never touches the 100%-team guarantee.
+- **Measured (n=5, kimi):** 4/5 tasks show a missing function. Pattern: composer reliably covers the **primary** (most-distinguishing) function but drops **secondary** ones — e.g. "prepare a quotation" keeps Contract, drops `business-presentation-delivery`; "chase unpaid invoices" keeps AR, drops `cash-flow-management`. Sometimes the primary itself is dropped ("onboard a new hire" → both `learning-development`+`org-culture` missing; "customer complaint" → `advocacy-dispute-resolution` missing).
+- **Key nuance for Iter 2:** a missing *secondary* function may be an intentional lean-team choice (composer was deliberately un-mandated from staffing one agent per function, to avoid the earlier bloat regression). So the repair (Iter 2) should target the **primary/key** function's covering role specifically — that is the true `missing_key_role`, and repairing only it avoids re-introducing bloat.
+- **Next (Iter 2):** re-prompt the composer once when the *primary* function's covering role is absent ("you omitted the only slate role covering &lt;fid&gt; — include it or justify"), else force-add the top covering slate role. Then measure at n=24.
+
 ## 2026-07-20 08:22 +08 — Team247_private
 - **Session:** 43ad6f03-2e6b-4321-85f0-d86c4413c699 (ended: other)
 - **Git:** not a git repo
