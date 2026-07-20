@@ -20,7 +20,7 @@ creeps in once you leave the K&A checklist. So the overlay splits cleanly:
 
 build_agent_context()   -- deterministic agent/handoff lookup (DB + handoff_service)
 generate_task_overlay() -- deterministic I/O sections + one grounded LLM subsection
-compose_bundle()        -- base skill + task overlay, one markdown document
+compose_bundle()        -- task overlay FIRST, then base skill, one markdown document
 """
 from __future__ import annotations
 
@@ -40,6 +40,12 @@ CACHE_DIR = pathlib.Path("data/skill_cache/base")
 OVERLAY_CACHE_DIR = pathlib.Path("data/skill_cache/overlay")
 MAX_SKILLS = 8          # cap on total skills fed into the grounding prompt
 MAX_BACKGROUND = 2      # at most this many ability-less skills kept as background
+
+# Bump whenever the overlay's fixed template (compose order, deterministic
+# subsections, or the overlay LLM prompt's required sections) changes, so
+# cached overlay LLM sections from an older template are never reused for a
+# newer one — see _overlay_grounding_hash.
+_OVERLAY_TEMPLATE_VERSION = 2
 
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 _HASH_LINE_RE = re.compile(r"^<!--\s*grounding-hash:\s*([0-9a-f]+)\s*-->\s*$", re.M)
@@ -336,6 +342,27 @@ def _deliverable_section(agent_context: dict) -> str:
     return "\n".join(lines)
 
 
+def _operating_mode_section() -> str:
+    """### Operating mode — deterministic, fixed directive (no LLM, no
+    agent_context — it doesn't depend on role/use case/contract). Eval
+    finding: agents running this bundle standalone (not as part of the wired
+    multi-agent team) were producing internal handoff/stage-gate artifacts
+    instead of the user-facing deliverable, because nothing in the bundle
+    said the Inputs/Deliverable contract above is team context rather than
+    the standalone output format."""
+    return (
+        "### Operating mode\n"
+        "If you are running as a STANDALONE agent for a user — not wired "
+        "into the multi-agent team described above — produce the complete "
+        "end deliverable for the user directly, in one response. Do not "
+        "emit internal handoff records, stage-gate artifacts, or split the "
+        "output into team-member handoffs: the Inputs/Deliverable contract "
+        "above describes this agent's place in the team's handoff pipeline, "
+        "not the standalone output format. The user needs the finished "
+        "deliverable, not an artifact addressed to another agent."
+    )
+
+
 def _required_inputs_section(agent_context: dict) -> str:
     """### Required real inputs (not included in this scaffold) — the
     honest-gaps manifest. Deterministic/templated: restates artifacts_needed
@@ -371,12 +398,15 @@ def _overlay_cache_path(role: str, task_hash: str) -> pathlib.Path:
 def _overlay_grounding_hash(role, use_case, consumes, produces, artifacts_needed,
                              base_md) -> str:
     """Stable short hash of everything the LLM overlay subsection is grounded
-    in (role, use case, I/O contract, base skill text) — changes iff any of
-    those change, which is what should invalidate the cache."""
+    in (role, use case, I/O contract, base skill text, overlay template
+    version) — changes iff any of those change, which is what should
+    invalidate the cache. _OVERLAY_TEMPLATE_VERSION is mixed in so a fixed-
+    template change (e.g. a new required overlay section) busts every cached
+    overlay even when role/use_case/contract/base_md are unchanged."""
     blob = json.dumps(
         {"role": role, "use_case": use_case, "consumes": consumes,
          "produces": produces, "artifacts_needed": artifacts_needed,
-         "base_md": base_md},
+         "base_md": base_md, "template_version": _OVERLAY_TEMPLATE_VERSION},
         sort_keys=True, ensure_ascii=False,
     )
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
@@ -407,11 +437,25 @@ def _build_overlay_prompt(use_case: str, agent_context: dict, base_md: str) -> l
         "procedure, tool, or system that is NOT grounded in what you were "
         "given, say so briefly (e.g. 'the specific outreach channel and "
         "cadence are not specified here') rather than fabricate one.\n"
-        "- Write ONLY the following two sections, in this exact order, "
+        "- This also applies to the Deliverable format section below: give "
+        "STRUCTURE only (section headings / table columns / bullet "
+        "structure). Do NOT invent org-specific field names, numeric "
+        "thresholds, tool/system names, or example values presented as if "
+        "they were real data.\n"
+        "- Write ONLY the following three sections, in this exact order, "
         "nothing else (no preamble, no extra sections):\n\n"
         "### Applying this capability to the task\n"
         "<3-6 sentences: how the base skill's grounded capabilities apply to "
         "turning the given inputs into the given deliverable for this task>\n\n"
+        "### Deliverable format\n"
+        "<a compact structural template for the 'produces' artifact named in "
+        "the contract below — the section headings, table columns, or "
+        "bullet structure this agent should emit. Ground it ONLY in the "
+        "artifact's name, the task, and the base skill's capabilities above "
+        "— structure only, no invented org specifics, thresholds, tool "
+        "names, or example values presented as real data. If no produces "
+        "artifact is in the contract, say so briefly instead of inventing "
+        "one.>\n\n"
         "### Success criteria\n"
         "<3-6 bullet points: observable, checkable criteria for the "
         "deliverable, grounded in the contract above — not invented metrics>\n"
@@ -432,19 +476,24 @@ def generate_task_overlay(use_case: str, agent_context: dict, base_md: str,
                            *, force: bool = False) -> str:
     """Build the per-task overlay SECTION for one agent (not a whole SKILL.md).
 
-    Deterministic (no LLM) subsections built straight from agent_context:
-    Inputs, Deliverable, and the "Required real inputs" honest-gaps manifest.
-    Exactly one LLM subsection (config.llm_chat, purpose="skill_overlay"): a
-    short narrative grounded in base_md + the I/O contract, plus success
-    criteria. The prompt forbids inventing procedures/tools/systems/
-    thresholds/metrics beyond what base_md and the I/O contract already
-    ground, and asks it to say so briefly rather than fabricate when a real
-    procedure would be needed but isn't grounded.
+    Deterministic (no LLM) subsections built straight from agent_context, in
+    order: Inputs, Deliverable, Operating mode (fixed standalone-vs-team
+    directive), and the "Required real inputs" honest-gaps manifest. Exactly
+    one LLM subsection (config.llm_chat, purpose="skill_overlay"), lands
+    after all of those: a short narrative grounded in base_md + the I/O
+    contract, a structural Deliverable format template for the produces
+    artifact, and success criteria. The prompt forbids inventing procedures/
+    tools/systems/thresholds/metrics (structure only for Deliverable format)
+    beyond what base_md and the I/O contract already ground, and asks it to
+    say so briefly rather than fabricate when a real procedure would be
+    needed but isn't grounded.
 
     The LLM subsection is cached per (role, task-context hash) under
     data/skill_cache/overlay/<role-slug>-<hash>.md, mirroring the iteration-1
-    base-skill cache. The deterministic subsections are cheap to rebuild and
-    are not cached.
+    base-skill cache; the hash mixes in _OVERLAY_TEMPLATE_VERSION so template
+    changes bust the cache even when role/use_case/contract/base_md haven't
+    changed. The deterministic subsections are cheap to rebuild and are not
+    cached.
     """
     role = agent_context.get("role", "")
     thash = _overlay_grounding_hash(
@@ -458,7 +507,7 @@ def generate_task_overlay(use_case: str, agent_context: dict, base_md: str,
         llm_section = cache_fp.read_text()
     else:
         raw = llm_chat(_build_overlay_prompt(use_case, agent_context, base_md),
-                        temperature=0.2, max_tokens=1024, purpose="skill_overlay")
+                        temperature=0.2, max_tokens=1536, purpose="skill_overlay")
         llm_section = _strip_fence(raw)
         if not llm_section.endswith("\n"):
             llm_section += "\n"
@@ -469,6 +518,7 @@ def generate_task_overlay(use_case: str, agent_context: dict, base_md: str,
         f"## For This Task: {_task_label(use_case)}",
         _inputs_section(agent_context),
         _deliverable_section(agent_context),
+        _operating_mode_section(),
         _required_inputs_section(agent_context),
         llm_section.strip(),
     ]
@@ -476,19 +526,46 @@ def generate_task_overlay(use_case: str, agent_context: dict, base_md: str,
 
 
 def compose_bundle(team_id, agent_id, use_case, artifacts_needed=None) -> str:
-    """Compose the full per-team-agent skill bundle: the reusable base
-    (role-level) skill + this task's overlay, as one markdown document.
+    """Compose the full per-team-agent skill bundle: task-first, then the
+    reusable base (role-level) skill, as one markdown document.
 
-    The base skill's YAML frontmatter stays at the very top (unchanged), so
-    validate_skill_md(result) still passes — the overlay is appended after it
-    as extra markdown body content.
+    Eval finding: appending the overlay after the full base skill buried the
+    task-specific section under the (often much longer) role-capability
+    listing, so agents leaned on the wrong section. Composition order is now:
+
+      1. the base skill's YAML frontmatter (unchanged, stays at the very top
+         so validate_skill_md(result) still passes)
+      2. the task overlay ("## For This Task: ..." and its subsections) —
+         FIRST, so it's what an agent reads before anything else
+      3. a demotion header ("## Role capability reference") marking the base
+         skill as background context, not the primary instructions
+      4. the base skill's BODY, unchanged (including its own trailing
+         grounding-hash comment)
+
+    This reorder happens only here, at compose time — generate_base_skill and
+    its cache are untouched, so the base-skill cache is unaffected.
     """
     ctx = build_agent_context(team_id, agent_id, artifacts_needed)
     base_md = generate_base_skill(ctx["role"])
     overlay_md = generate_task_overlay(use_case, ctx, base_md)
-    if not base_md.endswith("\n"):
-        base_md += "\n"
-    return base_md + "\n" + overlay_md
+
+    m = _FRONTMATTER_RE.match(base_md)
+    if m:
+        frontmatter_block, base_body = base_md[:m.start(2)], m.group(2)
+    else:
+        # Defensive fallback — generate_base_skill always emits frontmatter,
+        # but don't silently drop content if that ever changes.
+        frontmatter_block, base_body = "", base_md
+
+    demotion = (
+        "## Role capability reference\n\n"
+        "*Full role scope for context — draw on whichever capabilities this "
+        "task needs; the task section above is primary.*"
+    )
+
+    parts = [frontmatter_block.rstrip("\n"), overlay_md.strip("\n"),
+             demotion, base_body.strip("\n")]
+    return "\n\n".join(parts) + "\n"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
