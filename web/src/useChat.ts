@@ -332,6 +332,31 @@ export function useChat() {
     if (!s.skills.some((k) => k.target > 0)) return;
     if (!s.teamId || !s.agentId) return;
 
+    // Beta testers don't hold the admin token, so the sandbox-prove phase
+    // (admin-gated verify) isn't available to them: skip it entirely — no
+    // prove card, no error — and deliver the spec + drop-in agent directly,
+    // skills shown at their configured levels. Operators with the admin token
+    // set get the full prove flow below.
+    if (!s.adminToken) {
+      const rSkip = await renderAsync(s.teamId);
+      if (!isApiError(rSkip) && (rSkip as { job_id?: string }).job_id) {
+        const rj = rSkip as { job_id: string };
+        patch({ renderJobId: rj.job_id });
+        renderPollRef.current = pollJob(rj.job_id, {
+          onDone: () => patch({ specReady: true }),
+          onFail: () => patch({ specReady: false }),
+        });
+      }
+      patch({
+        running: false,
+        skills: s.skills.map((k) =>
+          k.target > 0 ? { ...k, base: k.off, fin: k.target } : k
+        ),
+      });
+      push({ kind: "deliver" });
+      return;
+    }
+
     patch({
       running: true,
       prove: { status: "pending", t: 0, done: false, error: null },
