@@ -23,10 +23,12 @@ def _cmd_list() -> None:
         return
     for r in rows:
         status = "active" if r["active"] else "revoked"
-        quota = r["daily_quota"] if r["daily_quota"] is not None else "unlimited"
+        daily = r["daily_quota"] if r["daily_quota"] is not None else "unl"
+        total = r["total_quota"] if r["total_quota"] is not None else "unl"
         print(
             f"{r['hash_prefix']}  {r['label']:<24} {status:<8} "
-            f"quota={quota} created={r['created_at']} last_used={r['last_used_at']}"
+            f"daily={daily} total={r['used']}/{total} "
+            f"created={r['created_at']} last_used={r['last_used_at']}"
         )
 
 
