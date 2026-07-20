@@ -99,6 +99,11 @@ export function Thread({ chat, accent }: ThreadProps) {
             return null;
           })}
           {state.pending && <TypingDots />}
+          {!state.pending && state.sendError && (
+            <p style={{ margin: 0, fontSize: 12.5, color: C.gap }}>
+              {state.sendError}
+            </p>
+          )}
         </div>
       </div>
       <Composer

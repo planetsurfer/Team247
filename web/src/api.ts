@@ -208,6 +208,20 @@ export const recommend = (useCase: string) =>
     body: JSON.stringify({ use_case: useCase }),
   });
 
+// Async variant (iteration 4 — async recommend, mirrors renderAsync/verifyAsync):
+// submits the same body but returns a job_id to poll instead of blocking the
+// request on the LLM call. Sync-path `recommend` above is unchanged/untouched
+// (API compat: tests/eval harnesses still use it).
+export const recommendAsync = (useCase: string) =>
+  api<{ job_id: string; poll: string; async: boolean }>(
+    `/team/recommend?async_mode=true`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ use_case: useCase }),
+    }
+  );
+
 export const teamSkills = (teamId: string, agentId: string) =>
   api<TeamSkills>(`/team/${teamId}/skills/${agentId}`);
 
@@ -297,6 +311,17 @@ export function asVerifyResult(v: unknown): VerifyResult | null {
   const o = v as Record<string, unknown>;
   if (Array.isArray(o.exec_results) || Array.isArray(o.rubric_results)) {
     return v as VerifyResult;
+  }
+  return null;
+}
+
+// Cast helper — job `result` is untyped on the wire; narrow to RecommendResp
+// (async /api/team/recommend and /api/intake/{sid}/recommend both land here).
+export function asRecommendResult(v: unknown): RecommendResp | null {
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  if (typeof o.team_id === "string" && Array.isArray(o.agents)) {
+    return v as RecommendResp;
   }
   return null;
 }

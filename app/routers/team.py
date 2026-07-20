@@ -59,12 +59,23 @@ class SkillBundlesIn(BaseModel):
     "/api/team/recommend",
     dependencies=[Depends(require_beta), Depends(llm_rate_limit), Depends(consume_quota)],
 )
-def recommend(body: RecommendIn):
+def recommend(body: RecommendIn, async_mode: bool = False):
     # Reject empty input up front: without a use_case or a brief the pipeline runs
     # on nothing and returns a real-but-irrelevant team with 200 (the {"task": ...}
-    # wrong-field trap). Fail loudly instead.
+    # wrong-field trap). Fail loudly instead. This check — and the require_beta /
+    # consume_quota dependencies declared above — run synchronously in THIS
+    # request regardless of async_mode (FastAPI resolves route dependencies +
+    # the function body before the async branch below ever touches the job
+    # runner), so quota is always charged at submit time, never inside the job
+    # thread.
     if not (body.use_case and body.use_case.strip()) and not body.brief:
         raise HTTPException(status_code=422, detail="use_case (or a brief) is required")
+    if async_mode:
+        jid = team_service.recommend_async(
+            use_case=body.use_case, brief=body.brief,
+            intake_session_id=body.intake_session_id,
+        )
+        return {"job_id": jid, "poll": f"/api/jobs/{jid}", "async": True}
     try:
         return team_service.recommend(
             use_case=body.use_case, brief=body.brief,

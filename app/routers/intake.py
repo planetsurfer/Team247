@@ -44,9 +44,18 @@ def get(sid: str):
     "/api/intake/{sid}/recommend",
     dependencies=[Depends(require_beta), Depends(llm_rate_limit), Depends(consume_quota)],
 )
-def recommend_from_intake(sid: str):
-    """Auto-chain: once the intake is ready, build a team from its brief."""
+def recommend_from_intake(sid: str, async_mode: bool = False):
+    """Auto-chain: once the intake is ready, build a team from its brief.
+
+    async_mode mirrors /api/team/recommend (iteration 4 — async recommend):
+    require_beta / llm_rate_limit / consume_quota above still run
+    synchronously in this request either way, so quota is charged at submit
+    time, never inside the job thread.
+    """
     s = intake_service.get(sid)
     if s["status"] != "ready":
         raise HTTPException(status_code=409, detail="intake not ready")
+    if async_mode:
+        jid = team_service.recommend_async(brief=s["brief"], intake_session_id=sid)
+        return {"job_id": jid, "poll": f"/api/jobs/{jid}", "async": True}
     return team_service.recommend(brief=s["brief"], intake_session_id=sid)

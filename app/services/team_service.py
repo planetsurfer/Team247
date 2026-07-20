@@ -15,7 +15,7 @@ from uuid import uuid4
 
 import structlog
 
-from app import db, llm_contracts, schemas
+from app import db, jobs, llm_contracts, schemas
 import classify, framework, teamspec
 
 _log = structlog.get_logger("app")
@@ -390,6 +390,23 @@ def recommend(use_case=None, brief=None, intake_session_id=None):
         "recommendation_raw": {"team": [a.model_dump() for a in tr.team],
                                "candidates": candidates},
     }
+
+
+def recommend_async(use_case=None, brief=None, intake_session_id=None):
+    """Submit recommend() to the background job runner; returns a job_id to poll.
+
+    Wraps classify.NoDatasetRoleMatch so the job's recorded error carries the
+    same friendly text as the sync path's 422 detail — the client keys off the
+    substring "could not match" to surface it identically either way.
+    """
+    def _run():
+        try:
+            return recommend(use_case=use_case, brief=brief,
+                              intake_session_id=intake_session_id)
+        except classify.NoDatasetRoleMatch:
+            raise RuntimeError(
+                "could not match your request to any role — please rephrase")
+    return jobs.submit("recommend", _run)
 
 
 # ──────────────────────────────────────────────────────────────────────────────

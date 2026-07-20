@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  asRecommendResult,
   asVerifyResult,
   authStatus,
   catalogCard,
@@ -16,7 +17,7 @@ import {
   isApiError,
   pollJob,
   putAgent,
-  recommend,
+  recommendAsync,
   renderAsync,
   seedTokenFromUrl,
   setAdminToken as persistToken,
@@ -55,6 +56,8 @@ interface ChatState {
   adminToken: string;
   tokenRejected?: boolean;
   bundleBusy?: boolean;   // drop-in agent zip is being generated server-side
+  sendError?: string;     // async recommend job failed with a user-facing message
+                           // (e.g. NoDatasetRoleMatch — "could not match…")
   // beta-access gate (closed beta — PRODUCTION_ROADMAP.md P0 #1)
   betaChecked: boolean;        // has the initial /api/auth/status probe resolved?
   betaAuth: boolean;           // server has BETA_AUTH on
@@ -86,6 +89,7 @@ export function useChat() {
   const rafRef = useRef<number | null>(null);
   const pollRef = useRef<ReturnType<typeof pollJob> | null>(null);
   const renderPollRef = useRef<ReturnType<typeof pollJob> | null>(null);
+  const sendPollRef = useRef<ReturnType<typeof pollJob> | null>(null);
   const proveStartRef = useRef<number>(0);
   const putTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -98,6 +102,7 @@ export function useChat() {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       if (pollRef.current) pollRef.current.stop();
       if (renderPollRef.current) renderPollRef.current.stop();
+      if (sendPollRef.current) sendPollRef.current.stop();
       if (putTimerRef.current) clearTimeout(putTimerRef.current);
       if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
     };
@@ -202,34 +207,69 @@ export function useChat() {
   const stateRef = useRef(state);
   stateRef.current = state;
 
+  // Async (iteration 4 — long recommend calls survive proxy timeouts as a
+  // background job, same pattern as render/verify): submit → poll every 3s →
+  // apply the result exactly as the old synchronous call did. `pending`
+  // (and the TypingDots it drives) stays true across the whole poll, not
+  // just the submit.
   const sendInternal = useCallback(
     async (text: string) => {
-      push({ kind: "user", text }, { input: "", pending: true });
-      const rec = await recommend(text);
-      if (isApiError(rec)) {
+      push({ kind: "user", text }, { input: "", pending: true, sendError: undefined });
+      const r = await recommendAsync(text);
+      if (isApiError(r) || !(r as { job_id?: string }).job_id) {
         patch({ pending: false });
         return;
       }
-      const sectorByRole = new Map(
-        (rec.recommendation_raw?.candidates ?? []).map((c) => [c.role, c.sector ?? ""])
+      const rj = r as { job_id: string };
+      sendPollRef.current = pollJob(
+        rj.job_id,
+        {
+          onDone: (st) => {
+            const rec = asRecommendResult(st.result);
+            if (!rec) {
+              patch({
+                pending: false,
+                sendError: "recommend failed — no result returned",
+              });
+              return;
+            }
+            const sectorByRole = new Map(
+              (rec.recommendation_raw?.candidates ?? []).map((c) => [c.role, c.sector ?? ""])
+            );
+            const roles: RoleRow[] = rec.agents.map((a, i) => ({
+              name: a.role,
+              sector: sectorByRole.get(a.role) ?? "",
+              conf: a.confidence ?? null,
+              matched: (a.matched_on ?? []).join(", "),
+              sel: i === 0,
+              role_id: a.role_id,
+              agent_id: a.agent_id,
+            }));
+            patch({
+              teamId: rec.team_id,
+              roles,
+              artifacts: rec.artifacts_needed ?? [],
+              roleName: roles[0]?.name ?? stateRef.current.roleName,
+              pending: false,
+              sendError: undefined,
+            });
+            push({ kind: "team" });
+          },
+          onFail: (st) => {
+            // existing error path: patch pending false. The one case worth
+            // surfacing to the user is the guardrail 422 the sync path also
+            // raises (classify.NoDatasetRoleMatch) — team_service.recommend_async
+            // wraps it so the job's error carries this same "could not match"
+            // text either way.
+            const msg = st.error ?? "";
+            patch({
+              pending: false,
+              sendError: msg.toLowerCase().includes("could not match") ? msg : undefined,
+            });
+          },
+        },
+        3000
       );
-      const roles: RoleRow[] = rec.agents.map((a, i) => ({
-        name: a.role,
-        sector: sectorByRole.get(a.role) ?? "",
-        conf: a.confidence ?? null,
-        matched: (a.matched_on ?? []).join(", "),
-        sel: i === 0,
-        role_id: a.role_id,
-        agent_id: a.agent_id,
-      }));
-      patch({
-        teamId: rec.team_id,
-        roles,
-        artifacts: rec.artifacts_needed ?? [],
-        roleName: roles[0]?.name ?? stateRef.current.roleName,
-        pending: false,
-      });
-      push({ kind: "team" });
     },
     [push, patch]
   );
