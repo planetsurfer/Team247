@@ -15,6 +15,22 @@ M Dockerfile
 ```
 - **Summary:** _(fill in: what changed · why · key decisions · follow-ups)_
 
+## 2026-07-20 — Composer-selection loop — ITER 4 (measurement gate) → KEEP, loop STOPPED
+- **Design:** paired A/B on the SAME model (kimi-k2.6), same 24 personas (seed 42), oneshot track, against a local server (:8023, RATE_LIMIT_PER_MIN=120). Isolated the intervention via a new `COMPOSER_REPAIR` env toggle (repair block guarded) — cleaner than reverting to f49222d, since both arms keep the identical instrumentation. Added a deterministic slate-aware `key_role_missing` field to `/recommend` (primary coverable function with slate coverage but absent from final team) + captured it in `tests/simulation/runner.run_oneshot`.
+- **PAIRED RESULT (arm A = repair ON / arm B = repair OFF):**
+  | metric | A (ON) | B (OFF) | Δ |
+  |---|---|---|---|
+  | slate-aware missing_key_role | **0.0% (0/24)** | 37.5% (9/24) | **−37.5pp** |
+  | composite (judge overall) | 2.833 | 2.667 | +0.17 |
+  | coverage (judge) | 2.958 | 2.792 | +0.17 |
+  | parsimony (judge) | 3.958 | 4.208 | −0.25 |
+  | avg team size | 1.46 | 1.25 | +0.21 |
+  | role_fit | 3.333 | 3.333 | 0 |
+- **DECISION: KEEP.** The repair eliminates slate-aware missing_key_role (37.5%→0%, target ≤20% decisively met) AND raises composite (+0.17) and coverage (+0.17), at a small expected parsimony cost (−0.25) and NO bloat (team size 1.46 vs the historical bloat regression's 3.1). Clean same-model win.
+- **On the 3.3 absolute threshold (NOT met, and why that's OK):** composite 2.83 < 3.3, but 3.3 was calibrated on qwen3.7-max (banked 3.38). Kimi's judge baseline here is 2.67 (arm B), i.e. the whole app scores ~0.7 lower under the kimi judge — so 3.3 is unreachable on kimi regardless of the composer, a cross-model artifact the loop prompt itself flagged. The guardrail's INTENT (no quality regression) is satisfied since composite ROSE. The keep/revert call correctly rests on the paired same-model delta.
+- **Loop STOPPED** (primary goal met at n=24). Kept commits: d527284 (coverage check) + f8a77ce (repair) + e88cf60 (hardening) + this iter-4 instrumentation/toggle. All LOCAL — nothing pushed. Data in `sim_results/loopA` (ON) and `sim_results/loopB` (OFF), gitignored.
+- **If resumed:** (a) re-measure on qwen3.7-max to compare against the banked 3.38 apples-to-apples, or run the n=100 confirmation; (b) the absolute composite ceiling on kimi (~2.8) is a MODEL-choice lever (kimi vs qwen quality), not a composer one — orthogonal to this loop; (c) the retrieval/slate-plumbing gap noted in iter 2 (seeds don't always survive classify's k=12 cap) remains the next composer-adjacent lever.
+
 ## 2026-07-20 — Composer-selection loop — ITER 3 (hardening)
 - **Three small fixes, all verified live:**
   1. **422 on empty input** — `/api/team/recommend` now rejects a missing/blank `use_case` with no `brief` (422) instead of running the pipeline on nothing and returning a confident-but-irrelevant team with 200. This closes the `{"task": ...}` wrong-field trap found during the Docker test.

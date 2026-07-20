@@ -251,7 +251,7 @@ def recommend(use_case=None, brief=None, intake_session_id=None):
     # choice. Best-effort — any failure leaves the composer's team as-is.
     _coverable = [f["id"] for f in functions_needed
                   if f["id"] not in {u["id"] for u in functions_uncovered}]
-    if _coverable:
+    if _coverable and os.getenv("COMPOSER_REPAIR", "1") != "0":
         primary = _coverable[0]
         still_missing = primary in set(_coverage_gaps([primary], _team_role_ids_of(tr.team, candidates)))
         if still_missing:
@@ -359,6 +359,18 @@ def recommend(use_case=None, brief=None, intake_session_id=None):
             team_role_ids=_team_role_ids,
         )
 
+    # Slate-aware KEY-role miss: the true `missing_key_role` metric. The PRIMARY
+    # (most-distinguishing) coverable function that HAD covering roles in the
+    # slate but is still absent from the final team — i.e. a genuine composer
+    # omission, EXCLUDING false-positives whose covering roles never reached the
+    # slate (e.g. advocacy-dispute-resolution tagged on Financial-Forensics roles
+    # for a hotel complaint). Returned for measurement.
+    key_role_missing = bool(
+        _coverable
+        and _coverable[0] in set(_coverage_gaps([_coverable[0]], _team_role_ids))
+        and _slate_covering_ns(_coverable[0], candidates)
+    )
+
     # Identify the input artifacts the user should provide (the "is a sample needed?"
     # capability). Best-effort — a failure here must never break the team guarantee;
     # fall back to an empty list so /recommend still returns a team.
@@ -374,6 +386,7 @@ def recommend(use_case=None, brief=None, intake_session_id=None):
         "functions_needed": functions_needed,
         "functions_uncovered": functions_uncovered,
         "functions_missing_in_team": functions_missing_in_team,
+        "key_role_missing": key_role_missing,
         "recommendation_raw": {"team": [a.model_dump() for a in tr.team],
                                "candidates": candidates},
     }

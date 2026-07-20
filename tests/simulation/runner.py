@@ -87,6 +87,9 @@ def run_oneshot(client, persona: dict, clock: _Clock) -> dict:
         # Default to [] so older/degraded responses don't blow up downstream.
         "functions_needed": body.get("functions_needed") or [],
         "functions_uncovered": body.get("functions_uncovered") or [],
+        # B3/B4 composer-selection signals (slate-aware missing_key_role).
+        "functions_missing_in_team": body.get("functions_missing_in_team") or [],
+        "key_role_missing": bool(body.get("key_role_missing")),
     }
 
 
