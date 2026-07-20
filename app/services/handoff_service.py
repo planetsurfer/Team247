@@ -39,7 +39,16 @@ def wire(team_id, use_case=None):
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     db.execute("DELETE FROM team_handoffs WHERE team_id = ?", (team_id,))
-    for i, h in enumerate(wh.handoffs):
+    seen, i = set(), 0
+    for h in wh.handoffs:
+        # The LLM occasionally emits two handoffs with the same
+        # (from_agent, to_agent, ceremony) triple (differing only in artifact) —
+        # the table's UNIQUE constraint would otherwise raise IntegrityError and
+        # abort the whole wire. Keep the first, skip later duplicates.
+        key = (h.from_agent, h.to_agent, h.ceremony)
+        if key in seen:
+            continue
+        seen.add(key)
         db.execute(
             "INSERT INTO team_handoffs(team_id, handoff_id, from_agent, to_agent, "
             "ceremony, artifact, description, sort_order, wired_at) "
@@ -47,6 +56,7 @@ def wire(team_id, use_case=None):
             (team_id, uuid.uuid4().hex, h.from_agent, h.to_agent, h.ceremony,
              h.artifact, h.description, i, now),
         )
+        i += 1
 
     db.execute("UPDATE teams SET status = 'wired' WHERE team_id = ?", (team_id,))
 
