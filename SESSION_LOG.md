@@ -2,6 +2,26 @@
 
 _Newest first. Auto-stamped by the SessionEnd hook; fill in each Summary._
 
+## 2026-07-20 09:59 +08 — Team247_private
+- **Branch:** feat/per-agent-specs-ka-guidance
+- **Session:** 7182caaa-f5c2-48eb-af17-dae9381cb5ef (ended: other)
+- **Last commit:** d527284 feat(composer): deterministic coverage check for missing_key_role (loop iter 1)
+- **Uncommitted changes:**
+```
+M Dockerfile
+?? .claude-flow/
+?? .claude/
+?? docker-compose.test.yml
+```
+- **Summary:** _(fill in: what changed · why · key decisions · follow-ups)_
+
+## 2026-07-20 — Composer-selection loop — ITER 2 (repair step)
+- **Iter 2 (done): primary-function repair.** Added `must_cover` param to `llm_contracts.team_recommend` (a corrective clause naming the slate list-numbers that cover a key function). In `team_service.recommend`, after the composer returns: if the PRIMARY coverable function is unstaffed, do (1) one targeted re-prompt, then (2) force-add the top covering **slate** candidate. Helpers: `_role_id_for`, `_team_role_ids_of`, `_slate_covering_ns`. Scoped to the PRIMARY function ONLY (mandating every function regressed into bloat before). Best-effort; never breaks the guarantee.
+- **Measured (n=5, kimi):** primary-missing 1/5 (was: onboard's `learning-development` fixed via re-prompt → now staffed by a Talent Management/L&D role). Avg team size **2.2 (unchanged — no bloat)**.
+- **Critical finding — the metric has false positives, and the repair correctly abstains.** "handle a customer complaint" flags `advocacy-dispute-resolution` missing, but that function's 20 tagged roles are Financial-Forensics/Legal/Billing — none fit a hotel complaint, and NONE reached the 12-candidate slate (`cover_ns=[]`). The composer rightly picked Front Office / client-relationship roles. Because the repair sources covering roles from the **slate** (not raw `role_functions`), it abstained rather than forcing an irrelevant Financial Forensics Director on — avoiding the exact historical bloat regression. So slate-guarded force-add is the correct design.
+- **Consequence for Iter 4 measurement:** true `missing_key_role` must be **slate-aware** = primary function coverable AND `cover_ns` non-empty AND absent from final team. Counting bare `functions_missing_in_team` over-reports (includes uncoverable-in-practice cases like advocacy above). Also noted (out of scope, not fixed): `functions_uncovered==[]` while `cover_ns==[]` reveals seeds don't always survive `classify.recommend_roles`' k=12 cap — a retrieval/slate-plumbing gap, not a composer one.
+- **Next (Iter 3):** hardening — reject empty `use_case` with 422; replace `SystemExit` in `classify.recommend_roles` with a mapped HTTP 4xx; feed validator failure reason into `call_llm_json` retries.
+
 ## 2026-07-20 — Composer-selection loop (close missing_key_role) — ITER 1
 - **Goal:** cut residual `missing_key_role` (last 44%) by closing the composer-selection gap. Retrieval is solved (per-function recall 100%); the covering role is provably in the slate, `llm_contracts.team_recommend` just omits it. Self-paced loop, model `kimi-k2.6`.
 - **Iter 1 (done): deterministic coverage check, no LLM.** Added `team_service._coverage_gaps(function_ids, team_role_ids)` (single `role_functions IN (...)` lookup) + post-composition check in `recommend()`: `functions_missing_in_team` = coverable functions (needed − `functions_uncovered`) with no covering role on the final team. Logged as `composer_coverage_gap` and returned in the response. Pure addition — never touches the 100%-team guarantee.

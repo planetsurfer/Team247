@@ -15,7 +15,7 @@ from uuid import uuid4
 
 import structlog
 
-from app import db, llm_contracts
+from app import db, llm_contracts, schemas
 import classify, framework, teamspec
 
 _log = structlog.get_logger("app")
@@ -109,6 +109,40 @@ def _coverage_gaps(function_ids, team_role_ids):
     )
     covered = {r["function_id"] for r in rows}
     return [fid for fid in function_ids if fid not in covered]
+
+
+def _role_id_for(role_name):
+    """role name → catalog role_id (None if not in the catalog)."""
+    row = db.query("SELECT role_id FROM roles WHERE role = ?", (role_name,), one=True)
+    return row["role_id"] if row else None
+
+
+def _team_role_ids_of(team_agents, candidates):
+    """Resolve composer agents (1-based `n` into candidates) to catalog role_ids,
+    applying the same guardrails as the persist loop (valid n, real role)."""
+    ids = []
+    for a in team_agents:
+        if a.n < 1 or a.n > len(candidates):
+            continue
+        rid = _role_id_for(candidates[a.n - 1]["role"])
+        if rid is not None:
+            ids.append(rid)
+    return ids
+
+
+def _slate_covering_ns(function_id, candidates):
+    """Candidate list-numbers (n) whose role covers function_id, in slate order.
+    These are the exact numbers the composer could have picked (recall is 100%,
+    so this is non-empty whenever the function is coverable)."""
+    out = []
+    for c in candidates:
+        rid = _role_id_for(c["role"])
+        if rid is None:
+            continue
+        if db.query("SELECT 1 FROM role_functions WHERE role_id = ? AND function_id = ?",
+                    (rid, function_id), one=True):
+            out.append(c["n"])
+    return out
 
 
 def _loads(raw, default):
@@ -207,6 +241,39 @@ def recommend(use_case=None, brief=None, intake_session_id=None):
     # functions_needed still seeded `must_include` into `candidates` above (the
     # slate), and is still returned/persisted below for observability.
     tr = llm_contracts.team_recommend(brief, candidates)  # TeamRecommend
+
+    # B4 — PRIMARY-function repair. If the composer left the KEY function (the
+    # most-distinguishing, first-listed, coverable one) unstaffed, give it ONE
+    # corrective shot (targeted re-prompt), then force-add the top covering slate
+    # role. Scoped to the PRIMARY function ONLY on purpose: mandating coverage of
+    # every identified function regressed into bloat before (SESSION_LOG it1
+    # 2026-07-19), and a missing SECONDARY function may be an intentional lean
+    # choice. Best-effort — any failure leaves the composer's team as-is.
+    _coverable = [f["id"] for f in functions_needed
+                  if f["id"] not in {u["id"] for u in functions_uncovered}]
+    if _coverable:
+        primary = _coverable[0]
+        still_missing = primary in set(_coverage_gaps([primary], _team_role_ids_of(tr.team, candidates)))
+        if still_missing:
+            cover_ns = _slate_covering_ns(primary, candidates)
+            if cover_ns:
+                try:  # 1) targeted re-prompt, one shot
+                    tr2 = llm_contracts.team_recommend(brief, candidates, must_cover=cover_ns)
+                    if primary not in set(_coverage_gaps([primary], _team_role_ids_of(tr2.team, candidates))):
+                        tr = tr2
+                        _log.info("composer_repair", primary=primary, method="reprompt")
+                except Exception:  # noqa: BLE001 — repair must never break the guarantee
+                    pass
+                # 2) force-add fallback if the key role is still absent
+                if primary in set(_coverage_gaps([primary], _team_role_ids_of(tr.team, candidates))):
+                    tr.team.append(schemas.TeamRecommendAgent(
+                        n=cover_ns[0],
+                        stage=(max((a.stage for a in tr.team), default=0) + 1),
+                        squad="Coverage",
+                        skill_level_overrides={},
+                        rationale=f"Staffs the core function '{primary}' the brief requires.",
+                    ))
+                    _log.info("composer_repair", primary=primary, method="force_add", n=cover_ns[0])
 
     team_id = uuid4().hex
     recommendation_json = json.dumps({

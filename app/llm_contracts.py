@@ -221,7 +221,7 @@ def _validate_team_recommend(o):
     return tr
 
 
-def team_recommend(brief, candidates, functions_needed=None):
+def team_recommend(brief, candidates, functions_needed=None, must_cover=None):
     """Phase 1: assemble a 1-8 agent team from ONLY the given candidate roles.
 
     brief: dict (the intake Brief). candidates: list[{n, role, sector, matched_on}].
@@ -231,6 +231,11 @@ def team_recommend(brief, candidates, functions_needed=None):
     cover every identified function (mandating one-agent-per-function was the
     confirmed cause of team bloat/genericization in an earlier iteration).
     Team sizing is governed purely by the lean-team guidance below.
+
+    must_cover: optional list of candidate list-numbers (n) that each cover a
+    single KEY function the first composition left unstaffed (B4 repair). When
+    set, the composer is told its team MUST include at least one of them. Kept
+    narrow (one key function) on purpose — see the bloat caveat above.
     Returns TeamRecommend. The LLM never names a role not in `candidates`.
     """
     listing = "\n".join(
@@ -258,7 +263,13 @@ def team_recommend(brief, candidates, functions_needed=None):
         "extra agents to look thorough, and never leave a needed function unstaffed.\n"
         "Prefer hands-on operational/executive-level roles; include director/head-\n"
         "level roles ONLY when the brief genuinely needs governance.\n"
-        'Return STRICT JSON: {"team": [{"n": <int>, "stage": <int>, "squad": "<str>", '
+        + (
+            "MANDATORY: the brief needs a core function that only these list "
+            f"numbers cover: {must_cover}. Your team MUST include at least one of "
+            "them — pick the single best fit and staff it.\n"
+            if must_cover else ""
+        )
+        + 'Return STRICT JSON: {"team": [{"n": <int>, "stage": <int>, "squad": "<str>", '
         '"skill_level_overrides": {"<code>": <int>}, "rationale": "<str>"}]}'
     )
     raw = call_llm_json(
