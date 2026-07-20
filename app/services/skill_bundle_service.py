@@ -45,7 +45,7 @@ MAX_BACKGROUND = 2      # at most this many ability-less skills kept as backgrou
 # subsections, or the overlay LLM prompt's required sections) changes, so
 # cached overlay LLM sections from an older template are never reused for a
 # newer one — see _overlay_grounding_hash.
-_OVERLAY_TEMPLATE_VERSION = 2
+_OVERLAY_TEMPLATE_VERSION = 3
 
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 _HASH_LINE_RE = re.compile(r"^<!--\s*grounding-hash:\s*([0-9a-f]+)\s*-->\s*$", re.M)
@@ -422,6 +422,48 @@ def _build_overlay_prompt(use_case: str, agent_context: dict, base_md: str) -> l
         },
         indent=2, ensure_ascii=False,
     )
+    # Eval finding: when the wired contract has MULTIPLE `produces` artifacts,
+    # a per-artifact Deliverable format template anchors a STANDALONE agent
+    # into emitting separate pipeline artifacts — directly fighting the
+    # ### Operating mode directive (one user-facing deliverable, no internal
+    # handoff records). With >1 produces artifact, require ONE INTEGRATED
+    # deliverable outline instead: a single document structure whose sections
+    # incorporate/cover the wired artifacts, explicit that per-artifact
+    # outputs are for team mode only. Exactly 1 produces artifact (or none)
+    # keeps the original per-artifact template — there's nothing to integrate.
+    multi_produces = len(agent_context.get("produces", []) or []) > 1
+    if multi_produces:
+        deliverable_format_block = (
+            "### Deliverable format\n"
+            "<a compact structural template for ONE INTEGRATED deliverable — "
+            "the single document a STANDALONE run of this agent (see "
+            "### Operating mode above) hands to the user. Give ONE section "
+            "structure (section headings / table columns / bullet structure) "
+            "whose sections incorporate/cover ALL of the 'produces' artifacts "
+            "listed in the contract below — do NOT template each produces "
+            "artifact as its own separate deliverable. Explicitly state, as "
+            "part of this section, that separate per-artifact outputs "
+            "(one per 'produces' entry) are for TEAM mode only, when this "
+            "agent is wired into the multi-agent handoff pipeline — a "
+            "standalone run instead produces this one integrated deliverable. "
+            "Ground the structure ONLY in the produces artifacts' names, the "
+            "task, and the base skill's capabilities above — structure only, "
+            "no invented org specifics, thresholds, tool names, or example "
+            "values presented as real data. If no produces artifact is in "
+            "the contract, say so briefly instead of inventing one.>\n\n"
+        )
+    else:
+        deliverable_format_block = (
+            "### Deliverable format\n"
+            "<a compact structural template for the 'produces' artifact named in "
+            "the contract below — the section headings, table columns, or "
+            "bullet structure this agent should emit. Ground it ONLY in the "
+            "artifact's name, the task, and the base skill's capabilities above "
+            "— structure only, no invented org specifics, thresholds, tool "
+            "names, or example values presented as real data. If no produces "
+            "artifact is in the contract, say so briefly instead of inventing "
+            "one.>\n\n"
+        )
     system = (
         "You write a short, grounded addendum to an existing Agent Skill "
         "document, adapting it to one specific task within a specific I/O "
@@ -447,15 +489,7 @@ def _build_overlay_prompt(use_case: str, agent_context: dict, base_md: str) -> l
         "### Applying this capability to the task\n"
         "<3-6 sentences: how the base skill's grounded capabilities apply to "
         "turning the given inputs into the given deliverable for this task>\n\n"
-        "### Deliverable format\n"
-        "<a compact structural template for the 'produces' artifact named in "
-        "the contract below — the section headings, table columns, or "
-        "bullet structure this agent should emit. Ground it ONLY in the "
-        "artifact's name, the task, and the base skill's capabilities above "
-        "— structure only, no invented org specifics, thresholds, tool "
-        "names, or example values presented as real data. If no produces "
-        "artifact is in the contract, say so briefly instead of inventing "
-        "one.>\n\n"
+        + deliverable_format_block +
         "### Success criteria\n"
         "<3-6 bullet points: observable, checkable criteria for the "
         "deliverable, grounded in the contract above — not invented metrics>\n"
@@ -481,8 +515,14 @@ def generate_task_overlay(use_case: str, agent_context: dict, base_md: str,
     directive), and the "Required real inputs" honest-gaps manifest. Exactly
     one LLM subsection (config.llm_chat, purpose="skill_overlay"), lands
     after all of those: a short narrative grounded in base_md + the I/O
-    contract, a structural Deliverable format template for the produces
-    artifact, and success criteria. The prompt forbids inventing procedures/
+    contract, a structural Deliverable format template, and success criteria.
+    The Deliverable format template is per-artifact when the contract has 0-1
+    `produces` artifacts, and ONE INTEGRATED deliverable outline (covering all
+    wired artifacts, with per-artifact outputs called out as team-mode-only)
+    when it has more than 1 — see _build_overlay_prompt's `multi_produces`
+    branch; this stops a standalone run from being anchored into emitting
+    separate pipeline artifacts, which fights ### Operating mode's directive
+    of one user-facing deliverable. The prompt forbids inventing procedures/
     tools/systems/thresholds/metrics (structure only for Deliverable format)
     beyond what base_md and the I/O contract already ground, and asks it to
     say so briefly rather than fabricate when a real procedure would be

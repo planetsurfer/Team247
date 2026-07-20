@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 import time
 
+from app import db, llm_contracts
 from app.services import handoff_service, skill_bundle_service, team_service
 
 # Exact heading text `skill_bundle_service.generate_task_overlay` emits (see
@@ -44,34 +45,88 @@ CLAUDE_DISALLOWED_TOOLS = "WebSearch,WebFetch"
 
 
 # ── bundle generation ───────────────────────────────────────────────────────
-def generate_bundle(scenario, *, force_regen: bool = False) -> dict:
+def generate_bundle(scenario, *, force_regen: bool = False,
+                     reuse_team_id: str | None = None) -> dict:
     """team_service.recommend -> handoff_service.wire -> compose_team_bundles.
+
+    When reuse_team_id is set (--reuse-teams), SKIP team_service.recommend and
+    handoff_service.wire entirely and reuse that team's existing staffing +
+    wiring instead — this is the paired-generator A/B mode: fresh bundles
+    composed on the SAME team/wiring as a prior run, so a diff between two
+    runs isolates the generator/prompt change rather than team-composition
+    noise. The team is read straight from app.db (team_agents joined to
+    roles) and handoff_service.get_handoffs; both are verified non-empty
+    before proceeding, since a stale/foreign team_id would otherwise silently
+    compose bundles for zero agents or with no I/O contract.
 
     Returns {team_id, roles, agents, artifacts_needed, coherence, bundles,
     gen_seconds}. Raises whatever the pipeline raises (LLMError, ValueError,
     TeamNotFound, or "team has no agents") — the caller (`run_archetype`)
-    turns that into a status="error" record.
+    turns that into a status="error" record. When reuse_team_id is set and
+    the team can't actually be reused (no team_agents rows, or no wired
+    handoffs), raises ValueError naming the cause, same treatment.
     """
     t0 = time.monotonic()
-    team = team_service.recommend(use_case=scenario.use_case)
-    team_id = team["team_id"]
-    artifacts_needed = team.get("artifacts_needed") or []
 
-    handoff_service.wire(team_id, use_case=scenario.use_case)
+    if reuse_team_id:
+        team_id = reuse_team_id
+        rows = db.query(
+            "SELECT ta.agent_id, r.role, ta.stage, ta.squad FROM team_agents ta "
+            "JOIN roles r ON r.role_id = ta.role_id "
+            "WHERE ta.team_id = ? ORDER BY ta.sort_order, ta.agent_id",
+            (team_id,),
+        )
+        if not rows:
+            raise ValueError(
+                f"--reuse-teams: team {team_id!r} has no team_agents rows in "
+                "the DB (team missing or not staffed) — cannot reuse"
+            )
+        agents = [{"agent_id": r["agent_id"], "role": r["role"],
+                   "stage": r["stage"], "squad": r["squad"]} for r in rows]
+
+        handoffs = handoff_service.get_handoffs(team_id)
+        if not handoffs:
+            raise ValueError(
+                f"--reuse-teams: team {team_id!r} has no wired handoffs "
+                "(handoff_service.get_handoffs returned empty) — cannot reuse"
+            )
+
+        # Best-effort re-derivation of artifacts_needed: older results.jsonl
+        # records (before this field was persisted at the top level — see
+        # __main__.py) never saved it, so recompute it fresh via the same
+        # identify_artifacts call team_service.recommend originally made. This
+        # is a NEW LLM call, not a replay of the original one, so treat it as
+        # APPROXIMATE — it can differ from what the original recommend() call
+        # saw. Runs from now on persist artifacts_needed directly, making
+        # future reuse exact instead of approximate.
+        try:
+            artifacts_needed = llm_contracts.identify_artifacts(scenario.use_case)
+        except Exception:  # noqa: BLE001 — best-effort, never block reuse on this
+            artifacts_needed = []
+    else:
+        team = team_service.recommend(use_case=scenario.use_case)
+        team_id = team["team_id"]
+        artifacts_needed = team.get("artifacts_needed") or []
+        agents = team["agents"]
+
+        handoff_service.wire(team_id, use_case=scenario.use_case)
+
+    roles = [a["role"] for a in agents]
 
     if force_regen:
-        # 4-line test-only duplication of skill_bundle_service.compose_bundle
-        # (skill_bundle_service.py:478-491), so a hard rerun can force both
-        # the base-skill and task-overlay LLM caches to regenerate.
+        # Force both LLM caches to regenerate, then let compose_bundle do the
+        # actual assembly — it owns the composition structure (task-overlay
+        # first, base demoted to reference), and duplicating that here rotted
+        # once already when the structure changed.
         bundles = []
-        for a in team["agents"]:
+        for a in agents:
             ctx = skill_bundle_service.build_agent_context(
                 team_id, a["agent_id"], artifacts_needed)
             base_md = skill_bundle_service.generate_base_skill(ctx["role"], force=True)
-            overlay_md = skill_bundle_service.generate_task_overlay(
-                scenario.use_case, ctx, base_md, force=True)
-            skill_md = base_md if base_md.endswith("\n") else base_md + "\n"
-            skill_md += "\n" + overlay_md
+            skill_bundle_service.generate_task_overlay(
+                scenario.use_case, ctx, base_md, force=True)  # warms the fresh cache
+            skill_md = skill_bundle_service.compose_bundle(
+                team_id, a["agent_id"], scenario.use_case, artifacts_needed)
             bundles.append({"agent_id": a["agent_id"], "role": a["role"], "skill_md": skill_md})
     else:
         result = skill_bundle_service.compose_team_bundles(
@@ -82,8 +137,8 @@ def generate_bundle(scenario, *, force_regen: bool = False) -> dict:
 
     return {
         "team_id": team_id,
-        "roles": [a["role"] for a in team["agents"]],
-        "agents": team["agents"],
+        "roles": roles,
+        "agents": agents,
         "artifacts_needed": artifacts_needed,
         "coherence": coherence,
         "bundles": bundles,
@@ -215,14 +270,24 @@ def run_claude(skill_md: str, prompt: str, fixtures: dict[str, str], *,
 
 
 # ── per-archetype orchestration ─────────────────────────────────────────────
-def run_archetype(scenario, args, run_id: str) -> dict:
+def run_archetype(scenario, args, run_id: str, *, reuse_team_id: str | None = None,
+                   reuse_requested: bool = False) -> dict:
     """generate -> select -> deterministic -> comp judge -> (unless
     --skip-exec) prompt + run_claude -> work judge.
 
-    Bundle-gen exceptions (LLMError, wire ValueError, empty team, ...) ->
-    status="error" (retried on --resume). A failed claude run keeps
-    status="ok" with a degraded harness.status — the comprehensiveness half
-    of the record stays valid and is not re-paid on --resume.
+    reuse_team_id/reuse_requested implement --reuse-teams (see __main__.py):
+    reuse_requested is True whenever --reuse-teams was passed at all;
+    reuse_team_id is the team_id resolved for THIS archetype from that source
+    file's records, or None if no matching record was found. Passing
+    reuse_requested=True with reuse_team_id=None is itself a hard error (the
+    paired A/B is meaningless without the SAME team) rather than silently
+    falling back to a fresh team_service.recommend.
+
+    Bundle-gen exceptions (LLMError, wire ValueError, empty team, reuse
+    ValueError, ...) -> status="error" (retried on --resume). A failed claude
+    run keeps status="ok" with a degraded harness.status — the
+    comprehensiveness half of the record stays valid and is not re-paid on
+    --resume.
     """
     # Local import: judge.py pulls in app.llm_contracts at import time, which
     # needs config.py's .env-derived client — keep it out of module-import
@@ -235,13 +300,24 @@ def run_archetype(scenario, args, run_id: str) -> dict:
         "run_id": run_id, "archetype": scenario.id, "label": scenario.label,
         "use_case": scenario.use_case, "status": "ok", "error": None,
         "timing": {}, "team": None, "skill_md_chars": None,
+        "artifacts_needed": None, "reused_team": False,
         "deterministic": None, "comp_judge": None, "harness": None,
         "deliverable": None, "work_judge": None,
     }
     t0 = time.monotonic()
 
+    if reuse_requested and reuse_team_id is None:
+        record["status"] = "error"
+        record["error"] = (
+            f"--reuse-teams: no status=ok record for archetype {scenario.id!r} "
+            "found in the reuse source file — cannot pair without a team_id"
+        )[:400]
+        record["timing"]["seconds"] = round(time.monotonic() - t0, 1)
+        return record
+
     try:
-        gen = generate_bundle(scenario, force_regen=args.force_regen)
+        gen = generate_bundle(scenario, force_regen=args.force_regen,
+                              reuse_team_id=reuse_team_id)
     except Exception as e:  # noqa: BLE001 — LLMError/ValueError/TeamNotFound/etc all -> status=error
         record["status"] = "error"
         record["error"] = f"{type(e).__name__}: {e}"[:400]
@@ -249,6 +325,8 @@ def run_archetype(scenario, args, run_id: str) -> dict:
         return record
 
     record["timing"]["gen_seconds"] = gen["gen_seconds"]
+    record["artifacts_needed"] = gen["artifacts_needed"]
+    record["reused_team"] = bool(reuse_team_id)
 
     sel = select_target_agent(gen["bundles"], scenario.role_keywords)
     bundle = sel["bundle"]

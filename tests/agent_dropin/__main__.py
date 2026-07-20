@@ -3,6 +3,7 @@
     python -m tests.agent_dropin --archetypes credit_ops
     python -m tests.agent_dropin --resume
     python -m tests.agent_dropin --report-only --out sim_results/dropin-20260720-100000
+    python -m tests.agent_dropin --reuse-teams sim_results/dropin-full2/results.jsonl
 """
 from __future__ import annotations
 
@@ -33,6 +34,34 @@ def _completed_archetypes(jsonl_path: Path) -> set[str]:
             if rec.get("status") == "ok":
                 done.add(rec.get("archetype"))
     return done
+
+
+def _load_reuse_team_ids(jsonl_path: Path) -> dict[str, str]:
+    """archetype id -> team_id, resolved from a prior run's results.jsonl for
+    --reuse-teams. Only status="ok" records (which have a `team` block) are
+    considered; a later line for the same archetype overwrites an earlier one
+    (a jsonl grows via --resume, so the last line for an archetype is its
+    most current outcome — same "last wins" spirit as _completed_archetypes).
+
+    Raises FileNotFoundError if jsonl_path doesn't exist — an explicitly
+    named --reuse-teams source that's missing is a usage error, not something
+    to silently degrade from.
+    """
+    if not jsonl_path.exists():
+        raise FileNotFoundError(f"--reuse-teams file not found: {jsonl_path}")
+    out: dict[str, str] = {}
+    for line in jsonl_path.read_text().splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if rec.get("status") != "ok":
+            continue
+        archetype = rec.get("archetype")
+        team_id = (rec.get("team") or {}).get("team_id")
+        if archetype and team_id:
+            out[archetype] = team_id
+    return out
 
 
 def _preflight_claude(claude_bin: str) -> bool:
@@ -68,6 +97,13 @@ def main(argv=None) -> int:
                         "judge only, no claude binary or work judge involved")
     ap.add_argument("--force-regen", action="store_true",
                     help="bypass the base-skill/task-overlay LLM generation caches")
+    ap.add_argument("--reuse-teams", default=None, metavar="RESULTS_JSONL",
+                    help="path to a prior run's results.jsonl; for each archetype, "
+                        "reuse that archetype's team_id (same staffing + wiring) "
+                        "instead of calling team_service.recommend + "
+                        "handoff_service.wire again — a paired generator A/B on "
+                        "the SAME team/wiring. Archetypes with no matching "
+                        "status=ok record in the source file record status=error.")
     args = ap.parse_args(argv)
 
     if args.out:
@@ -98,6 +134,19 @@ def main(argv=None) -> int:
              f"{list(scenarios_mod.BY_ID)}", file=sys.stderr)
         return 2
     to_run = [scenarios_mod.BY_ID[i] for i in ids]
+
+    reuse_team_ids: dict[str, str] = {}
+    if args.reuse_teams:
+        try:
+            reuse_team_ids = _load_reuse_team_ids(Path(args.reuse_teams))
+        except FileNotFoundError as e:
+            print(f"[error] {e}", file=sys.stderr)
+            return 2
+        missing = [s.id for s in to_run if s.id not in reuse_team_ids]
+        if missing:
+            print(f"[warn] --reuse-teams {args.reuse_teams}: no status=ok team_id "
+                 f"found for archetype(s) {missing} — those will record "
+                 "status=error", file=sys.stderr)
 
     if not args.skip_exec and not _preflight_claude(args.claude_bin):
         print(f"[warn] `{args.claude_bin} --version` failed — downgrading this "
@@ -131,7 +180,11 @@ def main(argv=None) -> int:
             for scenario in work:
                 if stop_flag.is_set():
                     break
-                record = harness_mod.run_archetype(scenario, args, run_id)
+                record = harness_mod.run_archetype(
+                    scenario, args, run_id,
+                    reuse_team_id=reuse_team_ids.get(scenario.id),
+                    reuse_requested=bool(args.reuse_teams),
+                )
 
                 skill_md = record.pop("_skill_md", None)
                 if skill_md:
@@ -157,7 +210,8 @@ def main(argv=None) -> int:
 
     config_echo = (
         f"archetypes={','.join(s.id for s in to_run)}, skip_exec={args.skip_exec}, "
-        f"force_regen={args.force_regen}, claude_bin={args.claude_bin}, "
+        f"force_regen={args.force_regen}, reuse_teams={args.reuse_teams}, "
+        f"claude_bin={args.claude_bin}, "
         f"claude_model={args.claude_model}, timeout={args.timeout}"
     )
     md = report_mod.write_report(jsonl_path, out_dir / "report.md", config_echo)
