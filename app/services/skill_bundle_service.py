@@ -489,3 +489,184 @@ def compose_bundle(team_id, agent_id, use_case, artifacts_needed=None) -> str:
     if not base_md.endswith("\n"):
         base_md += "\n"
     return base_md + "\n" + overlay_md
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Iteration 3 — whole-team composition + deterministic team-coherence check
+# ─────────────────────────────────────────────────────────────────────────────
+def compose_team_bundles(team_id, use_case, artifacts_needed=None) -> dict:
+    """compose_bundle() for every agent on the team, in one call.
+
+    Agent order comes straight from team_agents (sort_order, then agent_id —
+    same tiebreak team_service.get_team uses), so the bundle list matches the
+    team's staffed order. Each agent gets the SAME use_case/artifacts_needed;
+    compose_bundle already handles the per-agent I/O contract via
+    build_agent_context. Not on the /recommend hot path — this is a report/
+    export-time call, one LLM round trip (cache permitting) per agent.
+
+    Returns {team_id, use_case, bundles: [{agent_id, role, skill_md}, ...]}.
+    Raises ValueError if the team has no agents (mirrors build_agent_context's
+    per-agent not-found error rather than silently returning an empty list).
+    """
+    rows = db.query(
+        "SELECT ta.agent_id, r.role FROM team_agents ta "
+        "JOIN roles r ON r.role_id = ta.role_id "
+        "WHERE ta.team_id = ? ORDER BY ta.sort_order, ta.agent_id",
+        (team_id,),
+    )
+    if not rows:
+        raise ValueError(f"team {team_id!r} has no agents")
+
+    bundles = []
+    for row in rows:
+        skill_md = compose_bundle(team_id, row["agent_id"], use_case, artifacts_needed)
+        bundles.append({
+            "agent_id": row["agent_id"],
+            "role": row["role"],
+            "skill_md": skill_md,
+        })
+    return {"team_id": team_id, "use_case": use_case, "bundles": bundles}
+
+
+_EXTERNAL = "external"
+
+
+def check_team_coherence(team_id) -> dict:
+    """Deterministic (no LLM) team-coherence check over the team's wired
+    handoffs (handoff_service.get_handoffs) and staffed agents (team_agents).
+
+    Two different things are reported, and they are NOT the same signal:
+
+    1. dangling_consumes / orphan_produces / coherent_pct — a STRUCTURAL,
+       edge-paired check. Every wired handoff simultaneously names a producer
+       and a consumer for its artifact, so in practice almost every consumed
+       artifact already has a matching producer edge somewhere in the graph
+       (and vice versa) by construction — these numbers trend near-perfect
+       even when the actual wiring is poor. They exist as a sanity floor, not
+       as the real quality signal.
+    2. isolated_agents / self_loop_only_agents / no_inbound / no_outbound —
+       the real handoff-WIRING-quality signals. wire_handoffs is LLM-
+       generated per team, so an agent left with no edges at all, or wired
+       only to itself, or missing genuine inbound/outbound flow, is a
+       concrete, likely wiring gap that the edge-pairing check above cannot
+       see (it only ever looks at whether an artifact string appears twice,
+       never at whether every agent actually participates).
+
+    'external' is a valid boundary producer/consumer (an edge external->A
+    means A's consume is satisfied from outside the team; A->external means
+    A's produce has a valid external sink) but is never counted as an agent.
+
+    Returns {n_agents, n_handoffs, total_consumes, total_produces,
+    dangling_consumes, orphan_produces, coherent_pct, isolated_agents,
+    self_loop_only_agents, no_inbound, no_outbound, note}.
+    """
+    agent_rows = db.query(
+        "SELECT agent_id FROM team_agents WHERE team_id = ? "
+        "ORDER BY sort_order, agent_id",
+        (team_id,),
+    )
+    agent_ids = [r["agent_id"] for r in agent_rows]
+    agent_set = set(agent_ids)
+
+    handoffs = handoff_service.get_handoffs(team_id)
+
+    # Every artifact string that appears on a from_agent side ("producer
+    # side") and every one that appears on a to_agent side ("consumer side"),
+    # anywhere in the graph — including 'external' edges. These are the sets
+    # the edge-pairing check below tests membership against. NOTE: because
+    # every handoff row supplies both a from_agent and a to_agent for its
+    # artifact, these two sets are identical by construction whenever an
+    # artifact is only ever handed off once — which is exactly why the
+    # structural check below trends trivially high; see the `note` field.
+    from_side_artifacts = {h["artifact"] for h in handoffs if h.get("artifact")}
+    to_side_artifacts = {h["artifact"] for h in handoffs if h.get("artifact")}
+
+    # Per-agent consumes/produces, restricted to INTERNAL agents (to_agent /
+    # from_agent is a real team agent, not 'external'), deduped by artifact
+    # per agent — same shape as build_agent_context's _collect().
+    consumes_by_agent = {a: [] for a in agent_ids}
+    produces_by_agent = {a: [] for a in agent_ids}
+    for h in handoffs:
+        art = h.get("artifact")
+        if not art:
+            continue
+        to_a, from_a = h.get("to_agent"), h.get("from_agent")
+        if to_a in agent_set and art not in consumes_by_agent[to_a]:
+            consumes_by_agent[to_a].append(art)
+        if from_a in agent_set and art not in produces_by_agent[from_a]:
+            produces_by_agent[from_a].append(art)
+
+    total_consumes = sum(len(v) for v in consumes_by_agent.values())
+    total_produces = sum(len(v) for v in produces_by_agent.values())
+
+    dangling_consumes = []
+    for agent_id, arts in consumes_by_agent.items():
+        for art in arts:
+            if art not in from_side_artifacts:
+                dangling_consumes.append({"agent_id": agent_id, "artifact": art})
+
+    orphan_produces = []
+    for agent_id, arts in produces_by_agent.items():
+        for art in arts:
+            if art not in to_side_artifacts:
+                orphan_produces.append({"agent_id": agent_id, "artifact": art})
+
+    coherent_pct = (
+        100.0 * (1 - len(dangling_consumes) / total_consumes)
+        if total_consumes else None
+    )
+
+    # Wiring-quality signals: per-agent edge participation, external counting
+    # as a valid endpoint but never as an agent.
+    has_inbound, has_outbound, has_any_edge, has_nonself_edge = (
+        set() for _ in range(4)
+    )
+    for h in handoffs:
+        to_a, from_a = h.get("to_agent"), h.get("from_agent")
+        if to_a in agent_set:
+            has_inbound.add(to_a)
+            has_any_edge.add(to_a)
+        if from_a in agent_set:
+            has_outbound.add(from_a)
+            has_any_edge.add(from_a)
+        if to_a in agent_set and from_a in agent_set and to_a != from_a:
+            has_nonself_edge.add(to_a)
+            has_nonself_edge.add(from_a)
+        elif to_a in agent_set and from_a == _EXTERNAL:
+            has_nonself_edge.add(to_a)
+        elif from_a in agent_set and to_a == _EXTERNAL:
+            has_nonself_edge.add(from_a)
+
+    isolated_agents = [a for a in agent_ids if a not in has_any_edge]
+    self_loop_only_agents = [
+        a for a in agent_ids if a in has_any_edge and a not in has_nonself_edge
+    ]
+    no_inbound = [a for a in agent_ids if a not in has_inbound]
+    no_outbound = [a for a in agent_ids if a not in has_outbound]
+
+    note = (
+        "coherent_pct/dangling_consumes/orphan_produces are a STRUCTURAL, "
+        "edge-paired check: each wired handoff supplies both a producer and "
+        "a consumer for its artifact by construction, so these numbers trend "
+        "near-100% even for poorly-wired teams and are a sanity floor, not a "
+        "semantic quality signal. isolated_agents/self_loop_only_agents/"
+        "no_inbound/no_outbound are the meaningful handoff-WIRING-quality "
+        "signals — they surface agents wire_handoffs (LLM-generated) left "
+        "disconnected or self-looped despite the edge-pairing check reading "
+        "clean."
+    )
+
+    return {
+        "n_agents": len(agent_ids),
+        "n_handoffs": len(handoffs),
+        "total_consumes": total_consumes,
+        "total_produces": total_produces,
+        "dangling_consumes": dangling_consumes,
+        "orphan_produces": orphan_produces,
+        "coherent_pct": coherent_pct,
+        "isolated_agents": isolated_agents,
+        "self_loop_only_agents": self_loop_only_agents,
+        "no_inbound": no_inbound,
+        "no_outbound": no_outbound,
+        "note": note,
+    }
