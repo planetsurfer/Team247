@@ -381,7 +381,8 @@ def test_alembic_upgrade_head_applies_cleanly_to_a_temp_db(tmp_path):
         assert {"beta_tokens", "beta_token_usage", "roles", "teams"} <= tables
 
         cols = {r[1] for r in conn.execute("PRAGMA table_info(beta_tokens)")}
-        assert cols == {"token_hash", "label", "active", "created_at", "last_used_at", "daily_quota"}
+        assert cols == {"token_hash", "label", "active", "created_at", "last_used_at",
+                        "daily_quota", "total_quota"}
 
         cols = {r[1] for r in conn.execute("PRAGMA table_info(beta_token_usage)")}
         assert cols == {"token_hash", "day", "count"}
