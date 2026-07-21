@@ -9,6 +9,8 @@ import type {
   JobStatus,
   RecommendResp,
   TeamSkills,
+  UserInputItem,
+  UserInputsResp,
   VerifyResult,
 } from "./types";
 
@@ -235,6 +237,21 @@ export const putAgent = (
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  });
+
+// Iteration 3 (real-inputs intake) — PUT /api/team/{tid}/inputs. Beta-gated
+// but never LLM-driven (pure validate+store), so this goes through
+// apiVerify's "adminToken wins, else stored beta token" fallback just like
+// submitFeedback/agentChat above, keeping it usable for plain beta testers.
+// A 422 (validation) or 404 (unknown team) surfaces via ApiError as usual.
+export const putTeamInputs = (
+  teamId: string,
+  userInputs: UserInputItem[],
+  adminToken: string
+) =>
+  apiVerify<UserInputsResp>(`/team/${teamId}/inputs`, adminToken, {
+    method: "PUT",
+    body: JSON.stringify({ user_inputs: userInputs }),
   });
 
 export const renderAsync = (teamId: string) =>

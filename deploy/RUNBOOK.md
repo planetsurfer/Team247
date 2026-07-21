@@ -134,6 +134,44 @@ admin UI should read from.
 - Feedback: `docker exec team247-prod python -m app.feedback --list [--recent N]` / `--stats` — one row per (token, team), upserted.
 - `/verify` now accepts BETA tokens (owner decision — full proving for testers), metered as one daily generation per prove; admin token remains a superset. The sandbox subprocess runs with a scrubbed env (no secrets inherited).
 
+### 3c. Real-inputs intake — retention + purge (Iteration 3, 2026-07-21)
+
+Users can paste their own real inputs (a price list, a policy, past letters)
+via `PUT /api/team/{team_id}/inputs`; the raw text is stored verbatim in a
+new nullable column, `teams.user_inputs` (JSON `[{kind, name, content}]`,
+migration `0006_user_inputs.py`), and gets baked into that team's generated
+SKILL.md — no separate table, no separate retention clock from the rest of
+the `teams` row. Caps: <=5 items, <=100-char name, <=20KB total content per
+team (enforced server-side, `app/services/team_service.py`
+`_validate_user_inputs`).
+
+There is no automatic expiry yet — this content lives exactly as long as the
+`teams` row does. To purge one team's saved inputs without deleting the team
+(e.g. a user asks you to remove what they pasted), run **inside the app
+container** (same access pattern as §3's token ops):
+
+```bash
+sudo docker exec team247-prod python -c "
+from app import db
+db.execute('UPDATE teams SET user_inputs = NULL WHERE team_id = ?', ('<team_id>',))
+"
+```
+
+To purge every team's saved inputs at once (does not touch `name`,
+`use_case`, `brief`, or any other column — only `user_inputs`):
+
+```bash
+sudo docker exec team247-prod python -c "
+from app import db
+db.execute('UPDATE teams SET user_inputs = NULL WHERE user_inputs IS NOT NULL')
+"
+```
+
+Deleting the team outright (`DELETE /api/team/{team_id}`, or
+`DELETE FROM teams WHERE team_id = ?`) removes the inputs along with
+everything else on that row — there's no separate cleanup step needed in
+that case.
+
 ## 4. Admin token retrieval
 
 ```bash

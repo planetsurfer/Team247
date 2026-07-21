@@ -95,6 +95,9 @@ CREATE TABLE IF NOT EXISTS teams (
   brief                TEXT,                -- JSON (Brief)
   status               TEXT NOT NULL,       -- recommend | edited | wired | delivered
   recommendation_json  TEXT NOT NULL,
+  user_inputs          TEXT,                -- JSON [{kind, name, content}] — Iteration 3
+                                             -- (real-inputs intake); nullable, additive.
+                                             -- See app/alembic/versions/0006_user_inputs.py.
   created_at           TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS teams_intake_idx ON teams(intake_session_id);

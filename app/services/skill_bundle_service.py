@@ -45,7 +45,11 @@ MAX_BACKGROUND = 2      # at most this many ability-less skills kept as backgrou
 # subsections, or the overlay LLM prompt's required sections) changes, so
 # cached overlay LLM sections from an older template are never reused for a
 # newer one — see _overlay_grounding_hash.
-_OVERLAY_TEMPLATE_VERSION = 4
+# v5 (Iteration 3, real-inputs intake): added the deterministic
+# "### Your provided inputs" section, the "### Required real inputs" manifest
+# now lists only STILL-MISSING artifact kinds, and the overlay LLM prompt's
+# contract carries a `provided_inputs` summary + an authoritative-data rule.
+_OVERLAY_TEMPLATE_VERSION = 5
 
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 _HASH_LINE_RE = re.compile(r"^<!--\s*grounding-hash:\s*([0-9a-f]+)\s*-->\s*$", re.M)
@@ -270,8 +274,18 @@ def build_agent_context(team_id, agent_id, artifacts_needed=None) -> dict:
     never calls an LLM and never guesses: pass None/omit if the caller has
     none, and it stays [].
 
-    Returns {role, stage, squad, consumes, produces, artifacts_needed}.
-    Raises ValueError if the agent isn't on the team.
+    Iteration 3 (real-inputs intake): unlike artifacts_needed, user_inputs is
+    NOT a caller-supplied argument — it is always read straight from the
+    teams row by team_id (teams.user_inputs, set via
+    PUT /api/team/{team_id}/inputs -> team_service.set_user_inputs). This is
+    deliberate: every caller of build_agent_context has a team_id already,
+    every caller wants whatever the user has actually saved, and callers that
+    don't pass artifacts_needed (e.g. the agent_chat route's
+    compose_bundle(team_id, agent_id, use_case)) still need their provided
+    inputs baked into the bundle.
+
+    Returns {role, stage, squad, consumes, produces, artifacts_needed,
+    user_inputs}. Raises ValueError if the agent isn't on the team.
     """
     row = db.query(
         "SELECT r.role, ta.stage, ta.squad FROM team_agents ta "
@@ -296,6 +310,18 @@ def build_agent_context(team_id, agent_id, artifacts_needed=None) -> dict:
             out.append({"artifact": art, "description": h.get("description")})
         return out
 
+    team_row = db.query(
+        "SELECT user_inputs FROM teams WHERE team_id = ?", (team_id,), one=True,
+    )
+    user_inputs = []
+    if team_row and team_row.get("user_inputs"):
+        try:
+            loaded = json.loads(team_row["user_inputs"])
+            if isinstance(loaded, list):
+                user_inputs = loaded
+        except (TypeError, ValueError):
+            user_inputs = []
+
     return {
         "role": row["role"],
         "stage": row["stage"],
@@ -303,6 +329,7 @@ def build_agent_context(team_id, agent_id, artifacts_needed=None) -> dict:
         "consumes": _collect("to_agent"),
         "produces": _collect("from_agent"),
         "artifacts_needed": list(artifacts_needed) if artifacts_needed else [],
+        "user_inputs": user_inputs,
     }
 
 
@@ -368,11 +395,27 @@ def _operating_mode_section() -> str:
     )
 
 
+def _provided_kinds(agent_context: dict) -> set:
+    """Artifact `kind` strings the user has already supplied a real input for
+    (teams.user_inputs, loaded by build_agent_context). Used to filter the
+    honest-gaps manifest below down to what's STILL missing."""
+    return {
+        (ui.get("kind") or "").strip()
+        for ui in (agent_context.get("user_inputs") or [])
+        if ui.get("kind")
+    }
+
+
 def _required_inputs_section(agent_context: dict) -> str:
     """### Required real inputs (not included in this scaffold) — the
     honest-gaps manifest. Deterministic/templated: restates artifacts_needed
     and flags that org-specific policy/templates/thresholds/tools are not
-    grounded here and must come from the user. No LLM."""
+    grounded here and must come from the user. No LLM.
+
+    Iteration 3 (real-inputs intake): an artifacts_needed entry whose `kind`
+    already has a matching entry in agent_context['user_inputs'] (the user
+    supplied it via PUT /api/team/{id}/inputs) is dropped from this list — it
+    is no longer a gap, it's satisfied by ### Your provided inputs below."""
     lines = [
         "### Required real inputs (not included in this scaffold)",
         "This scaffold is grounded only in the framework K&A checklist and the "
@@ -381,10 +424,18 @@ def _required_inputs_section(agent_context: dict) -> str:
         "must be supplied before this skill is used on a real task:",
     ]
     artifacts_needed = agent_context.get("artifacts_needed", [])
-    if artifacts_needed:
-        for a in artifacts_needed:
+    provided_kinds = _provided_kinds(agent_context)
+    still_missing = [a for a in artifacts_needed if a.get("kind") not in provided_kinds]
+
+    if still_missing:
+        for a in still_missing:
             lines.append(f"- **{a.get('kind', 'artifact')}**: {a.get('description', '')} "
                          "(must be supplied by the user)")
+    elif artifacts_needed:
+        lines.append(
+            "- Every identified input artifact has already been supplied by "
+            "the user — see ### Your provided inputs below."
+        )
     else:
         lines.append("- No specific input artifacts were identified for this use case; "
                      "confirm with the user whether any are actually needed.")
@@ -396,34 +447,97 @@ def _required_inputs_section(agent_context: dict) -> str:
     return "\n".join(lines)
 
 
+def _fence_for(content: str) -> str:
+    """Backtick fence at least one char longer than the longest run of
+    backticks already in `content`, so verbatim user-pasted text (which may
+    itself contain ``` code fences) can never prematurely close the block."""
+    longest = run = 0
+    for ch in content or "":
+        if ch == "`":
+            run += 1
+            longest = max(longest, run)
+        else:
+            run = 0
+    return "`" * max(3, longest + 1)
+
+
+def _provided_inputs_section(agent_context: dict) -> str:
+    """### Your provided inputs — deterministic, no LLM: the user's own real
+    inputs (teams.user_inputs — a price list, policy, past letters...),
+    baked in VERBATIM as fenced blocks, immediately after ### Required real
+    inputs above. This is the whole point of Iteration 3: what lands here is
+    exactly what the user pasted via PUT /api/team/{id}/inputs, byte for
+    byte — not a summary, not a paraphrase. Returns "" (section omitted
+    entirely) when the team has no stored inputs yet, so a team that never
+    used this feature gets byte-identical overlays to before."""
+    user_inputs = agent_context.get("user_inputs") or []
+    if not user_inputs:
+        return ""
+    lines = [
+        "### Your provided inputs",
+        "The user has supplied the following real inputs for this task, "
+        "captured verbatim below. Treat this content as authoritative — use "
+        "the exact figures, wording, and structure given rather than "
+        "inventing placeholder data for anything it already covers.",
+    ]
+    for ui in user_inputs:
+        name = (ui.get("name") or "").strip() or "untitled input"
+        kind = (ui.get("kind") or "").strip() or "input"
+        content = ui.get("content") or ""
+        fence = _fence_for(content)
+        lines.append(f"\n#### {name} ({kind})\n\n{fence}\n{content}\n{fence}")
+    return "\n".join(lines)
+
+
 def _overlay_cache_path(role: str, task_hash: str) -> pathlib.Path:
     return OVERLAY_CACHE_DIR / f"{_slug(role)}-{task_hash}.md"
 
 
 def _overlay_grounding_hash(role, use_case, consumes, produces, artifacts_needed,
-                             base_md) -> str:
+                             base_md, user_inputs=None) -> str:
     """Stable short hash of everything the LLM overlay subsection is grounded
     in (role, use case, I/O contract, base skill text, overlay template
-    version) — changes iff any of those change, which is what should
-    invalidate the cache. _OVERLAY_TEMPLATE_VERSION is mixed in so a fixed-
-    template change (e.g. a new required overlay section) busts every cached
-    overlay even when role/use_case/contract/base_md are unchanged."""
+    version, and — Iteration 3 — the user's provided inputs) — changes iff
+    any of those change, which is what should invalidate the cache.
+    _OVERLAY_TEMPLATE_VERSION is mixed in so a fixed-template change (e.g. a
+    new required overlay section) busts every cached overlay even when
+    role/use_case/contract/base_md/user_inputs are unchanged.
+
+    user_inputs is hashed by its full content (not just kind/name): editing
+    the TEXT of an already-provided input (same kind+name, different
+    content) must still bust the cache, since the LLM narrative may
+    reference it and the deterministic ### Your provided inputs section
+    definitely changes."""
     blob = json.dumps(
         {"role": role, "use_case": use_case, "consumes": consumes,
          "produces": produces, "artifacts_needed": artifacts_needed,
-         "base_md": base_md, "template_version": _OVERLAY_TEMPLATE_VERSION},
+         "base_md": base_md, "template_version": _OVERLAY_TEMPLATE_VERSION,
+         "user_inputs_sha256": hashlib.sha256(
+             json.dumps(user_inputs or [], sort_keys=True, ensure_ascii=False)
+             .encode("utf-8")
+         ).hexdigest()},
         sort_keys=True, ensure_ascii=False,
     )
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
 
 def _build_overlay_prompt(use_case: str, agent_context: dict, base_md: str) -> list:
+    # Iteration 3: only kind+name, never the full content — the verbatim
+    # content already lands in its own deterministic section
+    # (### Your provided inputs, assembled in generate_task_overlay without
+    # any LLM involvement); the model only needs to know THAT real data
+    # exists for a given kind, not to re-derive or re-quote it here.
+    provided_inputs_summary = [
+        {"kind": ui.get("kind"), "name": ui.get("name")}
+        for ui in (agent_context.get("user_inputs") or [])
+    ]
     contract = json.dumps(
         {
             "role": agent_context.get("role"),
             "consumes": agent_context.get("consumes", []),
             "produces": agent_context.get("produces", []),
             "artifacts_needed": agent_context.get("artifacts_needed", []),
+            "provided_inputs": provided_inputs_summary,
         },
         indent=2, ensure_ascii=False,
     )
@@ -489,6 +603,15 @@ def _build_overlay_prompt(use_case: str, agent_context: dict, base_md: str) -> l
         "structure). Do NOT invent org-specific field names, numeric "
         "thresholds, tool/system names, or example values presented as if "
         "they were real data.\n"
+        "- If the contract's `provided_inputs` list is non-empty, the user "
+        "has already supplied REAL data for those artifact kinds (its exact "
+        "content appears verbatim in a separate section of the final "
+        "document that you do not see here — do not re-quote or invent its "
+        "content). Treat those kinds as satisfied, authoritative data: never "
+        "say that data is missing, and never invent placeholder values for "
+        "an artifact kind that already appears in `provided_inputs` — you "
+        "may reference it by name (e.g. 'using the provided price list') in "
+        "your narrative.\n"
         "- Never mention internal skill codes, SSOC, SkillsFuture, or any "
         "competency-framework name in the output.\n"
         "- Write ONLY the following three sections, in this exact order, "
@@ -519,10 +642,14 @@ def generate_task_overlay(use_case: str, agent_context: dict, base_md: str,
 
     Deterministic (no LLM) subsections built straight from agent_context, in
     order: Inputs, Deliverable, Operating mode (fixed standalone-vs-team
-    directive), and the "Required real inputs" honest-gaps manifest. Exactly
-    one LLM subsection (config.llm_chat, purpose="skill_overlay"), lands
-    after all of those: a short narrative grounded in base_md + the I/O
-    contract, a structural Deliverable format template, and success criteria.
+    directive), the "Required real inputs" honest-gaps manifest (Iteration 3:
+    filtered down to artifact kinds NOT already covered by a saved user
+    input), and — Iteration 3, only when the team has any —
+    "### Your provided inputs", the user's own real inputs baked in verbatim.
+    Exactly one LLM subsection (config.llm_chat, purpose="skill_overlay"),
+    lands after all of those (and after ### Your provided inputs when
+    present): a short narrative grounded in base_md + the I/O contract, a
+    structural Deliverable format template, and success criteria.
     The Deliverable format template is per-artifact when the contract has 0-1
     `produces` artifacts, and ONE INTEGRATED deliverable outline (covering all
     wired artifacts, with per-artifact outputs called out as team-mode-only)
@@ -546,7 +673,7 @@ def generate_task_overlay(use_case: str, agent_context: dict, base_md: str,
     thash = _overlay_grounding_hash(
         role, use_case, agent_context.get("consumes", []),
         agent_context.get("produces", []), agent_context.get("artifacts_needed", []),
-        base_md,
+        base_md, agent_context.get("user_inputs", []),
     )
     cache_fp = _overlay_cache_path(role, thash)
 
@@ -567,8 +694,11 @@ def generate_task_overlay(use_case: str, agent_context: dict, base_md: str,
         _deliverable_section(agent_context),
         _operating_mode_section(),
         _required_inputs_section(agent_context),
-        llm_section.strip(),
     ]
+    provided_section = _provided_inputs_section(agent_context)  # "" when none saved
+    if provided_section:
+        parts.append(provided_section)
+    parts.append(llm_section.strip())
     return "\n\n".join(parts) + "\n"
 
 

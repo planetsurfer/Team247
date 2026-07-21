@@ -14,7 +14,7 @@ from app.ratelimit import llm_rate_limit
 from app.services import (
     handoff_service, render_service, skill_bundle_service, team_service, verify_service,
 )
-from app.services.team_service import TeamNotFound
+from app.services.team_service import TeamNotFound, UserInputsInvalid
 from config import llm_chat
 import classify
 
@@ -48,6 +48,16 @@ class UpdateAgentIn(BaseModel):
 
 class WireIn(BaseModel):
     use_case: Optional[str] = None
+
+
+class UserInputItemIn(BaseModel):
+    kind: str
+    name: str
+    content: str
+
+
+class UserInputsIn(BaseModel):
+    user_inputs: List[UserInputItemIn]
 
 
 class SkillBundlesIn(BaseModel):
@@ -120,6 +130,27 @@ def delete_team(team_id: str):
     if not n:
         raise HTTPException(status_code=404, detail="team not found")
     return {"deleted": True, "team_id": team_id}
+
+
+# ── Iteration 3 (user-value loop) — real-inputs intake ──────────────────────
+# The user's own real inputs (price list, policy, past letters...), stored
+# verbatim on the teams row and baked into the generated SKILL.md (see
+# skill_bundle_service.generate_task_overlay). Deliberately require_beta ONLY
+# — no consume_quota / llm_rate_limit — since this is a pure validate+store
+# write, no LLM call anywhere on this path.
+@router.put(
+    "/api/team/{team_id}/inputs",
+    dependencies=[Depends(require_beta)],
+)
+def set_team_inputs(team_id: str, body: UserInputsIn):
+    try:
+        return team_service.set_user_inputs(
+            team_id, [item.model_dump() for item in body.user_inputs],
+        )
+    except TeamNotFound:
+        raise HTTPException(status_code=404, detail="team not found")
+    except UserInputsInvalid as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
 
 @router.put("/api/team/{team_id}/agents/{agent_id}")

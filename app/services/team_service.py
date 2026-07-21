@@ -28,6 +28,14 @@ class TeamNotFound(Exception):
         self.status_code = status_code
 
 
+class UserInputsInvalid(Exception):
+    """Raised when a PUT .../inputs body fails validation (see
+    _validate_user_inputs). Callers map this to a 422."""
+    def __init__(self, message: str, status_code: int = 422):
+        super().__init__(message)
+        self.status_code = status_code
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -447,7 +455,83 @@ def get_team(team_id):
         "brief": _loads(team["brief"], {}),
         "status": team["status"],
         "agents": agents,
+        # Iteration 3 (real-inputs intake) — the user's own real inputs, set
+        # via PUT /api/team/{team_id}/inputs. [] until they've saved any.
+        "user_inputs": _loads(team["user_inputs"], []),
     }
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Iteration 3 — real-inputs intake: the user's own real inputs (price list,
+# policy, past letters...), stored verbatim on the teams row and baked into
+# the generated SKILL.md by skill_bundle_service.generate_task_overlay (see
+# build_agent_context there, which reads teams.user_inputs by team_id).
+# ──────────────────────────────────────────────────────────────────────────────
+MAX_USER_INPUTS = 5
+MAX_USER_INPUT_NAME_CHARS = 100
+MAX_USER_INPUT_TOTAL_BYTES = 20 * 1024  # 20KB, across all items combined
+
+
+def _validate_user_inputs(items) -> tuple[list[dict], int]:
+    """Deterministic validation for a PUT .../inputs body — no LLM, no DB.
+
+    Each item must be a {kind, name, content} object with all three
+    non-empty after stripping; name <= MAX_USER_INPUT_NAME_CHARS; at most
+    MAX_USER_INPUTS items; combined UTF-8 content bytes across all items
+    <= MAX_USER_INPUT_TOTAL_BYTES. Returns (cleaned_items, total_bytes).
+    Raises UserInputsInvalid (422) on any violation.
+    """
+    if not isinstance(items, list):
+        raise UserInputsInvalid("user_inputs must be a list")
+    if len(items) > MAX_USER_INPUTS:
+        raise UserInputsInvalid(f"user_inputs must contain at most {MAX_USER_INPUTS} items "
+                                 f"(got {len(items)})")
+
+    cleaned: list[dict] = []
+    total_bytes = 0
+    for i, raw in enumerate(items):
+        if not isinstance(raw, dict):
+            raise UserInputsInvalid(f"user_inputs[{i}] must be an object")
+        kind = (raw.get("kind") or "").strip()
+        name = (raw.get("name") or "").strip()
+        content = raw.get("content") or ""
+        if not kind:
+            raise UserInputsInvalid(f"user_inputs[{i}].kind is required")
+        if not name:
+            raise UserInputsInvalid(f"user_inputs[{i}].name is required")
+        if len(name) > MAX_USER_INPUT_NAME_CHARS:
+            raise UserInputsInvalid(
+                f"user_inputs[{i}].name must be <= {MAX_USER_INPUT_NAME_CHARS} chars "
+                f"(got {len(name)})"
+            )
+        if not content.strip():
+            raise UserInputsInvalid(f"user_inputs[{i}].content is required")
+        total_bytes += len(content.encode("utf-8"))
+        cleaned.append({"kind": kind, "name": name, "content": content})
+
+    if total_bytes > MAX_USER_INPUT_TOTAL_BYTES:
+        raise UserInputsInvalid(
+            f"user_inputs total content must be <= {MAX_USER_INPUT_TOTAL_BYTES} bytes "
+            f"(got {total_bytes})"
+        )
+    return cleaned, total_bytes
+
+
+def set_user_inputs(team_id, items):
+    """Validate + persist the user's real inputs onto the teams row (full
+    replace, not a merge — a PUT with a smaller/different list overwrites
+    the prior one). 404 if the team is unknown; UserInputsInvalid (422) if
+    the body fails validation. Returns {ok, count, bytes}."""
+    team = db.query("SELECT team_id FROM teams WHERE team_id = ?", (team_id,), one=True)
+    if team is None:
+        raise TeamNotFound(f"team {team_id} not found")
+
+    cleaned, total_bytes = _validate_user_inputs(items)
+    db.execute(
+        "UPDATE teams SET user_inputs = ? WHERE team_id = ?",
+        (json.dumps(cleaned), team_id),
+    )
+    return {"ok": True, "count": len(cleaned), "bytes": total_bytes}
 
 
 def update_agent(team_id, agent_id, **fields):

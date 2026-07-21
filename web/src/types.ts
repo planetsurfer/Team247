@@ -69,6 +69,28 @@ export interface RecommendResp {
   recommendation_raw: { team: unknown[]; candidates: Candidate[] };
 }
 
+// ── Real-inputs intake (Iteration 3 — user-value loop) ──────────────────────
+// PUT /api/team/{team_id}/inputs {user_inputs: UserInputItem[]}. Baked
+// verbatim into the generated SKILL.md (app.services.skill_bundle_service),
+// so a saved input flows automatically into "try your agent" chat.
+export interface UserInputItem {
+  kind: string;
+  name: string;
+  content: string;
+}
+export interface UserInputsResp {
+  ok: boolean;
+  count: number;
+  bytes: number;
+}
+// Local save-flow state for the TeamCard's "paste it now" panel, keyed by
+// teamId in ChatState.userInputsByTeam (mirrors feedbackByTeam/chatByAgent).
+export interface UserInputsSaveState {
+  saving: boolean;
+  saved?: { count: number; bytes: number };
+  error?: string;
+}
+
 // ── Team skills (GET /api/team/{tid}/skills/{aid}) ──────────────────────────
 export interface TeamSkills {
   agent_id: string;

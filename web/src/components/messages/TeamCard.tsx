@@ -1,7 +1,8 @@
 // Team recommendation card — matched-to-real-roles list with conf bars,
 // selectable rows, and "Set skill loadout →".
+import { useState } from "react";
 import { C } from "../../theme";
-import type { Artifact, RoleRow } from "../../types";
+import type { Artifact, RoleRow, UserInputItem, UserInputsSaveState } from "../../types";
 
 interface TeamCardProps {
   roles: RoleRow[];
@@ -9,6 +10,12 @@ interface TeamCardProps {
   accent: string;
   onToggle: (i: number) => void;
   onConfirm: () => void;
+  // Real-inputs intake (Iteration 3 — user-value loop). Omitted teamId (no
+  // team context yet) hides the "paste it now" UI entirely — the artifacts
+  // panel still renders as before, flow unchanged if this is left untouched.
+  teamId?: string;
+  userInputsState?: UserInputsSaveState;
+  onSaveInputs?: (items: UserInputItem[]) => void;
 }
 
 const EYEBROW: React.CSSProperties = {
@@ -34,13 +41,45 @@ const ARTIFACT_LABELS: Record<string, string> = {
   none: "— No external artifact",
 };
 
-export function TeamCard({ roles, artifacts, accent, onToggle, onConfirm }: TeamCardProps) {
+export function TeamCard({
+  roles,
+  artifacts,
+  accent,
+  onToggle,
+  onConfirm,
+  teamId,
+  userInputsState,
+  onSaveInputs,
+}: TeamCardProps) {
   const n = roles.filter((r) => r.sel).length;
   const hireLine =
     n === 0 ? "Select at least one role." : `You're hiring ${n} role${n > 1 ? "s" : ""}.`;
   // Only show artifacts that are genuinely required (drop the "none" placeholder
   // unless it's the sole entry, in which case it tells the user nothing's needed).
   const needed = (artifacts ?? []).filter((a) => a && a.kind !== "none");
+
+  // Real-inputs intake (Iteration 3) — per-artifact draft text, purely local
+  // until Save is clicked (mirrors TryAgentChat's local `draft` convention).
+  const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+  const [drafts, setDrafts] = useState<Record<number, string>>({});
+  const canSaveInputs = !!(teamId && onSaveInputs);
+  const hasDraft = needed.some((_, i) => (drafts[i] ?? "").trim().length > 0);
+  const saving = !!userInputsState?.saving;
+  const saved = userInputsState?.saved;
+  const saveError = userInputsState?.error;
+
+  const handleSave = () => {
+    if (!onSaveInputs) return;
+    const items: UserInputItem[] = needed
+      .map((a, i) => ({
+        kind: a.kind,
+        name: ARTIFACT_LABELS[a.kind] ?? a.kind,
+        content: (drafts[i] ?? "").trim(),
+      }))
+      .filter((it) => it.content.length > 0);
+    if (items.length === 0) return;
+    onSaveInputs(items);
+  };
 
   return (
     <div style={CARD}>
@@ -63,7 +102,7 @@ export function TeamCard({ roles, artifacts, accent, onToggle, onConfirm }: Team
                        textTransform: "uppercase", color: C.dim }}>
             What to provide the build
           </div>
-          <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 8 }}>
             {needed.map((a, i) => (
               <div key={i} style={{ fontSize: 12.5, color: "#3c3a33" }}>
                 <span style={{ fontWeight: 600 }}>
@@ -72,9 +111,90 @@ export function TeamCard({ roles, artifacts, accent, onToggle, onConfirm }: Team
                 {a.description ? (
                   <span style={{ color: C.muted }}> — {a.description}</span>
                 ) : null}
+                {canSaveInputs && (
+                  <div style={{ marginTop: 4 }}>
+                    <button
+                      type="button"
+                      onClick={() => setExpanded((s) => ({ ...s, [i]: !s[i] }))}
+                      style={{
+                        border: "none",
+                        background: "none",
+                        padding: 0,
+                        fontSize: 11.5,
+                        fontWeight: 600,
+                        color: accent,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {expanded[i] ? "Hide" : "Paste it now (optional)"}
+                    </button>
+                    {expanded[i] && (
+                      <textarea
+                        value={drafts[i] ?? ""}
+                        onChange={(e) =>
+                          setDrafts((s) => ({ ...s, [i]: e.target.value }))
+                        }
+                        placeholder={`Paste your real ${
+                          (ARTIFACT_LABELS[a.kind] ?? a.kind).replace(/^\S+\s/, "").toLowerCase()
+                        } here…`}
+                        rows={4}
+                        style={{
+                          width: "100%",
+                          marginTop: 6,
+                          boxSizing: "border-box",
+                          fontSize: 12.5,
+                          fontFamily: "inherit",
+                          padding: 8,
+                          borderRadius: 8,
+                          border: `1px solid ${C.divider}`,
+                          resize: "vertical",
+                        }}
+                      />
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
+          {canSaveInputs && (
+            <div
+              style={{
+                marginTop: 10,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={!hasDraft || saving}
+                style={{
+                  border: `1px solid ${hasDraft ? accent : C.checkboxOffBorder}`,
+                  background: "#fff",
+                  color: hasDraft ? accent : C.dim,
+                  borderRadius: 8,
+                  padding: "5px 12px",
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  cursor: !hasDraft || saving ? "not-allowed" : "pointer",
+                  opacity: saving ? 0.6 : 1,
+                }}
+              >
+                {saving ? "Saving…" : "Save"}
+              </button>
+              {saved && (
+                <span style={{ fontSize: 11.5, color: C.dim }}>
+                  ✓ {saved.count} input{saved.count === 1 ? "" : "s"} added ·{" "}
+                  {saved.bytes.toLocaleString()} bytes
+                </span>
+              )}
+              {saveError && (
+                <span style={{ fontSize: 11.5, color: C.gap }}>{saveError}</span>
+              )}
+            </div>
+          )}
         </div>
       )}
       <div style={{ marginTop: 10 }}>

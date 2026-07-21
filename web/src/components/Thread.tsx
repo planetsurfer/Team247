@@ -59,6 +59,13 @@ export function Thread({ chat, accent }: ThreadProps) {
                   accent={accent}
                   onToggle={chat.toggleRole}
                   onConfirm={chat.confirmTeam}
+                  teamId={state.teamId}
+                  userInputsState={
+                    state.teamId ? state.userInputsByTeam[state.teamId] : undefined
+                  }
+                  onSaveInputs={(items) =>
+                    state.teamId && chat.saveUserInputs(state.teamId, items)
+                  }
                 />
               );
             if (m.kind === "loadout")

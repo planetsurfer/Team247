@@ -18,6 +18,7 @@ import {
   isApiError,
   pollJob,
   putAgent,
+  putTeamInputs,
   recommendAsync,
   renderAsync,
   seedTokenFromUrl,
@@ -37,6 +38,8 @@ import type {
   ProveState,
   RoleRow,
   SkillState,
+  UserInputItem,
+  UserInputsSaveState,
   VerifyResult,
 } from "./types";
 
@@ -68,6 +71,9 @@ interface ChatState {
   // try-your-agent chat (Iteration 2 — user-value loop), keyed by
   // `${teamId}:${agentId}` so history is independent per delivered agent.
   chatByAgent: Record<string, ChatThreadState>;
+  // real-inputs intake (Iteration 3 — user-value loop) — TeamCard's "paste it
+  // now" panel save flow, keyed by teamId.
+  userInputsByTeam: Record<string, UserInputsSaveState>;
   // beta-access gate (closed beta — PRODUCTION_ROADMAP.md P0 #1)
   betaChecked: boolean;        // has the initial /api/auth/status probe resolved?
   betaAuth: boolean;           // server has BETA_AUTH on
@@ -89,6 +95,7 @@ const INITIAL: ChatState = {
   adminToken: "",
   feedbackByTeam: {},
   chatByAgent: {},
+  userInputsByTeam: {},
   betaChecked: false,
   betaAuth: false,
   betaAuthenticated: true,
@@ -684,6 +691,41 @@ export function useChat() {
     })();
   }, []);
 
+  // ── real-inputs intake (Iteration 3 — user-value loop) ──────────────────
+  // Full-replace PUT of the team's saved real inputs — the TeamCard builds
+  // `items` from whichever "paste it now" boxes have content. Re-generating
+  // (chat / skill-bundle export) after this picks the inputs up automatically:
+  // both call compose_bundle fresh, and skill_bundle_service's overlay cache
+  // key hashes teams.user_inputs, so a save always busts the cache.
+  const saveUserInputs = useCallback((teamId: string, items: UserInputItem[]) => {
+    if (!teamId || items.length === 0) return;
+    setState((s) => ({
+      ...s,
+      userInputsByTeam: { ...s.userInputsByTeam, [teamId]: { saving: true } },
+    }));
+    void (async () => {
+      const r = await putTeamInputs(teamId, items, stateRef.current.adminToken);
+      if (isApiError(r)) {
+        const msg =
+          typeof r.detail === "string" && r.status === 422
+            ? r.detail
+            : "Could not save — try again";
+        setState((s) => ({
+          ...s,
+          userInputsByTeam: { ...s.userInputsByTeam, [teamId]: { saving: false, error: msg } },
+        }));
+        return;
+      }
+      setState((s) => ({
+        ...s,
+        userInputsByTeam: {
+          ...s.userInputsByTeam,
+          [teamId]: { saving: false, saved: { count: r.count, bytes: r.bytes } },
+        },
+      }));
+    })();
+  }, []);
+
   // ── input / keyboard ──────────────────────────────────────────────────────
   const onInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setState((s) => ({ ...s, input: e.target.value }));
@@ -739,6 +781,7 @@ export function useChat() {
     submitFeedbackComment,
     dismissFeedback,
     sendAgentChat,
+    saveUserInputs,
     onInput,
     onKey,
     setAdminTokenState,
