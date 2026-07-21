@@ -2,6 +2,12 @@
 
 _Newest first. Auto-stamped by the SessionEnd hook; fill in each Summary._
 
+## 2026-07-21 — User-value iter 3: REAL-INPUTS INTAKE live (26704df)
+- PUT /api/team/{id}/inputs (beta-gated, <=5 items/20KB) → teams.user_inputs (migration 0006); deterministic fenced "### Your provided inputs" in the overlay; Required-real-inputs lists only still-missing kinds; overlay hash includes content digest (template v5); chat inherits via bundle. UI: per-artifact paste on TeamCard. RUNBOOK retention + purge SQL. 20 new tests (71 green).
+- Verified independently local ($779 quoted by chat) AND on PROD ($1,088/unit quoted through team247.io). Matrix 11/11.
+- The review's core criticism — "the scaffold punts the last mile" — is now closed: agents hold the user's real data.
+- Next: iter 4 gallery → 5 export → 6 battery+receipts → final gate.
+
 ## 2026-07-21 — User-value iter 2: TRY-YOUR-AGENT CHAT live (94a3498)
 - POST /api/team/{id}/agents/{aid}/chat — beta-gated, rate-limited, per-day chat allowance (beta_chat_usage migration 0005, CHAT_TURNS_PER_DAY=40 default, 429 beyond); composed SKILL.md as system prompt (purpose=agent_chat, no tools, anti-disclosure); sync 5-20s/turn. UI: collapsible chat on DeliverCard with suggested first-message chips. 16 new tests (51 green).
 - Verified: local on-task 2-turn chat; PROD chat through team247.io on a fresh team (complaint scenario — de-escalation walk-through); prove-aware matrix 11/11. Watch item: Enter-to-send showed one automation-flake (Send button reliable; handler matches Composer pattern) — human spot-check recommended.
