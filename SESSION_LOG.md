@@ -2,6 +2,10 @@
 
 _Newest first. Auto-stamped by the SessionEnd hook; fill in each Summary._
 
+## 2026-07-22 — User-value iter 5: ONE-CLICK EXPORT live (d7833df)
+- "Copy as prompt" (preamble + full SKILL.md, cached per agent) on DeliverCard + gallery detail; shared 3-tab InstallPopover with docs-verified copy (Claude Code: unzip to ~/.claude/skills/ — our zip layout already matches <agent>/SKILL.md, no restart, /<name>; Claude.ai: Project instructions; Codex: system prompt). Frontend-only. Playwright clipboard-verified (26/26); 83 tests; matrix PASS on prod.
+- Owner directive locked: finish battery+receipts (iter 6) → final gate → next loop = OPERATIONS INTAKE (guided questions first, transcript extraction second).
+
 ## 2026-07-21 — User-value iter 4: STARTER GALLERY live (prod build 5/5)
 - gallery_agents (migration 0007) + python -m app.build_gallery (idempotent, --force/--only); GET /api/gallery open metadata + beta-gated detail; landing "Start from a proven agent" cards → inline detail (preview, Try-chat via the iter-2 endpoint — no generation quota, download zip, Customize prefills the input). 12 new tests (83 green). RUNBOOK §10 rebuild one-liners.
 - PROD: all 5 archetypes built through the real pipeline on the box (235s total, 0 failed); live-verified open list (metadata only), 401→200 detail, on-task gallery chat; matrix PASS.
