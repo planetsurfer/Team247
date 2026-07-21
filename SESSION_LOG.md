@@ -2,6 +2,11 @@
 
 _Newest first. Auto-stamped by the SessionEnd hook; fill in each Summary._
 
+## 2026-07-22 — Ops-intake iter 2: MAKE-IT-YOURS card live (b2a67c8)
+- Skippable ops-questions card after the team reveal: 1-3 targeted questions rendered from the live endpoint, answers saved as tagged user_inputs (merge-by-name; paste panel + card coexist), regenerate bakes them in; invisible transcript stub for iter 3; dismiss keeps old flow identical.
+- Rule enforcement verified twice on separate scenarios: "escalate >$5k to Sarah" (worker) and "refunds >$250 need Marcus" (independent) — chat refused a $400 refund citing the limit. Matrix PASS.
+- Next: iter 3 transcript extraction (PII tripwire: raw never persisted/logged; synthetic fixture with planted $2,000 threshold + ambiguity-as-question).
+
 ## 2026-07-22 — Ops-intake iter 1: question generation live (d8ef086)
 - generate_ops_questions contract (purpose=ops_questions, strict validator, zero-questions valid) + POST /api/team/{id}/ops-questions (beta-gated, not quota-metered); user_inputs kinds extended (procedure/threshold/constraint/handoff/metric/workaround) with a real allowlist; caps 10 items/40KB. 42 tests. Matrix PASS.
 - Live convergence proven twice (answered questions replaced by new genuine gaps). Checkpoint (b) question copy shown to owner (quotation-approval-limit / pricing-method / validity-period) — ships on iter-2 UI unless vetoed.
