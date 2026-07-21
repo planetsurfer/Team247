@@ -9,6 +9,7 @@ import type {
   GalleryDetail,
   GalleryListItem,
   JobStatus,
+  OpsQuestionsResp,
   RecommendResp,
   SkillBundlesResp,
   TeamSkills,
@@ -279,6 +280,14 @@ export const putTeamInputs = (
     method: "PUT",
     body: JSON.stringify({ user_inputs: userInputs }),
   });
+
+// Iteration 2 ("make it yours" UI) — POST /api/team/{tid}/ops-questions (no
+// body). Beta-gated but not admin-only (same convention as renderAsync): the
+// plain api() helper already attaches the stored beta token, so no adminToken
+// param is needed here. Fired once right after a team is revealed; returns
+// 0..OPS_QUESTIONS_MAX questions (0 is valid — nothing left worth asking).
+export const opsQuestions = (teamId: string) =>
+  api<OpsQuestionsResp>(`/team/${teamId}/ops-questions`, { method: "POST" });
 
 export const renderAsync = (teamId: string) =>
   api<{ job_id: string; poll: string; async: boolean }>(

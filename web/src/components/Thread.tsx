@@ -9,6 +9,7 @@ import { Composer } from "./Composer";
 import { TypingDots } from "./TypingDots";
 import { UserBubble } from "./messages/UserBubble";
 import { TeamCard } from "./messages/TeamCard";
+import { OpsQuestionsCard } from "./messages/OpsQuestionsCard";
 import { LoadoutCard } from "./messages/LoadoutCard";
 import { ProveCard } from "./messages/ProveCard";
 import { DeliverCard } from "./messages/DeliverCard";
@@ -50,24 +51,37 @@ export function Thread({ chat, accent }: ThreadProps) {
         >
           {state.messages.map((m, i) => {
             if (m.kind === "user") return <UserBubble key={i} text={m.text} />;
-            if (m.kind === "team")
+            if (m.kind === "team") {
+              const opsState = state.teamId ? state.opsQuestionsByTeam[state.teamId] : undefined;
               return (
-                <TeamCard
-                  key={i}
-                  roles={state.roles}
-                  artifacts={state.artifacts}
-                  accent={accent}
-                  onToggle={chat.toggleRole}
-                  onConfirm={chat.confirmTeam}
-                  teamId={state.teamId}
-                  userInputsState={
-                    state.teamId ? state.userInputsByTeam[state.teamId] : undefined
-                  }
-                  onSaveInputs={(items) =>
-                    state.teamId && chat.saveUserInputs(state.teamId, items)
-                  }
-                />
+                <div key={i} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                  <TeamCard
+                    roles={state.roles}
+                    artifacts={state.artifacts}
+                    accent={accent}
+                    onToggle={chat.toggleRole}
+                    onConfirm={chat.confirmTeam}
+                    teamId={state.teamId}
+                    userInputsState={
+                      state.teamId ? state.userInputsByTeam[state.teamId] : undefined
+                    }
+                    onSaveInputs={(items) =>
+                      state.teamId && chat.saveUserInputs(state.teamId, items)
+                    }
+                  />
+                  {state.teamId && opsState && (
+                    <OpsQuestionsCard
+                      ops={opsState}
+                      accent={accent}
+                      enableTranscript={false}
+                      onAnswer={(idx, text) => chat.answerOpsQuestion(state.teamId!, idx, text)}
+                      onSave={() => chat.saveOpsAnswers(state.teamId!)}
+                      onDismiss={() => chat.dismissOpsCard(state.teamId!)}
+                    />
+                  )}
+                </div>
               );
+            }
             if (m.kind === "loadout")
               return (
                 <LoadoutCard

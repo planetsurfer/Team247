@@ -89,6 +89,40 @@ export interface UserInputsSaveState {
   saving: boolean;
   saved?: { count: number; bytes: number };
   error?: string;
+  // Last full list actually PUT to the server (PUT /inputs REPLACES, so this
+  // is the client's record of "what's saved now" — the ops-questions card
+  // (Iteration 2) reads it to merge its own answers in rather than clobbering
+  // whatever the "paste it now" panel already saved, and vice versa).
+  items?: UserInputItem[];
+}
+
+// ── Ops-question interview (Iteration 2 — "make it yours" UI) ───────────────
+// POST /api/team/{team_id}/ops-questions (no body) — fired once right after a
+// team is revealed. At most settings.OPS_QUESTIONS_MAX questions, each tagged
+// with a kind from app.llm_contracts.OPS_QUESTION_KINDS (also a valid
+// UserInputItem.kind, so an answer PUTs straight back to /inputs unchanged).
+export interface OpsQuestion {
+  kind: string;
+  name: string;
+  question: string;
+}
+export interface OpsQuestionsResp {
+  questions: OpsQuestion[];
+}
+// Local state for the OpsQuestionsCard, keyed by teamId in
+// ChatState.opsQuestionsByTeam. `answers` is keyed by the question's index
+// in `questions` (stable for the lifetime of one card — there's only ever
+// one round). Absence from the map (vs. an entry with an empty `questions`
+// array) is what "haven't fetched yet" looks like; either way zero questions
+// or `dismissed: true` renders nothing.
+export interface OpsQuestionsState {
+  questions: OpsQuestion[];
+  answers: Record<number, string>;
+  saved: boolean;
+  savedCount?: number;
+  dismissed: boolean;
+  busy: boolean;
+  error?: string;
 }
 
 // ── Starter gallery (Iteration 4 — user-value loop) ─────────────────────────

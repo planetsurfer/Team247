@@ -16,6 +16,7 @@ import {
   catalogSearch,
   getAdminToken,
   isApiError,
+  opsQuestions,
   pollJob,
   putAgent,
   putTeamInputs,
@@ -37,6 +38,7 @@ import type {
   ChatThreadState,
   FeedbackState,
   Message,
+  OpsQuestionsState,
   ProveState,
   RoleRow,
   SkillState,
@@ -82,6 +84,11 @@ interface ChatState {
   // real-inputs intake (Iteration 3 — user-value loop) — TeamCard's "paste it
   // now" panel save flow, keyed by teamId.
   userInputsByTeam: Record<string, UserInputsSaveState>;
+  // ops-question interview (Iteration 2 — "make it yours" UI), keyed by
+  // teamId. Populated by a fire-and-forget fetch right after a team is
+  // revealed; absent entirely if the fetch is still in flight, failed, or
+  // came back with zero questions (OpsQuestionsCard renders nothing either way).
+  opsQuestionsByTeam: Record<string, OpsQuestionsState>;
   // beta-access gate (closed beta — PRODUCTION_ROADMAP.md P0 #1)
   betaChecked: boolean;        // has the initial /api/auth/status probe resolved?
   betaAuth: boolean;           // server has BETA_AUTH on
@@ -105,6 +112,7 @@ const INITIAL: ChatState = {
   feedbackByTeam: {},
   chatByAgent: {},
   userInputsByTeam: {},
+  opsQuestionsByTeam: {},
   betaChecked: false,
   betaAuth: false,
   betaAuthenticated: true,
@@ -176,6 +184,23 @@ export function useChat() {
 
   const patch = useCallback((extra: Partial<ChatState>) => {
     setState((s) => ({ ...s, ...extra }));
+  }, []);
+
+  // ── ops-question interview (Iteration 2 — "make it yours" UI) ────────────
+  // Fire-and-forget: fetched right after a team is revealed, in parallel with
+  // whatever the user does next (loadout / confirm). A failed fetch or zero
+  // questions just means no card ever appears for this team — never blocks
+  // or errors the main flow.
+  const loadOpsQuestions = useCallback(async (teamId: string) => {
+    const r = await opsQuestions(teamId);
+    if (isApiError(r) || !r.questions || r.questions.length === 0) return;
+    setState((s) => ({
+      ...s,
+      opsQuestionsByTeam: {
+        ...s.opsQuestionsByTeam,
+        [teamId]: { questions: r.questions, answers: {}, saved: false, dismissed: false, busy: false },
+      },
+    }));
   }, []);
 
   // ── role search / pick ────────────────────────────────────────────────────
@@ -284,6 +309,7 @@ export function useChat() {
               sendError: undefined,
             });
             push({ kind: "team" });
+            void loadOpsQuestions(rec.team_id);
           },
           onFail: (st) => {
             // existing error path: patch pending false. The one case worth
@@ -301,7 +327,7 @@ export function useChat() {
         3000
       );
     },
-    [push, patch]
+    [push, patch, loadOpsQuestions]
   );
 
   // ── team card: toggle + confirm ──────────────────────────────────────────
@@ -747,10 +773,14 @@ export function useChat() {
 
   // ── real-inputs intake (Iteration 3 — user-value loop) ──────────────────
   // Full-replace PUT of the team's saved real inputs — the TeamCard builds
-  // `items` from whichever "paste it now" boxes have content. Re-generating
-  // (chat / skill-bundle export) after this picks the inputs up automatically:
-  // both call compose_bundle fresh, and skill_bundle_service's overlay cache
-  // key hashes teams.user_inputs, so a save always busts the cache.
+  // `items` from whichever "paste it now" boxes have content. Merged
+  // client-side (by name) with whatever's already saved for this team
+  // (including any ops-question answers from the Iteration 2 card below) so
+  // this save never clobbers the other write path — PUT /inputs REPLACES,
+  // it doesn't merge server-side. Re-generating (chat / skill-bundle export)
+  // after this picks the inputs up automatically: both call compose_bundle
+  // fresh, and skill_bundle_service's overlay cache key hashes
+  // teams.user_inputs, so a save always busts the cache.
   const saveUserInputs = useCallback((teamId: string, items: UserInputItem[]) => {
     if (!teamId || items.length === 0) return;
     setState((s) => ({
@@ -758,7 +788,9 @@ export function useChat() {
       userInputsByTeam: { ...s.userInputsByTeam, [teamId]: { saving: true } },
     }));
     void (async () => {
-      const r = await putTeamInputs(teamId, items, stateRef.current.adminToken);
+      const existing = stateRef.current.userInputsByTeam[teamId]?.items ?? [];
+      const merged = mergeUserInputsByName(existing, items);
+      const r = await putTeamInputs(teamId, merged, stateRef.current.adminToken);
       if (isApiError(r)) {
         const msg =
           typeof r.detail === "string" && r.status === 422
@@ -774,10 +806,96 @@ export function useChat() {
         ...s,
         userInputsByTeam: {
           ...s.userInputsByTeam,
-          [teamId]: { saving: false, saved: { count: r.count, bytes: r.bytes } },
+          [teamId]: { saving: false, saved: { count: r.count, bytes: r.bytes }, items: merged },
         },
       }));
     })();
+  }, []);
+
+  // ── ops-question interview: answer / save / dismiss (Iteration 2 — "make
+  // it yours" UI) ───────────────────────────────────────────────────────────
+  // answerOpsQuestion: local-only draft edit (mirrors TeamCard's `drafts`
+  // convention) — clears a stale `saved` flag so editing after a save shows
+  // the Save button live again instead of a stale ✓.
+  const answerOpsQuestion = useCallback((teamId: string, idx: number, text: string) => {
+    setState((s) => {
+      const cur = s.opsQuestionsByTeam[teamId];
+      if (!cur) return s;
+      return {
+        ...s,
+        opsQuestionsByTeam: {
+          ...s.opsQuestionsByTeam,
+          [teamId]: { ...cur, answers: { ...cur.answers, [idx]: text }, saved: false },
+        },
+      };
+    });
+  }, []);
+
+  // saveOpsAnswers: builds user_inputs entries from the non-empty answers,
+  // merges them client-side (by name) into whatever's already saved for the
+  // team (the "paste it now" panel's items, if any), and PUTs the full
+  // merged list — PUT /inputs REPLACES, so a naive send-only-the-answers
+  // call would silently drop any real inputs already saved via TeamCard.
+  const saveOpsAnswers = useCallback((teamId: string) => {
+    const ops = stateRef.current.opsQuestionsByTeam[teamId];
+    if (!ops || ops.busy) return;
+    const newItems: UserInputItem[] = ops.questions
+      .map((q, i) => ({ kind: q.kind, name: q.name, content: (ops.answers[i] ?? "").trim() }))
+      .filter((it) => it.content.length > 0);
+    if (newItems.length === 0) return;
+    setState((s) => ({
+      ...s,
+      opsQuestionsByTeam: {
+        ...s.opsQuestionsByTeam,
+        [teamId]: { ...s.opsQuestionsByTeam[teamId], busy: true, error: undefined },
+      },
+    }));
+    void (async () => {
+      const existing = stateRef.current.userInputsByTeam[teamId]?.items ?? [];
+      const merged = mergeUserInputsByName(existing, newItems);
+      const r = await putTeamInputs(teamId, merged, stateRef.current.adminToken);
+      if (isApiError(r)) {
+        const msg =
+          typeof r.detail === "string" && r.status === 422
+            ? r.detail
+            : "Could not save — try again";
+        setState((s) => ({
+          ...s,
+          opsQuestionsByTeam: {
+            ...s.opsQuestionsByTeam,
+            [teamId]: { ...s.opsQuestionsByTeam[teamId], busy: false, error: msg },
+          },
+        }));
+        return;
+      }
+      setState((s) => ({
+        ...s,
+        opsQuestionsByTeam: {
+          ...s.opsQuestionsByTeam,
+          [teamId]: {
+            ...s.opsQuestionsByTeam[teamId],
+            busy: false,
+            saved: true,
+            savedCount: newItems.length,
+            error: undefined,
+          },
+        },
+        userInputsByTeam: {
+          ...s.userInputsByTeam,
+          [teamId]: { saving: false, saved: { count: r.count, bytes: r.bytes }, items: merged },
+        },
+      }));
+    })();
+  }, []);
+
+  const dismissOpsCard = useCallback((teamId: string) => {
+    setState((s) => ({
+      ...s,
+      opsQuestionsByTeam: {
+        ...s.opsQuestionsByTeam,
+        [teamId]: { ...s.opsQuestionsByTeam[teamId], dismissed: true },
+      },
+    }));
   }, []);
 
   // ── starter gallery (Iteration 4 — user-value loop) ──────────────────────
@@ -849,12 +967,35 @@ export function useChat() {
     dismissFeedback,
     sendAgentChat,
     saveUserInputs,
+    answerOpsQuestion,
+    saveOpsAnswers,
+    dismissOpsCard,
     customizeFromGallery,
     onInput,
     onKey,
     setAdminTokenState,
     submitBetaToken,
   };
+}
+
+// PUT /api/team/{tid}/inputs REPLACES the team's whole saved set, so any
+// caller that only has a partial list (the "paste it now" panel's artifact
+// items, or the ops-questions card's answers) must merge client-side before
+// sending — otherwise the second save silently wipes out the first. Union by
+// `name` (case-insensitive, trimmed): an incoming item replaces an existing
+// one with the same name in place, everything else is appended in order.
+function mergeUserInputsByName(
+  existing: UserInputItem[],
+  incoming: UserInputItem[]
+): UserInputItem[] {
+  const merged = [...existing];
+  for (const item of incoming) {
+    const key = item.name.trim().toLowerCase();
+    const idx = merged.findIndex((m) => m.name.trim().toLowerCase() === key);
+    if (idx >= 0) merged[idx] = item;
+    else merged.push(item);
+  }
+  return merged;
 }
 
 // Map a two-track VerifyResult onto the loadout skills[]: per-skill baseline +
