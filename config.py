@@ -96,8 +96,19 @@ class _LocalProcess:
         with open(script, "w") as f:
             f.write(code)
         try:
+            # SCRUBBED env: the sandboxed code is LLM-generated and (with beta
+            # proving) triggerable by semi-trusted users — it must never inherit
+            # secrets (LLM_API_KEY, APP_ADMIN_TOKEN, BETA_TOKEN_SALT, AWS creds).
+            # Minimal env only; HOME on the tmpfs.
+            sandbox_env = {
+                "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
+                "HOME": self._dir,
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "LANG": os.environ.get("LANG", "C.UTF-8"),
+            }
             cp = subprocess.run([sys.executable, "run.py"], cwd=self._dir,
-                                capture_output=True, text=True, timeout=timeout)
+                                capture_output=True, text=True, timeout=timeout,
+                                env=sandbox_env)
             return _LocalResp(cp.stdout or "")
         except subprocess.TimeoutExpired as e:        # swallow -> score stays 0.0
             out = e.stdout if isinstance(e.stdout, str) else ""

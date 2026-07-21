@@ -254,6 +254,23 @@ export const specMd = (teamId: string, agentId: string) =>
 
 export const jobStatus = (jid: string) => api<JobStatus>(`/jobs/${jid}`);
 
+// Iteration 1 (beta feedback instrumentation) — POST /api/feedback. Beta-gated
+// but not admin-only, so it goes through apiVerify's same "adminToken wins,
+// else stored beta token" fallback (works for admin users AND plain beta
+// testers) rather than the plain api() helper's beta-token-only lookup.
+// Idempotent server-side: a second call for the same team upserts the same
+// row instead of duplicating (see app/routers/feedback.py).
+export const submitFeedback = (
+  teamId: string,
+  verdict: "up" | "down",
+  comment: string | undefined,
+  adminToken: string
+) =>
+  apiVerify<{ team_id: string; verdict: string; ok: boolean }>(`/feedback`, adminToken, {
+    method: "POST",
+    body: JSON.stringify({ team_id: teamId, verdict, comment }),
+  });
+
 // ── poller ──────────────────────────────────────────────────────────────────
 export interface PollHandle {
   stop: () => void;

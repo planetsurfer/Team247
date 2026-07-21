@@ -80,3 +80,29 @@ def llm_rate_limit(request: Request):
         )
     window.append(now)
     _hits[key] = window
+
+
+# --- Lighter per-token/IP rate limit for cheap, non-LLM endpoints ----------
+# Same sliding-60s-window mechanics + _hits store as llm_rate_limit above, but
+# namespaced separately (so it never shares — or races against — the
+# LLM-endpoint budget) and parameterized to a caller-supplied limit instead of
+# RATE_LIMIT_PER_MIN. Used by POST /api/feedback (~30/min), which is cheap
+# (one SQLite upsert, no LLM call) and doesn't warrant the strict LLM budget.
+def make_rate_limit(limit_per_min: int, namespace: str):
+    def _limiter(request: Request) -> None:
+        key = f"{namespace}:{_rate_key(request)}"
+        now = time.time()
+        window = [t for t in _hits[key] if t > now - 60]
+        if len(window) >= limit_per_min:
+            raise HTTPException(
+                status_code=429,
+                detail="rate limit exceeded",
+                headers={"Retry-After": "60"},
+            )
+        window.append(now)
+        _hits[key] = window
+
+    return _limiter
+
+
+feedback_rate_limit = make_rate_limit(30, "feedback")

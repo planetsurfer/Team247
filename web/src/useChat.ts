@@ -24,11 +24,13 @@ import {
   setBetaToken as persistBetaToken,
   skillBundlesZip,
   specMd as fetchSpecMd,
+  submitFeedback as apiSubmitFeedback,
   teamSkills,
   verifyAsync,
 } from "./api";
 import type {
   Artifact,
+  FeedbackState,
   Message,
   ProveState,
   RoleRow,
@@ -58,6 +60,9 @@ interface ChatState {
   bundleBusy?: boolean;   // drop-in agent zip is being generated server-side
   sendError?: string;     // async recommend job failed with a user-facing message
                            // (e.g. NoDatasetRoleMatch — "could not match…")
+  // beta feedback (Iteration 1 — user-value loop), keyed by teamId so the
+  // DeliverCard's ask-row fires once per team even across re-renders.
+  feedbackByTeam: Record<string, FeedbackState>;
   // beta-access gate (closed beta — PRODUCTION_ROADMAP.md P0 #1)
   betaChecked: boolean;        // has the initial /api/auth/status probe resolved?
   betaAuth: boolean;           // server has BETA_AUTH on
@@ -77,6 +82,7 @@ const INITIAL: ChatState = {
   artifacts: [],
   copied: false,
   adminToken: "",
+  feedbackByTeam: {},
   betaChecked: false,
   betaAuth: false,
   betaAuthenticated: true,
@@ -372,31 +378,6 @@ export function useChat() {
     if (!s.skills.some((k) => k.target > 0)) return;
     if (!s.teamId || !s.agentId) return;
 
-    // Beta testers don't hold the admin token, so the sandbox-prove phase
-    // (admin-gated verify) isn't available to them: skip it entirely — no
-    // prove card, no error — and deliver the spec + drop-in agent directly,
-    // skills shown at their configured levels. Operators with the admin token
-    // set get the full prove flow below.
-    if (!s.adminToken) {
-      const rSkip = await renderAsync(s.teamId);
-      if (!isApiError(rSkip) && (rSkip as { job_id?: string }).job_id) {
-        const rj = rSkip as { job_id: string };
-        patch({ renderJobId: rj.job_id });
-        renderPollRef.current = pollJob(rj.job_id, {
-          onDone: () => patch({ specReady: true }),
-          onFail: () => patch({ specReady: false }),
-        });
-      }
-      patch({
-        running: false,
-        skills: s.skills.map((k) =>
-          k.target > 0 ? { ...k, base: k.off, fin: k.target } : k
-        ),
-      });
-      push({ kind: "deliver" });
-      return;
-    }
-
     patch({
       running: true,
       prove: { status: "pending", t: 0, done: false, error: null },
@@ -585,6 +566,59 @@ export function useChat() {
     push({ kind: "loadout" });
   }, [push]);
 
+  // ── beta feedback (Iteration 1 — user-value loop) ────────────────────────
+  // Optimistic: the row swaps to "thanks" immediately, then the POST fires.
+  // Failure is silent (best-effort telemetry — never blocks or errors the
+  // delivered-agent flow the user actually came for).
+  const sendFeedback = useCallback((teamId: string, verdict: "up" | "down") => {
+    setState((s) => ({
+      ...s,
+      feedbackByTeam: {
+        ...s.feedbackByTeam,
+        [teamId]: { ...s.feedbackByTeam[teamId], verdict, dismissed: false },
+      },
+    }));
+    void apiSubmitFeedback(teamId, verdict, undefined, stateRef.current.adminToken);
+  }, []);
+
+  // Draft-only: updates the comment text as the user types, without POSTing
+  // (submitFeedbackComment below sends it once they hit submit/Enter).
+  const setFeedbackComment = useCallback((teamId: string, comment: string) => {
+    setState((s) => ({
+      ...s,
+      feedbackByTeam: {
+        ...s.feedbackByTeam,
+        [teamId]: { ...s.feedbackByTeam[teamId], comment },
+      },
+    }));
+  }, []);
+
+  // Sends the current draft comment (same upserted row as the thumb click —
+  // the server updates by (token_hash, team_id), never a second row).
+  const submitFeedbackComment = useCallback((teamId: string) => {
+    const existing = stateRef.current.feedbackByTeam[teamId];
+    const comment = (existing?.comment ?? "").trim();
+    if (!existing?.verdict || !comment) return;
+    setState((s) => ({
+      ...s,
+      feedbackByTeam: {
+        ...s.feedbackByTeam,
+        [teamId]: { ...s.feedbackByTeam[teamId], comment, commentSubmitted: true },
+      },
+    }));
+    void apiSubmitFeedback(teamId, existing.verdict, comment, stateRef.current.adminToken);
+  }, []);
+
+  const dismissFeedback = useCallback((teamId: string) => {
+    setState((s) => ({
+      ...s,
+      feedbackByTeam: {
+        ...s.feedbackByTeam,
+        [teamId]: { ...s.feedbackByTeam[teamId], dismissed: true },
+      },
+    }));
+  }, []);
+
   // ── input / keyboard ──────────────────────────────────────────────────────
   const onInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setState((s) => ({ ...s, input: e.target.value }));
@@ -635,6 +669,10 @@ export function useChat() {
     downloadBundle,
     copy,
     adjust,
+    sendFeedback,
+    setFeedbackComment,
+    submitFeedbackComment,
+    dismissFeedback,
     onInput,
     onKey,
     setAdminTokenState,

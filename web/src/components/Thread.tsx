@@ -94,6 +94,16 @@ export function Thread({ chat, accent }: ThreadProps) {
                   onDownloadBundle={chat.downloadBundle}
                   onCopy={chat.copy}
                   onAdjust={chat.adjust}
+                  teamId={state.teamId}
+                  feedback={state.teamId ? state.feedbackByTeam[state.teamId] : undefined}
+                  onFeedbackThumb={(v) => state.teamId && chat.sendFeedback(state.teamId, v)}
+                  onFeedbackCommentChange={(v) =>
+                    state.teamId && chat.setFeedbackComment(state.teamId, v)
+                  }
+                  onFeedbackCommentSubmit={() =>
+                    state.teamId && chat.submitFeedbackComment(state.teamId)
+                  }
+                  onFeedbackDismiss={() => state.teamId && chat.dismissFeedback(state.teamId)}
                 />
               );
             return null;

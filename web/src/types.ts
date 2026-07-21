@@ -149,6 +149,16 @@ export type Message =
   | { kind: "prove" }
   | { kind: "deliver" };
 
+// Per-team beta feedback row state (Iteration 1 — user-value loop), keyed by
+// teamId in ChatState.feedbackByTeam so re-rendering the same team's
+// DeliverCard never re-asks. Undefined = not yet asked (show the ask row).
+export interface FeedbackState {
+  verdict?: "up" | "down"; // set once the caller picks a thumb
+  comment?: string; // draft/submitted one-line comment
+  commentSubmitted?: boolean; // true once the comment POST has landed
+  dismissed?: boolean; // the row was closed (✕) without giving a verdict
+}
+
 export interface ProveState {
   jobId?: string;
   status: JobStatusName;

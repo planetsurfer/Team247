@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from app import settings, db
 from app.logging_setup import configure_logging
 from app.ratelimit import setup_ratelimit
-from app.routers import catalog, health, intake, team
+from app.routers import catalog, feedback, health, intake, team
 
 # The SPA shell lives one directory up from this file (repo-root demo.html),
 # and still opens standalone when double-clicked. Serving it through the app
@@ -63,6 +63,7 @@ def create_app() -> FastAPI:
     app.include_router(catalog.router)
     app.include_router(intake.router)
     app.include_router(team.router)
+    app.include_router(feedback.router)
 
     # Serve the SPA at `/`. Prefer the built Vite bundle (`app/static/`,
     # produced by `web/` → `npm run build`); fall back to the legacy demo.html

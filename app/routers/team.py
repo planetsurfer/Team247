@@ -208,11 +208,16 @@ def chart(team_id: str):
         raise HTTPException(status_code=404, detail="team not found")
 
 
-# ── Stage 4: optional execution-verify (admin-gated, two-track) ────────────
-@router.post("/api/team/{team_id}/agents/{agent_id}/verify", dependencies=[Depends(llm_rate_limit)])
+# ── Stage 4: execution-verify (two-track). Owner decision 2026-07-21: FULL
+# proving for beta testers — beta tokens accepted (admin remains a superset),
+# metered as a generation (consume_quota) since a verify drives agent codegen
+# per battery item + rubric LLM calls. Safety prerequisite shipped with this
+# change: the LocalRunner sandbox subprocess runs with a SCRUBBED env (no
+# secrets inherited — see config.py _LocalProcess.code_run).
+@router.post("/api/team/{team_id}/agents/{agent_id}/verify",
+             dependencies=[Depends(require_beta), Depends(llm_rate_limit),
+                           Depends(consume_quota)])
 def verify(team_id: str, agent_id: str, request: Request, async_mode: bool = False):
-    if not settings.admin_token_ok(request.headers.get("authorization", "")):
-        raise HTTPException(status_code=401, detail="admin token required")
     try:
         if async_mode:
             jid = verify_service.verify_async(team_id, agent_id)
@@ -227,10 +232,9 @@ def job_status(jid: str):
     return jobs.status(jid)
 
 
-@router.get("/api/team/{team_id}/agents/{agent_id}/verify")
+@router.get("/api/team/{team_id}/agents/{agent_id}/verify",
+            dependencies=[Depends(require_beta)])
 def get_verify(team_id: str, agent_id: str, request: Request):
-    if not settings.admin_token_ok(request.headers.get("authorization", "")):
-        raise HTTPException(status_code=401, detail="admin token required")
     r = verify_service.get_verify(team_id, agent_id)
     if r is None:
         raise HTTPException(status_code=404, detail="no verify run")

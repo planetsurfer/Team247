@@ -222,3 +222,20 @@ CREATE TABLE IF NOT EXISTS beta_token_usage (
   count       INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (token_hash, day)
 );
+
+-- ── Beta feedback capture (Iteration 1 — user-value loop) ───────────────────
+-- One thumbs up/down (+ optional comment) per (token_hash, team_id); POST
+-- /api/feedback (app/routers/feedback.py) upserts this row on a UNIQUE
+-- conflict rather than inserting a duplicate. token_hash is 'admin' for the
+-- admin token, 'anonymous' when BETA_AUTH is off (no request.state.token_hash
+-- to key on). Inspected via `python -m app.feedback --list / --stats`.
+CREATE TABLE IF NOT EXISTS generation_feedback (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  token_hash  TEXT NOT NULL,
+  team_id     TEXT NOT NULL,
+  created_at  TEXT NOT NULL,
+  verdict     TEXT NOT NULL CHECK(verdict IN ('up','down')),
+  comment     TEXT,
+  UNIQUE(token_hash, team_id)
+);
+CREATE INDEX IF NOT EXISTS generation_feedback_team_idx ON generation_feedback(team_id);

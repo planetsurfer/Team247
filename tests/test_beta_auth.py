@@ -275,27 +275,31 @@ def test_gated_endpoints_401_without_token(beta_client, method, path, json_body)
     assert r.json()["detail"] == "beta token required"
 
 
-def test_verify_endpoints_stay_admin_only_not_relaxed_by_beta_token(beta_client, tmp_db, monkeypatch):
-    """A valid (non-admin) beta token must NOT unlock /verify — it still needs
-    the admin token, exactly as before beta auth existed."""
+def test_verify_endpoints_accept_beta_tokens_full_proving(beta_client, tmp_db, monkeypatch):
+    """Owner decision 2026-07-21: FULL proving for beta testers — /verify accepts
+    a valid beta token (metered via consume_quota; sandbox env is scrubbed in
+    config._LocalProcess). No token still 401s; a valid beta token gets past
+    auth (404 on a fake team proves the gate opened); admin unchanged."""
     from app import auth
 
-    token = auth.mint("verify-cant-touch-this")
+    # no token -> still 401
+    r = beta_client.post("/api/team/some-fake-team/agents/some-fake-agent/verify")
+    assert r.status_code == 401
+
+    token = auth.mint("verify-beta-proving")
     r = beta_client.post(
         "/api/team/some-fake-team/agents/some-fake-agent/verify",
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert r.status_code == 401
-    assert r.json()["detail"] == "admin token required"
+    assert r.status_code == 404  # auth passed; team simply doesn't exist
 
     r = beta_client.get(
         "/api/team/some-fake-team/agents/some-fake-agent/verify",
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert r.status_code == 401
-    assert r.json()["detail"] == "admin token required"
+    assert r.status_code == 404  # auth passed on the read path too
 
-    # the admin token itself still works for verify (unchanged behavior)
+    # the admin token continues to work (superset, unchanged)
     r = beta_client.get(
         "/api/team/some-fake-team/agents/some-fake-agent/verify",
         headers={"Authorization": "Bearer api-test-admin-token"},
