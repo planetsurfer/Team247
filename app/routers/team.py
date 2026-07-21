@@ -143,6 +143,15 @@ def delete_team(team_id: str):
     dependencies=[Depends(require_beta)],
 )
 def set_team_inputs(team_id: str, body: UserInputsIn):
+    """Full REPLACE, not a merge: the given user_inputs list becomes the
+    team's entire saved set, dropping anything not resent. Unchanged by
+    Iteration 1 (OPERATIONS-INTAKE loop) — the post-reveal ops-question UI
+    is expected to send the FULL merged list (prior inputs + the newly
+    answered question(s)) on every save, same as the manual real-inputs
+    editor already does. `kind` must be one of
+    team_service.USER_INPUT_KINDS (the original artifact kinds plus the
+    ops-question extraction-taxonomy kinds: procedure, threshold,
+    constraint, handoff, metric, workaround)."""
     try:
         return team_service.set_user_inputs(
             team_id, [item.model_dump() for item in body.user_inputs],
@@ -151,6 +160,33 @@ def set_team_inputs(team_id: str, body: UserInputsIn):
         raise HTTPException(status_code=404, detail="team not found")
     except UserInputsInvalid as e:
         raise HTTPException(status_code=422, detail=str(e))
+
+
+@router.post(
+    "/api/team/{team_id}/ops-questions",
+    dependencies=[Depends(require_beta), Depends(llm_rate_limit)],
+)
+def ops_questions(team_id: str):
+    """Iteration 1 (OPERATIONS-INTAKE loop): after the team is revealed, the
+    UI calls this ONCE (or again after the user answers, to check for
+    convergence) to get at most settings.OPS_QUESTIONS_MAX follow-up
+    questions targeting missing operational knowledge. Deliberately NOT
+    consume_quota — this is a cheap follow-up call on an already-recommended
+    team, not a fresh generation."""
+    try:
+        team = team_service.get_team(team_id)
+    except TeamNotFound:
+        raise HTTPException(status_code=404, detail="team not found")
+
+    roles = [a["role"] for a in team.get("agents", [])]
+    try:
+        result = llm_contracts.generate_ops_questions(
+            team.get("use_case"), roles, team.get("user_inputs") or [],
+        )
+    except Exception as e:  # noqa: BLE001 — surface as a friendly 502, never a 500
+        raise HTTPException(status_code=502, detail=f"ops-questions failed: {e}")
+
+    return result
 
 
 @router.put("/api/team/{team_id}/agents/{agent_id}")

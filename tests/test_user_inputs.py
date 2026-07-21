@@ -105,10 +105,10 @@ def test_put_inputs_422_too_many_items(beta_client):
 
     team_id = _seed_team("team-inputs-422-count")
     token = auth.mint("inputs-tester-422-count")
-    items = [{"kind": "sample", "name": f"item-{i}", "content": "x"} for i in range(6)]
+    items = [{"kind": "sample", "name": f"item-{i}", "content": "x"} for i in range(11)]
     r = _put_inputs(beta_client, token, team_id, items)
     assert r.status_code == 422
-    assert "5" in r.json()["detail"]
+    assert "10" in r.json()["detail"]
 
 
 def test_put_inputs_422_oversize_total_content(beta_client):
@@ -116,13 +116,46 @@ def test_put_inputs_422_oversize_total_content(beta_client):
 
     team_id = _seed_team("team-inputs-422-oversize")
     token = auth.mint("inputs-tester-422-oversize")
-    # one item alone > 20KB
+    # one item alone > 40KB
     r = _put_inputs(
         beta_client, token, team_id,
-        [{"kind": "sample", "name": "big", "content": "x" * (20 * 1024 + 1)}],
+        [{"kind": "sample", "name": "big", "content": "x" * (40 * 1024 + 1)}],
     )
     assert r.status_code == 422
-    assert "20480" in r.json()["detail"] or "bytes" in r.json()["detail"]
+    assert "40960" in r.json()["detail"] or "bytes" in r.json()["detail"]
+
+
+def test_put_inputs_422_unknown_kind(beta_client):
+    from app import auth
+
+    team_id = _seed_team("team-inputs-422-kind")
+    token = auth.mint("inputs-tester-422-kind")
+    r = _put_inputs(
+        beta_client, token, team_id,
+        [{"kind": "not-a-real-kind", "name": "n", "content": "some content"}],
+    )
+    assert r.status_code == 422
+    assert "kind" in r.json()["detail"]
+
+
+def test_put_inputs_accepts_new_ops_kinds(beta_client):
+    """The Iteration-1 OPERATIONS-INTAKE extraction-taxonomy kinds must be
+    accepted alongside the original artifact kinds."""
+    from app import auth
+
+    team_id = _seed_team("team-inputs-ops-kinds")
+    token = auth.mint("inputs-tester-ops-kinds")
+    items = [
+        {"kind": "procedure", "name": "Approval steps", "content": "Manager signs off over $500."},
+        {"kind": "threshold", "name": "Discount cap", "content": "Max 10% without director approval."},
+        {"kind": "constraint", "name": "Compliance rule", "content": "Never quote below cost."},
+        {"kind": "handoff", "name": "Who approves", "content": "Sales lead reviews before sending."},
+        {"kind": "metric", "name": "Turnaround SLA", "content": "Quotes go out within 24 hours."},
+        {"kind": "workaround", "name": "Rush orders", "content": "Call the warehouse directly to confirm stock."},
+    ]
+    r = _put_inputs(beta_client, token, team_id, items)
+    assert r.status_code == 200, r.text
+    assert r.json()["count"] == 6
 
 
 def test_put_inputs_422_name_too_long(beta_client):

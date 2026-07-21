@@ -14,6 +14,7 @@ import time
 
 import config  # root config.py — Alibaba LLM client (llm_json, _model_for)
 
+from app import settings
 from app.logging_setup import log_llm
 from app.schemas import ARTIFACT_KINDS, Artifact, Brief, IntakeTurn, TeamRecommend, WireHandoffs
 
@@ -610,3 +611,152 @@ def identify_artifacts(use_case):
         max_tokens=512,
     )
     return _validate_artifacts(raw)["artifacts_needed"]
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Iteration 1 (OPERATIONS-INTAKE loop) — post-reveal ops-question interview.
+# ──────────────────────────────────────────────────────────────────────────────
+# The extraction taxonomy an ops-question answer gets tagged with (also
+# app.services.team_service.USER_INPUT_KINDS' ops-specific subset — every
+# `kind` this contract can propose is a valid user_inputs kind the SPA can
+# PUT straight back to /api/team/{team_id}/inputs once the user answers).
+OPS_QUESTION_KINDS = (
+    "procedure",   # steps, decision rules, escalation, approvals
+    "handoff",     # roles & handoffs — who does what, who signs off
+    "threshold",   # numeric cutoffs, approval limits, thresholds
+    "constraint",  # compliance / must-not rules, hard limits
+    "metric",      # SLAs, targets, turnaround times
+    "workaround",  # tribal knowledge — exceptions, "what we actually do"
+)
+
+OPS_QUESTION_NAME_MAX_CHARS = 60
+OPS_QUESTION_TEXT_MAX_CHARS = 240
+
+
+def _validate_ops_questions(max_questions):
+    """Return a validator bound to `max_questions` (settings.OPS_QUESTIONS_MAX
+    read at call time, not import time, so tests can monkeypatch it).
+
+    0 questions is a VALID result — it means the LLM judged nothing left
+    worth asking (every high-value taxonomy field is already covered by
+    known_inputs). Anything beyond max_questions, a bad kind, or an
+    over-length name/question fails validation and triggers call_llm_json's
+    corrective retry.
+    """
+    def _validate(o):
+        if not isinstance(o, dict) or not isinstance(o.get("questions"), list):
+            raise ValueError('expected {"questions": [...]}')
+        qs = o["questions"]
+        if len(qs) > max_questions:
+            raise ValueError(f"questions must be <= {max_questions} (got {len(qs)})")
+        out = []
+        seen_names = set()
+        for i, q in enumerate(qs):
+            if not isinstance(q, dict):
+                raise ValueError(f"questions[{i}] must be an object")
+            kind = (q.get("kind") or "").strip()
+            name = (q.get("name") or "").strip()
+            question = (q.get("question") or "").strip()
+            if kind not in OPS_QUESTION_KINDS:
+                raise ValueError(
+                    f"questions[{i}].kind must be one of {OPS_QUESTION_KINDS} (got {kind!r})"
+                )
+            if not name:
+                raise ValueError(f"questions[{i}].name is required")
+            if len(name) > OPS_QUESTION_NAME_MAX_CHARS:
+                raise ValueError(
+                    f"questions[{i}].name must be <= {OPS_QUESTION_NAME_MAX_CHARS} chars"
+                )
+            if not question:
+                raise ValueError(f"questions[{i}].question is required")
+            if len(question) > OPS_QUESTION_TEXT_MAX_CHARS:
+                raise ValueError(
+                    f"questions[{i}].question must be <= {OPS_QUESTION_TEXT_MAX_CHARS} chars"
+                )
+            name_key = name.lower()
+            if name_key in seen_names:
+                continue  # de-dup by name, keep first occurrence — not a hard failure
+            seen_names.add(name_key)
+            out.append({"kind": kind, "name": name, "question": question})
+        return {"questions": out}
+    return _validate
+
+
+def generate_ops_questions(use_case, team_roles, known_inputs):
+    """Iteration 1 (OPERATIONS-INTAKE loop): after the team is revealed, ask
+    AT MOST settings.OPS_QUESTIONS_MAX questions in ONE round — each one
+    targeting a single missing HIGH-VALUE piece of operational knowledge from
+    the extraction taxonomy (OPS_QUESTION_KINDS above) that the user hasn't
+    already given us via known_inputs.
+
+    use_case: str — the team's task/use case.
+    team_roles: list[str] — the role names on the revealed team.
+    known_inputs: list[{kind, name, content}] — the user's existing
+    user_inputs (real-inputs intake + any prior ops-question answers); only
+    kind/name/first-80-chars-of-content are shown to the LLM so the prompt
+    stays small and PII-light-ish, and it's told never to re-ask about them.
+
+    Returns {"questions": [{"kind", "name", "question"}, ...]} — 0..MAX
+    entries. Zero is valid (nothing left worth asking / everything's already
+    converged). Every question is business-plain, jargon-free, and
+    answerable in 1-2 sentences (enforced by prompt instruction, not by a
+    hard validator — length is only capped, not word-counted).
+    """
+    max_q = max(0, int(getattr(settings, "OPS_QUESTIONS_MAX", 3)))
+    if max_q == 0:
+        return {"questions": []}
+
+    roles_listing = "\n".join(f"- {r}" for r in (team_roles or [])) or "(no roles listed)"
+    known_listing = "\n".join(
+        f"- [{(k.get('kind') or '?')}] {(k.get('name') or '?')}: "
+        f"{(k.get('content') or '')[:80]}"
+        for k in (known_inputs or [])
+    ) or "(nothing provided yet)"
+
+    prompt = (
+        "A team of agents has just been assembled for a user's task. Before the "
+        "team starts, we get ONE round of follow-up questions to fill in "
+        "operational knowledge the team can't infer on its own — the specific "
+        "rules, numbers, and know-how of how THIS user's operation actually "
+        "runs, not general knowledge.\n\n"
+        f"Task:\n\"\"\"\n{use_case or '(unspecified)'}\n\"\"\"\n\n"
+        f"Team roles:\n{roles_listing}\n\n"
+        f"Already known (do NOT ask about any of these again):\n{known_listing}\n\n"
+        "From the taxonomy below, propose the 1 to " + str(max_q) + " HIGHEST-VALUE "
+        "MISSING pieces of operational knowledge — the ones that would most "
+        "change how the team actually does the work. Every question you propose "
+        "MUST target something NOT already covered above. If everything of real "
+        "value is already known, return zero questions — do not invent a "
+        "question just to fill a slot.\n\n"
+        "Taxonomy — `kind` MUST be one of:\n"
+        "  procedure  = the steps, decision rules, escalation path, or approval "
+        "flow for how a task gets done;\n"
+        "  handoff    = which role does what, and who hands off to whom;\n"
+        "  threshold  = a specific number that changes what happens — a cutoff, "
+        "a limit, an approval trigger;\n"
+        "  constraint = a hard rule the team must never break — compliance, "
+        "policy, a must-not;\n"
+        "  metric     = a target or turnaround time the work is measured "
+        "against (an SLA, a deadline);\n"
+        "  workaround = tribal knowledge — an exception or "
+        "\"what we actually do\" that isn't written down anywhere.\n\n"
+        "Writing rules for every question — these are shown DIRECTLY to a "
+        "business owner, not a technical audience:\n"
+        "  - plain business language only; NEVER use jargon, framework names, "
+        "internal codes, or any competency/skills-taxonomy terminology;\n"
+        "  - each question must be answerable in ONE or TWO sentences;\n"
+        "  - `name` is a short label for the answer (<=8 words, e.g. "
+        "\"Approval threshold\"); `question` is the actual question "
+        "(one sentence, plain English).\n\n"
+        'Return STRICT JSON: {"questions": [{"kind": "<one of the taxonomy '
+        'kinds>", "name": "<short label>", "question": "<one plain-English '
+        'question>"}]} — an empty list is a valid answer.'
+    )
+    raw = call_llm_json(
+        "ops_questions",
+        [{"role": "user", "content": prompt}],
+        validate=_validate_ops_questions(max_q),
+        temperature=0.3,
+        max_tokens=1024,
+    )
+    return raw

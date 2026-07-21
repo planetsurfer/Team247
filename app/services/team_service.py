@@ -467,19 +467,31 @@ def get_team(team_id):
 # the generated SKILL.md by skill_bundle_service.generate_task_overlay (see
 # build_agent_context there, which reads teams.user_inputs by team_id).
 # ──────────────────────────────────────────────────────────────────────────────
-MAX_USER_INPUTS = 5
+MAX_USER_INPUTS = 10
 MAX_USER_INPUT_NAME_CHARS = 100
-MAX_USER_INPUT_TOTAL_BYTES = 20 * 1024  # 20KB, across all items combined
+MAX_USER_INPUT_TOTAL_BYTES = 40 * 1024  # 40KB, across all items combined
+
+# Accepted `kind` values for a user_inputs item. Originally just the
+# artifact-request kinds (schemas.ARTIFACT_KINDS — sample/blank_format/
+# past_documents/database/none). Iteration 1 (OPERATIONS-INTAKE loop) adds the
+# extraction-taxonomy kinds an ops-question answer gets tagged with:
+# procedure (steps/decision rules), threshold (numeric cutoffs/approval
+# limits), constraint (compliance/must-not rules), handoff (roles/who-does-
+# what), metric (SLAs/targets), workaround (tribal knowledge/exceptions).
+USER_INPUT_KINDS = tuple(schemas.ARTIFACT_KINDS) + (
+    "procedure", "threshold", "constraint", "handoff", "metric", "workaround",
+)
 
 
 def _validate_user_inputs(items) -> tuple[list[dict], int]:
     """Deterministic validation for a PUT .../inputs body — no LLM, no DB.
 
     Each item must be a {kind, name, content} object with all three
-    non-empty after stripping; name <= MAX_USER_INPUT_NAME_CHARS; at most
-    MAX_USER_INPUTS items; combined UTF-8 content bytes across all items
-    <= MAX_USER_INPUT_TOTAL_BYTES. Returns (cleaned_items, total_bytes).
-    Raises UserInputsInvalid (422) on any violation.
+    non-empty after stripping; kind in USER_INPUT_KINDS; name <=
+    MAX_USER_INPUT_NAME_CHARS; at most MAX_USER_INPUTS items; combined UTF-8
+    content bytes across all items <= MAX_USER_INPUT_TOTAL_BYTES. Returns
+    (cleaned_items, total_bytes). Raises UserInputsInvalid (422) on any
+    violation.
     """
     if not isinstance(items, list):
         raise UserInputsInvalid("user_inputs must be a list")
@@ -497,6 +509,10 @@ def _validate_user_inputs(items) -> tuple[list[dict], int]:
         content = raw.get("content") or ""
         if not kind:
             raise UserInputsInvalid(f"user_inputs[{i}].kind is required")
+        if kind not in USER_INPUT_KINDS:
+            raise UserInputsInvalid(
+                f"user_inputs[{i}].kind must be one of {USER_INPUT_KINDS} (got {kind!r})"
+            )
         if not name:
             raise UserInputsInvalid(f"user_inputs[{i}].name is required")
         if len(name) > MAX_USER_INPUT_NAME_CHARS:

@@ -25,6 +25,10 @@ BETA_TOKEN_SALT = os.getenv("BETA_TOKEN_SALT", "")  # mixed into every token has
 # rather than eating into the per-token generation quota.
 CHAT_TURNS_PER_DAY = int(os.getenv("CHAT_TURNS_PER_DAY", "40"))
 
+# Iteration 1 (OPERATIONS-INTAKE loop) — post-reveal ops-question interview.
+# One round, at most this many questions (llm_contracts.generate_ops_questions).
+OPS_QUESTIONS_MAX = int(os.getenv("OPS_QUESTIONS_MAX", "3"))
+
 
 def admin_token_ok(header_value: str) -> bool:
     """True if the Authorization header carries the configured admin token."""
