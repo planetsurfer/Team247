@@ -1,11 +1,12 @@
 // Landing (empty) state — centered input pill with role autocomplete dropdown,
-// task suggestion chips, and role chips. Everything after the first submit
-// happens inline in the thread (no page nav).
-import { useEffect, useMemo, useState } from "react";
+// task suggestion chips, role chips, and a starter gallery of proven agents.
+// Everything after the first submit happens inline in the thread (no page nav).
+import { useEffect, useRef, useState } from "react";
 import { C, R, SH, TASK_CHIPS, ROLE_CHIPS, copy, type Theme } from "../theme";
-import { catalogSearch, isApiError } from "../api";
+import { catalogSearch, galleryDetail, galleryList, isApiError, skillBundlesZip } from "../api";
 import { Logo } from "./Logo";
-import type { CatalogItem } from "../types";
+import { TryAgentChat } from "./messages/TryAgentChat";
+import type { CatalogItem, ChatThreadState, GalleryDetail, GalleryListItem } from "../types";
 
 interface LandingProps {
   theme: Theme;
@@ -19,6 +20,15 @@ interface LandingProps {
   gate?: boolean;
   gateError?: string;
   onSubmitBetaToken?: (token: string) => void;
+  // Starter gallery (Iteration 4 — user-value loop). GET /api/gallery is
+  // open, so the card grid renders regardless of `gate`; opening a card's
+  // detail (GET /api/gallery/{slug}) and its actions (chat / download) are
+  // beta-gated, same convention as the rest of the app: adminToken wins,
+  // else the stored beta token (see api.ts's apiVerify).
+  adminToken?: string;
+  chatByAgent?: Record<string, ChatThreadState>;
+  onAgentChatSend?: (teamId: string, agentId: string, text: string) => void;
+  onCustomizeUseCase?: (useCase: string) => void;
 }
 
 const TASK_CHIP: React.CSSProperties = {
@@ -40,6 +50,48 @@ const ROLE_CHIP: React.CSSProperties = {
   color: "#3c3a33",
   cursor: "pointer",
 };
+const GALLERY_CARD: React.CSSProperties = {
+  textAlign: "left",
+  border: `1px solid ${C.pillBorder}`,
+  background: "#fff",
+  borderRadius: R.card,
+  padding: "12px 14px",
+  cursor: "pointer",
+  width: 208,
+  flex: "0 0 auto",
+  boxShadow: SH.pill,
+};
+const DETAIL_PANEL: React.CSSProperties = {
+  marginTop: 16,
+  border: `1px solid ${C.cardBorder}`,
+  background: C.cardBg,
+  borderRadius: R.card,
+  padding: "16px 18px",
+  textAlign: "left",
+};
+const BUNDLE_PRE: React.CSSProperties = {
+  marginTop: 8,
+  background: C.pageBg,
+  border: `1px solid ${C.divider}`,
+  borderRadius: 10,
+  padding: "10px 12px",
+  fontSize: 11.5,
+  lineHeight: 1.5,
+  whiteSpace: "pre-wrap",
+  maxHeight: 320,
+  overflowY: "auto",
+  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+};
+const secondaryBtn: React.CSSProperties = {
+  border: `1px solid ${C.pillBorder}`,
+  background: "#fff",
+  color: "#3c3a33",
+  borderRadius: 10,
+  padding: "9px 16px",
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: "pointer",
+};
 
 export function Landing({
   theme,
@@ -51,11 +103,114 @@ export function Landing({
   gate,
   gateError,
   onSubmitBetaToken,
+  adminToken,
+  chatByAgent,
+  onAgentChatSend,
+  onCustomizeUseCase,
 }: LandingProps) {
   const c = copy(theme.tone);
   const [matches, setMatches] = useState<CatalogItem[]>([]);
   const [betaTokenInput, setBetaTokenInput] = useState("");
   const q = input.trim().toLowerCase();
+  const mainInputRef = useRef<HTMLInputElement>(null);
+
+  // ── starter gallery (Iteration 4 — user-value loop) ───────────────────────
+  const [galleryItems, setGalleryItems] = useState<GalleryListItem[]>([]);
+  const [authNudgeSlug, setAuthNudgeSlug] = useState<string | undefined>();
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  const [detail, setDetail] = useState<GalleryDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | undefined>();
+  const [bundleExpanded, setBundleExpanded] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [downloadBusy, setDownloadBusy] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | undefined>();
+
+  // GET /api/gallery is open (no auth) — fetch once on mount regardless of
+  // the beta gate, so the card grid is visible pre-login.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const r = await galleryList();
+      if (cancelled || isApiError(r)) return;
+      setGalleryItems(r);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const closeDetail = () => {
+    setSelectedSlug(null);
+    setDetail(null);
+    setDetailError(undefined);
+    setChatOpen(false);
+    setBundleExpanded(false);
+    setDownloadBusy(false);
+    setDownloadError(undefined);
+  };
+
+  const loadDetail = async (slug: string) => {
+    setSelectedSlug(slug);
+    setDetail(null);
+    setDetailError(undefined);
+    setChatOpen(false);
+    setBundleExpanded(false);
+    setDownloadError(undefined);
+    setDetailLoading(true);
+    const r = await galleryDetail(slug, adminToken ?? "");
+    setDetailLoading(false);
+    if (isApiError(r)) {
+      setDetailError(
+        r.status === 401
+          ? "Enter your beta access token above to view this agent."
+          : "Could not load this agent — try again."
+      );
+      return;
+    }
+    setDetail(r);
+  };
+
+  // Clicking a card when not authenticated prompts the beta gate first
+  // (already visible above, in place of the task input) instead of trying
+  // (and 401-ing) the detail fetch.
+  const handleCardClick = (slug: string) => {
+    if (gate) {
+      setAuthNudgeSlug(slug);
+      return;
+    }
+    setAuthNudgeSlug(undefined);
+    void loadDetail(slug);
+  };
+
+  const handleDownload = async () => {
+    if (!detail || downloadBusy) return;
+    setDownloadBusy(true);
+    setDownloadError(undefined);
+    const r = await skillBundlesZip(detail.team_id, adminToken ?? "");
+    setDownloadBusy(false);
+    if (isApiError(r)) {
+      setDownloadError("Download failed — check your access token and try again.");
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(r);
+    a.download = `${detail.slug}-agent-skills.zip`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const handleCustomize = () => {
+    if (!detail) return;
+    onCustomizeUseCase?.(detail.use_case);
+    closeDetail();
+    mainInputRef.current?.focus();
+  };
+
+  const bundleLines = detail?.bundle_md.split("\n") ?? [];
+  const bundlePreviewLines = bundleExpanded ? bundleLines : bundleLines.slice(0, 30);
+  const bundleTruncated = !bundleExpanded && bundleLines.length > 30;
+  const chatKey = detail ? `${detail.team_id}:${detail.agent_id}` : undefined;
 
   // role autocomplete: only on landing (caller guarantees messages empty) and
   // only for query length > 1; substring over the catalog, max 3 (prototype rule).
@@ -103,6 +258,7 @@ export function Landing({
         alignItems: "center",
         justifyContent: "center",
         padding: 24,
+        overflowY: "auto",
       }}
     >
       <div style={{ marginBottom: 36 }}>
@@ -193,6 +349,7 @@ export function Landing({
           <div style={{ width: "100%", maxWidth: 660, marginTop: 32, position: "relative" }}>
             <div style={pill}>
               <input
+                ref={mainInputRef}
                 style={{
                   flex: 1,
                   border: "none",
@@ -305,6 +462,143 @@ export function Landing({
             </div>
           )}
         </>
+      )}
+
+      {/* Starter gallery (Iteration 4 — user-value loop). Renders regardless
+          of `gate` — GET /api/gallery is open — so it's visible pre-login;
+          opening a card is what prompts the beta gate. */}
+      {galleryItems.length > 0 && (
+        <div style={{ width: "100%", maxWidth: 660, marginTop: 34 }}>
+          <div
+            style={{
+              fontSize: 11.5,
+              color: C.dim,
+              textAlign: "center",
+              marginBottom: 10,
+            }}
+          >
+            Start from a proven agent
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
+            {galleryItems.map((item) => (
+              <div key={item.slug} style={{ display: "flex", flexDirection: "column" }}>
+                <button style={GALLERY_CARD} onClick={() => handleCardClick(item.slug)}>
+                  <div style={{ fontWeight: 650, fontSize: 13.5 }}>{item.label}</div>
+                  <div style={{ fontSize: 12, color: C.muted, marginTop: 4, lineHeight: 1.4 }}>
+                    {item.blurb}
+                  </div>
+                </button>
+                {gate && authNudgeSlug === item.slug && (
+                  <div style={{ fontSize: 11, color: C.gap, marginTop: 6, maxWidth: 208 }}>
+                    Enter your beta access token above to try this agent.
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {selectedSlug && (
+            <div style={DETAIL_PANEL}>
+              {detailLoading && (
+                <div style={{ fontSize: 12.5, color: C.dim }}>Loading…</div>
+              )}
+              {detailError && (
+                <div style={{ fontSize: 12.5, color: C.gap }}>{detailError}</div>
+              )}
+              {detail && (
+                <>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: 10,
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 650, fontSize: 15 }}>{detail.label}</div>
+                      <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4 }}>
+                        {detail.blurb}
+                      </div>
+                    </div>
+                    <button
+                      onClick={closeDetail}
+                      aria-label="Close"
+                      style={{
+                        border: "none",
+                        background: "transparent",
+                        color: C.faint,
+                        fontSize: 15,
+                        padding: "2px 6px",
+                        cursor: "pointer",
+                        flex: "none",
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div style={{ marginTop: 12 }}>
+                    <button
+                      onClick={() => setBundleExpanded((v) => !v)}
+                      style={{
+                        border: "none",
+                        background: "transparent",
+                        padding: 0,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: C.muted,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {bundleExpanded ? "▾" : "▸"} Agent spec preview
+                    </button>
+                    <pre style={BUNDLE_PRE}>
+                      {bundlePreviewLines.join("\n")}
+                      {bundleTruncated ? "\n…" : ""}
+                    </pre>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                    <button
+                      onClick={() => setChatOpen((v) => !v)}
+                      style={{
+                        border: "none",
+                        background: theme.accent,
+                        color: "#fff",
+                        borderRadius: 10,
+                        padding: "9px 16px",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {chatOpen ? "▾" : "▸"} Try this agent
+                    </button>
+                    <button onClick={handleDownload} disabled={downloadBusy} style={secondaryBtn}>
+                      {downloadBusy ? "⏳ Preparing…" : "⬇ Download"}
+                    </button>
+                    <button onClick={handleCustomize} style={secondaryBtn}>
+                      ✎ Customize for my business
+                    </button>
+                  </div>
+                  {downloadError && (
+                    <div style={{ fontSize: 12, color: C.gap, marginTop: 8 }}>{downloadError}</div>
+                  )}
+
+                  <TryAgentChat
+                    roleName={detail.label}
+                    useCase={detail.use_case}
+                    accent={theme.accent}
+                    chat={chatKey ? chatByAgent?.[chatKey] : undefined}
+                    onSend={(text) => onAgentChatSend?.(detail.team_id, detail.agent_id, text)}
+                    expanded={chatOpen}
+                  />
+                </>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

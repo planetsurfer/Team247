@@ -255,3 +255,23 @@ CREATE TABLE IF NOT EXISTS beta_chat_usage (
   count       INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (token_hash, day)
 );
+
+-- ── Starter gallery (Iteration 4 — user-value loop) ─────────────────────────
+-- One row per pre-built starter-gallery archetype agent, seeded offline by
+-- `python -m app.build_gallery` (app/build_gallery.py) via the SAME
+-- recommend -> wire -> compose_bundle pipeline a real user's first task runs.
+-- GET /api/gallery (open, no auth) returns slug/label/blurb only, so the
+-- gallery is visible pre-login on Landing; GET /api/gallery/{slug}
+-- (beta-gated) returns the full row, including bundle_md (the composed
+-- SKILL.md) and the team_id/agent_id used to wire "Try this agent" /
+-- "Download" against the existing team endpoints. See app/routers/gallery.py.
+CREATE TABLE IF NOT EXISTS gallery_agents (
+  slug        TEXT PRIMARY KEY,
+  label       TEXT NOT NULL,
+  blurb       TEXT NOT NULL,
+  use_case    TEXT NOT NULL,
+  team_id     TEXT NOT NULL,
+  agent_id    TEXT NOT NULL,
+  bundle_md   TEXT NOT NULL,
+  created_at  TEXT NOT NULL
+);

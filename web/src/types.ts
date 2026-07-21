@@ -91,6 +91,24 @@ export interface UserInputsSaveState {
   error?: string;
 }
 
+// ── Starter gallery (Iteration 4 — user-value loop) ─────────────────────────
+// GET /api/gallery (open, no auth) — metadata only, so the gallery renders on
+// Landing before the beta gate. GET /api/gallery/{slug} (beta-gated) — the
+// full row, including the composed bundle_md and the team_id/agent_id used
+// to wire "Try this agent" (POST .../chat) and "Download" (POST
+// .../skill-bundles) against the existing team endpoints.
+export interface GalleryListItem {
+  slug: string;
+  label: string;
+  blurb: string;
+}
+export interface GalleryDetail extends GalleryListItem {
+  use_case: string;
+  team_id: string;
+  agent_id: string;
+  bundle_md: string;
+}
+
 // ── Team skills (GET /api/team/{tid}/skills/{aid}) ──────────────────────────
 export interface TeamSkills {
   agent_id: string;

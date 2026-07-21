@@ -6,6 +6,8 @@ import type {
   CatalogResp,
   CardPayload,
   ChatTurnMessage,
+  GalleryDetail,
+  GalleryListItem,
   JobStatus,
   RecommendResp,
   TeamSkills,
@@ -203,6 +205,17 @@ export const catalogSearch = (q: string, size = 10) =>
   api<CatalogResp>(`/catalog?q=${encodeURIComponent(q)}&size=${size}`);
 
 export const catalogCard = (roleId: number) => api<CardPayload>(`/catalog/${roleId}/card`);
+
+// ── Starter gallery (Iteration 4 — user-value loop) ─────────────────────────
+// GET /api/gallery is OPEN (no auth) — deliberately using the plain `api()`
+// helper (never fails on a missing beta token) so the gallery renders on
+// Landing before the beta gate. GET /api/gallery/{slug} is beta-gated, so it
+// goes through `apiVerify`'s "adminToken wins, else stored beta token"
+// fallback like every other beta-gated call in this file.
+export const galleryList = () => api<GalleryListItem[]>(`/gallery`);
+
+export const galleryDetail = (slug: string, adminToken: string) =>
+  apiVerify<GalleryDetail>(`/gallery/${slug}`, adminToken);
 
 export const recommend = (useCase: string) =>
   api<RecommendResp>(`/team/recommend`, {

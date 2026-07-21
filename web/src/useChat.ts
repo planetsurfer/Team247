@@ -726,6 +726,18 @@ export function useChat() {
     })();
   }, []);
 
+  // ── starter gallery (Iteration 4 — user-value loop) ──────────────────────
+  // "Customize for my business": prefills the landing task input with a
+  // gallery archetype's use_case. Landing.tsx focuses its input field itself
+  // right after calling this (it owns the DOM ref) — this just updates the
+  // shared `input` state that Landing/Composer already render.
+  const customizeFromGallery = useCallback(
+    (useCase: string) => {
+      patch({ input: useCase });
+    },
+    [patch]
+  );
+
   // ── input / keyboard ──────────────────────────────────────────────────────
   const onInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setState((s) => ({ ...s, input: e.target.value }));
@@ -782,6 +794,7 @@ export function useChat() {
     dismissFeedback,
     sendAgentChat,
     saveUserInputs,
+    customizeFromGallery,
     onInput,
     onKey,
     setAdminTokenState,

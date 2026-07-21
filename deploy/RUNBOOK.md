@@ -380,3 +380,52 @@ the SG since it already exists; you'd need to re-run just the
 **This never applies to auth** — beta/admin tokens stay in SSM regardless;
 this is only for cutting network exposure, not for rotating credentials
 (see §5 for that).
+
+---
+
+## 10. Starter gallery rebuild (Iteration 4, 2026-07-21)
+
+The Landing page's "Start from a proven agent" gallery (5 fixed archetypes —
+collections-chaser, contract-reviewer, quotation-writer,
+onboarding-coordinator, campaign-planner) is served entirely from
+`gallery_agents` (migration `0007_gallery_agents.py`): GET `/api/gallery`
+(open, metadata only) and GET `/api/gallery/{slug}` (beta-gated, full row
+incl. the composed `bundle_md`) never call an LLM — they only ever read that
+table. All the LLM work happens offline, run **inside the running app
+container** on the box (same access pattern as §3's token ops), via:
+
+```bash
+# build any archetype that doesn't have a row yet — idempotent, safe to
+# re-run after every deploy; existing slugs are left untouched
+sudo docker exec team247-prod python -m app.build_gallery
+
+# rebuild everything (e.g. after a prompt/grounding change you want reflected
+# in the gallery's pre-built bundles)
+sudo docker exec team247-prod python -m app.build_gallery --force
+
+# rebuild just one or two archetypes (repeatable, or comma-separated) —
+# bounds LLM cost/time when only one archetype needs a refresh
+sudo docker exec team247-prod python -m app.build_gallery --force --only collections-chaser
+sudo docker exec team247-prod python -m app.build_gallery --force --only collections-chaser,quotation-writer
+```
+
+Each archetype runs the exact same pipeline a real user's first task does
+(`team_service.recommend` -> `handoff_service.wire` (best-effort — a wiring
+failure is reported and the build continues unwired) ->
+`skill_bundle_service.compose_bundle` for the primary agent), so per-archetype
+cost/latency matches a normal `/api/team/recommend` + `/wire` +
+`/skill-bundles` sequence for that use case (real local timing:
+~40-50s/archetype on `kimi-k2.6`, mostly the same LLM round trips a live user
+triggers). One archetype failing (composer guardrail miss, transient LLM
+error) is reported to stdout and skipped — it never aborts the remaining
+archetypes; re-run the same command afterward to retry just the failed one
+(it will rebuild since it never got a row).
+
+There's no scheduled/automatic rebuild — run this by hand after a deploy that
+changes the framework dataset, the base-skill/task-overlay prompts, or the
+5 archetype definitions in `app/build_gallery.py`. Verify with:
+
+```bash
+curl -s https://team247.io/api/gallery
+# -> [{"slug":...,"label":...,"blurb":...}, ...] — should list all 5
+```

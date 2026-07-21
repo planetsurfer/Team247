@@ -15,6 +15,12 @@ interface TryAgentChatProps {
   accent: string;
   chat?: ChatThreadState;
   onSend: (text: string) => void;
+  // Iteration 4 (starter gallery) — when provided, the caller owns the
+  // collapsed/expanded state (e.g. the gallery detail panel's own "Try this
+  // agent" action button) and this component's internal toggle button is
+  // suppressed. Omit for the original DeliverCard usage, which keeps its own
+  // internal collapsed-by-default "▸ Try your agent" toggle unchanged.
+  expanded?: boolean;
 }
 
 function suggestedChips(useCase?: string): string[] {
@@ -29,8 +35,12 @@ function suggestedChips(useCase?: string): string[] {
   ];
 }
 
-export function TryAgentChat({ roleName, useCase, accent, chat, onSend }: TryAgentChatProps) {
-  const [open, setOpen] = useState(false);
+export function TryAgentChat({
+  roleName, useCase, accent, chat, onSend, expanded,
+}: TryAgentChatProps) {
+  const controlled = expanded !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlled ? !!expanded : internalOpen;
   const [draft, setDraft] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -55,20 +65,22 @@ export function TryAgentChat({ roleName, useCase, accent, chat, onSend }: TryAge
 
   return (
     <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.divider}` }}>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        style={{
-          border: "none",
-          background: "transparent",
-          padding: 0,
-          fontSize: 12.5,
-          fontWeight: 600,
-          color: C.muted,
-          cursor: "pointer",
-        }}
-      >
-        {open ? "▾" : "▸"} Try your agent
-      </button>
+      {!controlled && (
+        <button
+          onClick={() => setInternalOpen((v) => !v)}
+          style={{
+            border: "none",
+            background: "transparent",
+            padding: 0,
+            fontSize: 12.5,
+            fontWeight: 600,
+            color: C.muted,
+            cursor: "pointer",
+          }}
+        >
+          {open ? "▾" : "▸"} Try your agent
+        </button>
+      )}
       {open && (
         <div style={{ marginTop: 10 }}>
           {messages.length === 0 && (

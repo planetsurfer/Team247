@@ -54,6 +54,10 @@ export function App() {
           gate={betaGated}
           gateError={state.betaTokenError}
           onSubmitBetaToken={chat.submitBetaToken}
+          adminToken={state.adminToken}
+          chatByAgent={state.chatByAgent}
+          onAgentChatSend={chat.sendAgentChat}
+          onCustomizeUseCase={chat.customizeFromGallery}
         />
       ) : (
         <Thread chat={chat} accent={theme.accent} />
