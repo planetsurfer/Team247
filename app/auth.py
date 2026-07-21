@@ -230,3 +230,50 @@ def consume_quota(request: Request) -> None:
                 "INSERT INTO beta_token_usage (token_hash, day, count) VALUES (?, ?, 1)",
                 (token_hash, day),
             )
+
+
+def consume_chat_turn(request: Request) -> None:
+    """FastAPI dependency for the try-your-agent CHAT endpoint only
+    (team/{id}/agents/{id}/chat). Must run after require_beta on the same
+    request (reads request.state.token_hash it stamps).
+
+    Separate budget from consume_quota's generation daily_quota: a chat turn
+    is a single llm_chat call, not a full recommend/verify, so it is metered
+    against its own flat per-token daily allowance (settings.CHAT_TURNS_PER_DAY,
+    beta_chat_usage — mirrors beta_token_usage) rather than eating into the
+    token's configured generation quota.
+
+    No-op when BETA_AUTH is off or for the admin token. Otherwise atomically
+    upserts today's (UTC) beta_chat_usage row and 429s
+    ("daily chat allowance exhausted") once the increment would exceed
+    settings.CHAT_TURNS_PER_DAY.
+    """
+    if not settings.BETA_AUTH:
+        return
+    if getattr(request.state, "is_admin", False):
+        return
+
+    token_hash = getattr(request.state, "token_hash", None)
+    if not token_hash:
+        return  # require_beta didn't run — nothing to meter
+
+    day = _today()
+    limit = settings.CHAT_TURNS_PER_DAY
+    with db.get_conn() as conn:
+        row = conn.execute(
+            "SELECT count FROM beta_chat_usage WHERE token_hash = ? AND day = ?",
+            (token_hash, day),
+        ).fetchone()
+        current = row["count"] if row else 0
+        if current + 1 > limit:
+            raise HTTPException(status_code=429, detail="daily chat allowance exhausted")
+        if row:
+            conn.execute(
+                "UPDATE beta_chat_usage SET count = count + 1 WHERE token_hash = ? AND day = ?",
+                (token_hash, day),
+            )
+        else:
+            conn.execute(
+                "INSERT INTO beta_chat_usage (token_hash, day, count) VALUES (?, ?, 1)",
+                (token_hash, day),
+            )

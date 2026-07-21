@@ -5,6 +5,7 @@
 import type {
   CatalogResp,
   CardPayload,
+  ChatTurnMessage,
   JobStatus,
   RecommendResp,
   TeamSkills,
@@ -269,6 +270,23 @@ export const submitFeedback = (
   apiVerify<{ team_id: string; verdict: string; ok: boolean }>(`/feedback`, adminToken, {
     method: "POST",
     body: JSON.stringify({ team_id: teamId, verdict, comment }),
+  });
+
+// Iteration 2 (try-your-agent chat) — POST /api/team/{tid}/agents/{aid}/chat.
+// Beta-gated (same convention as verify/skill-bundles): apiVerify's
+// "adminToken wins, else stored beta token" fallback. `messages` is the
+// caller's already-trimmed (<=20) turn history, last entry a user turn.
+// 429 (daily chat allowance) surfaces via ApiError.status for the UI to
+// show the friendly "try again tomorrow" copy.
+export const agentChat = (
+  teamId: string,
+  agentId: string,
+  messages: ChatTurnMessage[],
+  adminToken: string
+) =>
+  apiVerify<{ reply: string }>(`/team/${teamId}/agents/${agentId}/chat`, adminToken, {
+    method: "POST",
+    body: JSON.stringify({ messages }),
   });
 
 // ── poller ──────────────────────────────────────────────────────────────────

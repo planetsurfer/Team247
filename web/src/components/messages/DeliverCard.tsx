@@ -3,8 +3,9 @@
 // ○ and are never blended into the headline.
 import { C } from "../../theme";
 import { PairBar } from "../Bar";
-import type { FeedbackState, SkillState } from "../../types";
+import type { ChatThreadState, FeedbackState, SkillState } from "../../types";
 import { readiness } from "../../useChat";
+import { TryAgentChat } from "./TryAgentChat";
 
 interface DeliverCardProps {
   roleName: string;
@@ -25,6 +26,12 @@ interface DeliverCardProps {
   onFeedbackCommentChange?: (comment: string) => void;
   onFeedbackCommentSubmit?: () => void;
   onFeedbackDismiss?: () => void;
+  // Iteration 2 (try-your-agent chat) — omitted agentId hides the section
+  // entirely (same "no team/agent context yet" guard as feedback above).
+  agentId?: string;
+  useCase?: string;
+  chat?: ChatThreadState;
+  onChatSend?: (text: string) => void;
 }
 
 const EYEBROW: React.CSSProperties = {
@@ -170,6 +177,10 @@ export function DeliverCard({
   onFeedbackCommentChange,
   onFeedbackCommentSubmit,
   onFeedbackDismiss,
+  agentId,
+  useCase,
+  chat,
+  onChatSend,
 }: DeliverCardProps) {
   const active = skills.filter((k) => k.target > 0);
   const r = readiness(active);
@@ -291,6 +302,15 @@ export function DeliverCard({
           ⟳ Adjust loadout
         </button>
       </div>
+      {teamId && agentId && (
+        <TryAgentChat
+          roleName={roleName}
+          useCase={useCase}
+          accent={accent}
+          chat={chat}
+          onSend={(text) => onChatSend?.(text)}
+        />
+      )}
       {teamId && (
         <FeedbackRow
           feedback={feedback}

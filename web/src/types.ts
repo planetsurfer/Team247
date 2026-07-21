@@ -159,6 +159,19 @@ export interface FeedbackState {
   dismissed?: boolean; // the row was closed (✕) without giving a verdict
 }
 
+// ── Try-your-agent chat (Iteration 2 — user-value loop) ─────────────────────
+// POST /api/team/{tid}/agents/{aid}/chat {messages}. One thread per
+// (teamId, agentId), keyed in ChatState.chatByAgent by `${teamId}:${agentId}`.
+export interface ChatTurnMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+export interface ChatThreadState {
+  messages: ChatTurnMessage[];
+  busy: boolean;
+  error?: string;
+}
+
 export interface ProveState {
   jobId?: string;
   status: JobStatusName;

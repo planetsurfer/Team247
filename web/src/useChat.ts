@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  agentChat,
   asRecommendResult,
   asVerifyResult,
   authStatus,
@@ -30,6 +31,7 @@ import {
 } from "./api";
 import type {
   Artifact,
+  ChatThreadState,
   FeedbackState,
   Message,
   ProveState,
@@ -63,6 +65,9 @@ interface ChatState {
   // beta feedback (Iteration 1 — user-value loop), keyed by teamId so the
   // DeliverCard's ask-row fires once per team even across re-renders.
   feedbackByTeam: Record<string, FeedbackState>;
+  // try-your-agent chat (Iteration 2 — user-value loop), keyed by
+  // `${teamId}:${agentId}` so history is independent per delivered agent.
+  chatByAgent: Record<string, ChatThreadState>;
   // beta-access gate (closed beta — PRODUCTION_ROADMAP.md P0 #1)
   betaChecked: boolean;        // has the initial /api/auth/status probe resolved?
   betaAuth: boolean;           // server has BETA_AUTH on
@@ -83,6 +88,7 @@ const INITIAL: ChatState = {
   copied: false,
   adminToken: "",
   feedbackByTeam: {},
+  chatByAgent: {},
   betaChecked: false,
   betaAuth: false,
   betaAuthenticated: true,
@@ -619,6 +625,65 @@ export function useChat() {
     }));
   }, []);
 
+  // ── try-your-agent chat (Iteration 2 — user-value loop) ─────────────────
+  // One thread per (teamId, agentId). Appends the user's turn immediately
+  // (optimistic), sends only the last 20 messages (server also caps at 20 —
+  // this keeps the request small as a thread grows), then appends the
+  // assistant's reply on success. A 429 (daily allowance) or any other
+  // failure surfaces via chatByAgent[key].error and clears `busy` without
+  // losing the user's turn already in the thread, so retry-by-resend works.
+  const CHAT_HISTORY_LIMIT = 20;
+
+  const sendAgentChat = useCallback((teamId: string, agentId: string, text: string) => {
+    const clean = text.trim();
+    if (!clean) return;
+    const key = `${teamId}:${agentId}`;
+    const existing = stateRef.current.chatByAgent[key];
+    if (existing?.busy) return;
+
+    const history = [...(existing?.messages ?? []), { role: "user" as const, content: clean }];
+    setState((s) => ({
+      ...s,
+      chatByAgent: {
+        ...s.chatByAgent,
+        [key]: { messages: history, busy: true, error: undefined },
+      },
+    }));
+
+    void (async () => {
+      const payload = history.slice(-CHAT_HISTORY_LIMIT);
+      const r = await agentChat(teamId, agentId, payload, stateRef.current.adminToken);
+      if (isApiError(r)) {
+        const msg =
+          r.status === 429
+            ? "Daily chat allowance reached — try again tomorrow"
+            : "Could not reach your agent — try again";
+        setState((s) => ({
+          ...s,
+          chatByAgent: {
+            ...s.chatByAgent,
+            [key]: { ...s.chatByAgent[key], busy: false, error: msg },
+          },
+        }));
+        return;
+      }
+      setState((s) => {
+        const cur = s.chatByAgent[key];
+        const next = [
+          ...(cur?.messages ?? history),
+          { role: "assistant" as const, content: r.reply },
+        ];
+        return {
+          ...s,
+          chatByAgent: {
+            ...s.chatByAgent,
+            [key]: { messages: next, busy: false, error: undefined },
+          },
+        };
+      });
+    })();
+  }, []);
+
   // ── input / keyboard ──────────────────────────────────────────────────────
   const onInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setState((s) => ({ ...s, input: e.target.value }));
@@ -673,6 +738,7 @@ export function useChat() {
     setFeedbackComment,
     submitFeedbackComment,
     dismissFeedback,
+    sendAgentChat,
     onInput,
     onKey,
     setAdminTokenState,

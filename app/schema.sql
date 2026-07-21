@@ -239,3 +239,16 @@ CREATE TABLE IF NOT EXISTS generation_feedback (
   UNIQUE(token_hash, team_id)
 );
 CREATE INDEX IF NOT EXISTS generation_feedback_team_idx ON generation_feedback(team_id);
+
+-- ── Beta chat-turn allowance (Iteration 2 — user-value loop, try-your-agent) ──
+-- Mirrors beta_token_usage exactly, but namespaced separately so a chat turn
+-- never eats into a token's generation daily_quota. One row per (token_hash,
+-- day); incremented once per successful call to
+-- POST /api/team/{tid}/agents/{aid}/chat by app.auth.consume_chat_turn, capped
+-- at settings.CHAT_TURNS_PER_DAY (env CHAT_TURNS_PER_DAY, default 40).
+CREATE TABLE IF NOT EXISTS beta_chat_usage (
+  token_hash  TEXT NOT NULL,
+  day         TEXT NOT NULL,        -- UTC 'YYYY-MM-DD'
+  count       INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (token_hash, day)
+);

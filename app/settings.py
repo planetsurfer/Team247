@@ -18,6 +18,13 @@ PRE_DISTILL_POPULAR = int(os.getenv("PRE_DISTILL_POPULAR", "50"))  # top-N roles
 BETA_AUTH = os.getenv("BETA_AUTH", "on") != "off"
 BETA_TOKEN_SALT = os.getenv("BETA_TOKEN_SALT", "")  # mixed into every token hash
 
+# Iteration 2 (user-value loop) — try-your-agent chat. Per-token, per-UTC-day
+# turn allowance (app.auth.consume_chat_turn / beta_chat_usage), separate from
+# the generation daily_quota on beta_tokens: a chat turn is a single llm_chat
+# call, cheaper than a full recommend/verify, so it gets its own flat budget
+# rather than eating into the per-token generation quota.
+CHAT_TURNS_PER_DAY = int(os.getenv("CHAT_TURNS_PER_DAY", "40"))
+
 
 def admin_token_ok(header_value: str) -> bool:
     """True if the Authorization header carries the configured admin token."""

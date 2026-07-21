@@ -22,6 +22,12 @@ export function Thread({ chat, accent }: ThreadProps) {
   const { state } = chat;
   const listRef = useRef<HTMLDivElement>(null);
 
+  // Iteration 2 (try-your-agent chat) — the task text for the suggested
+  // first-message chips: the first user turn in the thread (what the caller
+  // originally described), falling back to the picked role name.
+  const firstUserText = state.messages.find((m) => m.kind === "user")?.text;
+  const chatKey = state.teamId && state.agentId ? `${state.teamId}:${state.agentId}` : undefined;
+
   // auto-scroll to bottom on new content (ports componentDidUpdate)
   useEffect(() => {
     const el = listRef.current;
@@ -104,6 +110,14 @@ export function Thread({ chat, accent }: ThreadProps) {
                     state.teamId && chat.submitFeedbackComment(state.teamId)
                   }
                   onFeedbackDismiss={() => state.teamId && chat.dismissFeedback(state.teamId)}
+                  agentId={state.agentId}
+                  useCase={firstUserText}
+                  chat={chatKey ? state.chatByAgent[chatKey] : undefined}
+                  onChatSend={(text) =>
+                    state.teamId &&
+                    state.agentId &&
+                    chat.sendAgentChat(state.teamId, state.agentId, text)
+                  }
                 />
               );
             return null;
