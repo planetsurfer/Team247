@@ -2,6 +2,10 @@
 
 _Newest first. Auto-stamped by the SessionEnd hook; fill in each Summary._
 
+## 2026-07-22 — Ops-intake iter 1: question generation live (d8ef086)
+- generate_ops_questions contract (purpose=ops_questions, strict validator, zero-questions valid) + POST /api/team/{id}/ops-questions (beta-gated, not quota-metered); user_inputs kinds extended (procedure/threshold/constraint/handoff/metric/workaround) with a real allowlist; caps 10 items/40KB. 42 tests. Matrix PASS.
+- Live convergence proven twice (answered questions replaced by new genuine gaps). Checkpoint (b) question copy shown to owner (quotation-approval-limit / pricing-method / validity-period) — ships on iter-2 UI unless vetoed.
+
 ## 2026-07-22 — USER-VALUE LOOP COMPLETE: iter 6 receipts + FINAL GATE PASS, loop stopped
 - **Iter 6 (a87a386):** python -m app.build_battery (top-20 ∪ gallery roles, retry-with-feedback + deterministic bare-GRADE grader repair — yield 0/5→2/3 then 10/12 on prod) + gallery receipts (verify_service.get_receipts, API fields, "✓ proven" badge + receipts strip, never fabricated). Prod population: 21 roles, 13 ready items total, 3 invalid correctly refused, 12 roles zero-executable (honest catalog limit). Ops lesson: a double-launched population raced and invalid overwrote ready via REPLACE — fixed with a clean targeted --force re-run; single-instance discipline noted in RUNBOOK.
 - **Gallery receipts LIVE:** quotation-writer proven (1 exec skill, sandbox score 1.0, held L2 = required L2), campaign-planner proven (2 exec skills); other 3 honestly unbadged (roles have zero executable skills in the framework — positioning note, not a bug).
