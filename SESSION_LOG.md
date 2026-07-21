@@ -2,6 +2,11 @@
 
 _Newest first. Auto-stamped by the SessionEnd hook; fill in each Summary._
 
+## 2026-07-21 — User-value iter 4: STARTER GALLERY live (prod build 5/5)
+- gallery_agents (migration 0007) + python -m app.build_gallery (idempotent, --force/--only); GET /api/gallery open metadata + beta-gated detail; landing "Start from a proven agent" cards → inline detail (preview, Try-chat via the iter-2 endpoint — no generation quota, download zip, Customize prefills the input). 12 new tests (83 green). RUNBOOK §10 rebuild one-liners.
+- PROD: all 5 archetypes built through the real pipeline on the box (235s total, 0 failed); live-verified open list (metadata only), 401→200 detail, on-task gallery chat; matrix PASS.
+- Remaining: iter 5 export → iter 6 battery top-20 + receipts → final gate.
+
 ## 2026-07-21 — User-value iter 3: REAL-INPUTS INTAKE live (26704df)
 - PUT /api/team/{id}/inputs (beta-gated, <=5 items/20KB) → teams.user_inputs (migration 0006); deterministic fenced "### Your provided inputs" in the overlay; Required-real-inputs lists only still-missing kinds; overlay hash includes content digest (template v5); chat inherits via bundle. UI: per-artifact paste on TeamCard. RUNBOOK retention + purge SQL. 20 new tests (71 green).
 - Verified independently local ($779 quoted by chat) AND on PROD ($1,088/unit quoted through team247.io). Matrix 11/11.
