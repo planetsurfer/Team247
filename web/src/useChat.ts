@@ -24,12 +24,14 @@ import {
   seedTokenFromUrl,
   setAdminToken as persistToken,
   setBetaToken as persistBetaToken,
+  skillBundleMd,
   skillBundlesZip,
   specMd as fetchSpecMd,
   submitFeedback as apiSubmitFeedback,
   teamSkills,
   verifyAsync,
 } from "./api";
+import { COPY_AS_PROMPT_PREAMBLE } from "./theme";
 import type {
   Artifact,
   ChatThreadState,
@@ -65,6 +67,12 @@ interface ChatState {
   bundleBusy?: boolean;   // drop-in agent zip is being generated server-side
   sendError?: string;     // async recommend job failed with a user-facing message
                            // (e.g. NoDatasetRoleMatch — "could not match…")
+  // "Copy as prompt" (Iteration 5 — one-click export) — cached per delivered
+  // agent (`${teamId}:${agentId}`) so repeat copies of the same agent are
+  // instant instead of re-fetching the composed SKILL.md every click.
+  skillMdByAgent: Record<string, string>;
+  copyPromptBusy?: boolean;
+  copyPromptCopied?: boolean;
   // beta feedback (Iteration 1 — user-value loop), keyed by teamId so the
   // DeliverCard's ask-row fires once per team even across re-renders.
   feedbackByTeam: Record<string, FeedbackState>;
@@ -93,6 +101,7 @@ const INITIAL: ChatState = {
   artifacts: [],
   copied: false,
   adminToken: "",
+  skillMdByAgent: {},
   feedbackByTeam: {},
   chatByAgent: {},
   userInputsByTeam: {},
@@ -112,6 +121,7 @@ export function useChat() {
   const proveStartRef = useRef<number>(0);
   const putTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copyPromptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // seed admin token from localStorage / ?token= on mount
   useEffect(() => {
@@ -124,6 +134,7 @@ export function useChat() {
       if (sendPollRef.current) sendPollRef.current.stop();
       if (putTimerRef.current) clearTimeout(putTimerRef.current);
       if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      if (copyPromptTimerRef.current) clearTimeout(copyPromptTimerRef.current);
     };
   }, []);
 
@@ -575,6 +586,49 @@ export function useChat() {
     copyTimerRef.current = setTimeout(() => patch({ copied: false }), 1600);
   }, [loadSpec, patch]);
 
+  // "Copy as prompt" (Iteration 5 — one-click export): fetches the selected
+  // agent's composed SKILL.md via the skill-bundles JSON format (the same
+  // compose_bundle the zip/download path uses, just format:"json" instead of
+  // "zip" — see api.ts's skillBundleMd), caches it in skillMdByAgent so a
+  // repeat copy of the same agent is instant, then writes the preamble +
+  // markdown to the clipboard. Mirrors `copy`'s busy/flip pattern above.
+  const copyPrompt = useCallback(async () => {
+    const s = stateRef.current;
+    if (!s.teamId || !s.agentId || s.copyPromptBusy) return;
+    const key = `${s.teamId}:${s.agentId}`;
+    let md = s.skillMdByAgent[key];
+    if (!md) {
+      patch({ copyPromptBusy: true });
+      const r = await skillBundleMd(s.teamId, s.adminToken);
+      if (isApiError(r)) {
+        patch({
+          copyPromptBusy: false,
+          tokenRejected: r.status === 401 ? true : stateRef.current.tokenRejected,
+        });
+        return;
+      }
+      const bundle = r.bundles.find((b) => b.agent_id === s.agentId) ?? r.bundles[0];
+      md = bundle?.skill_md ?? "";
+      if (md) {
+        const cached = md;
+        setState((st) => ({
+          ...st,
+          skillMdByAgent: { ...st.skillMdByAgent, [key]: cached },
+        }));
+      }
+      patch({ copyPromptBusy: false });
+    }
+    if (!md) return;
+    try {
+      await navigator.clipboard.writeText(COPY_AS_PROMPT_PREAMBLE + md);
+    } catch {
+      /* clipboard may be unavailable; the spec text is still cached for retry */
+    }
+    patch({ copyPromptCopied: true });
+    if (copyPromptTimerRef.current) clearTimeout(copyPromptTimerRef.current);
+    copyPromptTimerRef.current = setTimeout(() => patch({ copyPromptCopied: false }), 2000);
+  }, [patch]);
+
   const adjust = useCallback(() => {
     push({ kind: "loadout" });
   }, [push]);
@@ -787,6 +841,7 @@ export function useChat() {
     download,
     downloadBundle,
     copy,
+    copyPrompt,
     adjust,
     sendFeedback,
     setFeedbackComment,

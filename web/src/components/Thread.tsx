@@ -106,6 +106,9 @@ export function Thread({ chat, accent }: ThreadProps) {
                   onDownload={chat.download}
                   onDownloadBundle={chat.downloadBundle}
                   onCopy={chat.copy}
+                  copyPromptBusy={!!state.copyPromptBusy}
+                  copyPromptCopied={!!state.copyPromptCopied}
+                  onCopyPrompt={chat.copyPrompt}
                   onAdjust={chat.adjust}
                   teamId={state.teamId}
                   feedback={state.teamId ? state.feedbackByTeam[state.teamId] : undefined}

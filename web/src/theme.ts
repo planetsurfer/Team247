@@ -138,3 +138,9 @@ export const ROLE_CHIPS = [
 
 export const THREAD_PLACEHOLDER = "Describe another task or role…";
 export const HEADER_CAPTION = "verified role catalogue · sandbox-proven";
+
+// Iteration 5 (one-click export) — "Copy as prompt" clipboard preamble,
+// prepended to the full drop-in SKILL.md so pasting it into any chat/system
+// prompt box gives the receiving model the same brief as the drop-in file.
+export const COPY_AS_PROMPT_PREAMBLE =
+  "You are the following agent — act accordingly:\n\n";

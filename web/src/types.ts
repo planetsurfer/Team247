@@ -109,6 +109,23 @@ export interface GalleryDetail extends GalleryListItem {
   bundle_md: string;
 }
 
+// ── Skill-bundle JSON export (Iteration 5 — one-click export) ──────────────
+// POST /api/team/{tid}/skill-bundles {format: "json"} — same compose as the
+// zip export, but returns every agent's SKILL.md inline so the frontend can
+// pick one out (e.g. for "Copy as prompt") without downloading a file.
+export interface SkillBundleItem {
+  agent_id: string;
+  role: string;
+  skill_md: string;
+  filename?: string;
+}
+export interface SkillBundlesResp {
+  team_id: string;
+  use_case: string;
+  coherence?: unknown;
+  bundles: SkillBundleItem[];
+}
+
 // ── Team skills (GET /api/team/{tid}/skills/{aid}) ──────────────────────────
 export interface TeamSkills {
   agent_id: string;

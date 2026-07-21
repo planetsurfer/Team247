@@ -2,9 +2,19 @@
 // task suggestion chips, role chips, and a starter gallery of proven agents.
 // Everything after the first submit happens inline in the thread (no page nav).
 import { useEffect, useRef, useState } from "react";
-import { C, R, SH, TASK_CHIPS, ROLE_CHIPS, copy, type Theme } from "../theme";
+import {
+  C,
+  COPY_AS_PROMPT_PREAMBLE,
+  R,
+  SH,
+  TASK_CHIPS,
+  ROLE_CHIPS,
+  copy,
+  type Theme,
+} from "../theme";
 import { catalogSearch, galleryDetail, galleryList, isApiError, skillBundlesZip } from "../api";
 import { Logo } from "./Logo";
+import { InstallPopover } from "./InstallPopover";
 import { TryAgentChat } from "./messages/TryAgentChat";
 import type { CatalogItem, ChatThreadState, GalleryDetail, GalleryListItem } from "../types";
 
@@ -125,6 +135,11 @@ export function Landing({
   const [chatOpen, setChatOpen] = useState(false);
   const [downloadBusy, setDownloadBusy] = useState(false);
   const [downloadError, setDownloadError] = useState<string | undefined>();
+  // "Copy as prompt" (Iteration 5 — one-click export) — the gallery detail
+  // row already has the full bundle_md in hand (galleryDetail fetched it),
+  // so no extra request is needed here, unlike DeliverCard's useChat path.
+  const [copyPromptCopied, setCopyPromptCopied] = useState(false);
+  const copyPromptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // GET /api/gallery is open (no auth) — fetch once on mount regardless of
   // the beta gate, so the card grid is visible pre-login.
@@ -140,6 +155,13 @@ export function Landing({
     };
   }, []);
 
+  // "Copy as prompt" 2s flip-back timer cleanup on unmount.
+  useEffect(() => {
+    return () => {
+      if (copyPromptTimerRef.current) clearTimeout(copyPromptTimerRef.current);
+    };
+  }, []);
+
   const closeDetail = () => {
     setSelectedSlug(null);
     setDetail(null);
@@ -148,6 +170,7 @@ export function Landing({
     setBundleExpanded(false);
     setDownloadBusy(false);
     setDownloadError(undefined);
+    setCopyPromptCopied(false);
   };
 
   const loadDetail = async (slug: string) => {
@@ -157,6 +180,7 @@ export function Landing({
     setChatOpen(false);
     setBundleExpanded(false);
     setDownloadError(undefined);
+    setCopyPromptCopied(false);
     setDetailLoading(true);
     const r = await galleryDetail(slug, adminToken ?? "");
     setDetailLoading(false);
@@ -205,6 +229,21 @@ export function Landing({
     onCustomizeUseCase?.(detail.use_case);
     closeDetail();
     mainInputRef.current?.focus();
+  };
+
+  // "Copy as prompt" (Iteration 5 — one-click export) — same clipboard
+  // content as DeliverCard's onCopyPrompt (preamble + full SKILL.md), but
+  // synchronous here since detail.bundle_md is already loaded.
+  const handleCopyPrompt = async () => {
+    if (!detail) return;
+    try {
+      await navigator.clipboard.writeText(COPY_AS_PROMPT_PREAMBLE + detail.bundle_md);
+    } catch {
+      /* clipboard may be unavailable */
+    }
+    setCopyPromptCopied(true);
+    if (copyPromptTimerRef.current) clearTimeout(copyPromptTimerRef.current);
+    copyPromptTimerRef.current = setTimeout(() => setCopyPromptCopied(false), 2000);
   };
 
   const bundleLines = detail?.bundle_md.split("\n") ?? [];
@@ -578,6 +617,10 @@ export function Landing({
                     <button onClick={handleDownload} disabled={downloadBusy} style={secondaryBtn}>
                       {downloadBusy ? "⏳ Preparing…" : "⬇ Download"}
                     </button>
+                    <button onClick={handleCopyPrompt} style={secondaryBtn}>
+                      {copyPromptCopied ? "✓ Copied" : "📋 Copy as prompt"}
+                    </button>
+                    <InstallPopover accent={theme.accent} />
                     <button onClick={handleCustomize} style={secondaryBtn}>
                       ✎ Customize for my business
                     </button>

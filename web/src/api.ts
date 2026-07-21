@@ -10,6 +10,7 @@ import type {
   GalleryListItem,
   JobStatus,
   RecommendResp,
+  SkillBundlesResp,
   TeamSkills,
   UserInputItem,
   UserInputsResp,
@@ -136,6 +137,18 @@ export async function skillBundlesZip(
     return { error: "network", detail: String(e) };
   }
 }
+
+// Iteration 5 (one-click export) — same POST as skillBundlesZip but with the
+// server's default `format: "json"` instead of "zip": returns every agent's
+// composed SKILL.md inline (bundles[].skill_md) rather than a zip Blob, so
+// "Copy as prompt" can grab the selected agent's markdown without a download
+// round-trip. Same beta-gated, admin-token-wins-else-beta-token auth as
+// skillBundlesZip/putTeamInputs (apiVerify).
+export const skillBundleMd = (teamId: string, adminToken: string) =>
+  apiVerify<SkillBundlesResp>(`/team/${teamId}/skill-bundles`, adminToken, {
+    method: "POST",
+    body: JSON.stringify({ format: "json" }),
+  });
 
 // Plaintext GET (for /specs/{agent_id} which is PlainTextResponse).
 export async function apiText(path: string, opts?: RequestInit): Promise<string | ApiError> {

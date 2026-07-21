@@ -5,6 +5,7 @@ import { C } from "../../theme";
 import { PairBar } from "../Bar";
 import type { ChatThreadState, FeedbackState, SkillState } from "../../types";
 import { readiness } from "../../useChat";
+import { InstallPopover } from "../InstallPopover";
 import { TryAgentChat } from "./TryAgentChat";
 
 interface DeliverCardProps {
@@ -17,6 +18,12 @@ interface DeliverCardProps {
   onDownloadBundle: () => void;
   onCopy: () => void;
   onAdjust: () => void;
+  // Iteration 5 (one-click export) — "Copy as prompt" (preamble + full
+  // SKILL.md onto the clipboard) + the "How to install" popover, next to the
+  // existing zip/spec/copy export buttons.
+  copyPromptBusy: boolean;
+  copyPromptCopied: boolean;
+  onCopyPrompt: () => void;
   // Iteration 1 (beta feedback instrumentation) — omitted teamId hides the
   // row entirely (e.g. no team context yet); otherwise it fires once per
   // team, keyed by teamId in useChat's feedbackByTeam.
@@ -171,6 +178,9 @@ export function DeliverCard({
   onDownloadBundle,
   onCopy,
   onAdjust,
+  copyPromptBusy,
+  copyPromptCopied,
+  onCopyPrompt,
   teamId,
   feedback,
   onFeedbackThumb,
@@ -286,6 +296,24 @@ export function DeliverCard({
         >
           {copied ? "✓ Copied" : "⧉ Copy"}
         </button>
+        <button
+          onClick={onCopyPrompt}
+          disabled={copyPromptBusy}
+          style={{
+            border: `1px solid ${C.pillBorder}`,
+            background: "#fff",
+            color: "#3c3a33",
+            borderRadius: 10,
+            padding: "9px 16px",
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: copyPromptBusy ? "wait" : "pointer",
+            opacity: copyPromptBusy ? 0.7 : 1,
+          }}
+        >
+          {copyPromptCopied ? "✓ Copied" : copyPromptBusy ? "⏳ Preparing…" : "📋 Copy as prompt"}
+        </button>
+        <InstallPopover accent={accent} />
         <button
           onClick={onAdjust}
           style={{
