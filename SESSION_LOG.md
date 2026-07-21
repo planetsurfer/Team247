@@ -2,6 +2,12 @@
 
 _Newest first. Auto-stamped by the SessionEnd hook; fill in each Summary._
 
+## 2026-07-22 — USER-VALUE LOOP COMPLETE: iter 6 receipts + FINAL GATE PASS, loop stopped
+- **Iter 6 (a87a386):** python -m app.build_battery (top-20 ∪ gallery roles, retry-with-feedback + deterministic bare-GRADE grader repair — yield 0/5→2/3 then 10/12 on prod) + gallery receipts (verify_service.get_receipts, API fields, "✓ proven" badge + receipts strip, never fabricated). Prod population: 21 roles, 13 ready items total, 3 invalid correctly refused, 12 roles zero-executable (honest catalog limit). Ops lesson: a double-launched population raced and invalid overwrote ready via REPLACE — fixed with a clean targeted --force re-run; single-instance discipline noted in RUNBOOK.
+- **Gallery receipts LIVE:** quotation-writer proven (1 exec skill, sandbox score 1.0, held L2 = required L2), campaign-planner proven (2 exec skills); other 3 honestly unbadged (roles have zero executable skills in the framework — positioning note, not a bug).
+- **FINAL GATE: matrix PASS + full-journey 5/5 PASS on prod** (proven badges → receipts detail → generate w/ pasted "$5,346" pricing → chat quotes it → export md carries it → feedback write). Feedback funnel at close: up=7 down=0 total=7.
+- **Loop shipped end-to-end:** feedback instrumentation, FULL beta proving (sandbox env scrubbed), try-your-agent chat, real-inputs intake, starter gallery, one-click export + verified install guide, battery+receipts. NEXT LOOP (owner-commissioned): OPERATIONS INTAKE — guided questions first, transcript extraction second.
+
 ## 2026-07-22 — User-value iter 5: ONE-CLICK EXPORT live (d7833df)
 - "Copy as prompt" (preamble + full SKILL.md, cached per agent) on DeliverCard + gallery detail; shared 3-tab InstallPopover with docs-verified copy (Claude Code: unzip to ~/.claude/skills/ — our zip layout already matches <agent>/SKILL.md, no restart, /<name>; Claude.ai: Project instructions; Codex: system prompt). Frontend-only. Playwright clipboard-verified (26/26); 83 tests; matrix PASS on prod.
 - Owner directive locked: finish battery+receipts (iter 6) → final gate → next loop = OPERATIONS INTAKE (guided questions first, transcript extraction second).
