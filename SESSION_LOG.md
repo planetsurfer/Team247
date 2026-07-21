@@ -2,6 +2,11 @@
 
 _Newest first. Auto-stamped by the SessionEnd hook; fill in each Summary._
 
+## 2026-07-21 — User-value iter 2: TRY-YOUR-AGENT CHAT live (94a3498)
+- POST /api/team/{id}/agents/{aid}/chat — beta-gated, rate-limited, per-day chat allowance (beta_chat_usage migration 0005, CHAT_TURNS_PER_DAY=40 default, 429 beyond); composed SKILL.md as system prompt (purpose=agent_chat, no tools, anti-disclosure); sync 5-20s/turn. UI: collapsible chat on DeliverCard with suggested first-message chips. 16 new tests (51 green).
+- Verified: local on-task 2-turn chat; PROD chat through team247.io on a fresh team (complaint scenario — de-escalation walk-through); prove-aware matrix 11/11. Watch item: Enter-to-send showed one automation-flake (Send button reliable; handler matches Composer pattern) — human spot-check recommended.
+- Next: iter 3 real-inputs intake → 4 gallery → 5 export → 6 battery top-20 + receipts → final gate.
+
 ## 2026-07-21 — User-value loop iter 1 + FULL BETA PROVING shipped (469fc10)
 - **Feedback instrumentation live:** generation_feedback (migration 0004), beta-gated POST /api/feedback (30/min, upsert per token+team), thumbs+comment row on DeliverCard, `python -m app.feedback --list/--stats`. First prod row already in (up=1).
 - **Owner decisions:** (a) tester quota switched to daily=10/no-lifetime on all beta-01..10 (applied live); (b) battery population for top-20 roles APPROVED (queued as its own iteration, ~60-150 kimi calls) — landing claim stays, exec receipts to become real; (c) **FULL PROVING FOR BETA** — /verify accepts beta tokens (metered as a generation), UI skip-prove branch removed, policy test rewritten. **Security prerequisite shipped: LocalRunner sandbox env SCRUBBED** (generated code no longer inherits LLM_API_KEY/secrets — verified: sandbox sees nothing).
