@@ -429,3 +429,110 @@ changes the framework dataset, the base-skill/task-overlay prompts, or the
 curl -s https://team247.io/api/gallery
 # -> [{"slug":...,"label":...,"blurb":...}, ...] — should list all 5
 ```
+
+---
+
+## 11. Battery top-20 population + gallery receipts (Iteration 6, 2026-07-22)
+
+Two pieces, both offline/admin-path — neither is on the request hot path:
+
+1. **Battery population** (`app/build_battery.py`) — populates
+   `card_battery_items` (graded coding tasks + their sandbox-validated
+   grader) for the roles that matter most: the top-N roles by `team_agents`
+   usage, unioned with the 5 starter-gallery agents' roles (so the gallery
+   always has something to verify against). Read by
+   `verify_service.verify()`'s executed track and by
+   `card_service.battery_items()`.
+2. **Gallery receipts** — once a role has battery items AND an admin has run
+   `verify_service.verify(team_id, agent_id)` for a gallery agent, GET
+   `/api/gallery` / `/api/gallery/{slug}` automatically surface a receipts
+   summary (`app/routers/gallery.py` + `verify_service.get_receipts`) — no
+   separate step needed once both of the below have run.
+
+Run both **inside the running app container** (same access pattern as §3/§10):
+
+```bash
+# 1) populate the battery for the top 20 roles (+ the 5 gallery roles, always
+#    included) — idempotent: a role/skill with a 'ready' item is left alone
+sudo docker exec team247-prod python -m app.build_battery
+
+# bound cost further while iterating: only 1 skill per role instead of 3
+sudo docker exec team247-prod python -m app.build_battery --top 20 --limit-skills 1
+
+# rebuild everything (e.g. after a prompt/grounding change) — regenerates
+# even roles/skills that already have a 'ready' item
+sudo docker exec team247-prod python -m app.build_battery --force
+
+# smoke-test / rebuild just one role (role_id from GET /api/catalog or the
+# roles table) — bounds LLM + sandbox cost to a single role
+sudo docker exec team247-prod python -m app.build_battery --only 42 --limit-skills 1
+```
+
+Cost/time expectations (real local timing on `kimi-k2.6`, LocalRunner
+sandbox, updated 2026-07-22 after adding the retry loop below): **up to 3
+generate+validate ATTEMPTS per skill** (`_generate_and_validate` in
+`app/build_battery.py`), each attempt being 1 LLM call
+(`battery.generate_skill`) + 1-2 sandbox runs. A live bounded re-check of
+the 3 skills that failed validation on the FIRST attempt (before the retry
+loop existed) took 120s (ready on attempt 1), 288s (ready on attempt 2,
+after a fresh LLM retry with the failure fed back), and 237s (all 3
+attempts exhausted, ended `invalid` — a genuine 0.90-vs-0.99 self-
+consistency near-miss, correctly NOT marked ready). So budget roughly
+**1-5 minutes per skill**, not a few seconds — at the defaults (`--top 20
+--limit-skills 3`, worst case 60 skill-items on a fresh DB) that's
+potentially **1-5 hours** for a full cold run; consider a smaller
+`--limit-skills` or splitting `--only` into batches for the first
+population of a fresh box. A role with zero executable skills is reported
+and skipped (no fabricated item is ever inserted) and never aborts the run.
+
+The retry loop (`app/build_battery.py::_generate_and_validate`) tries a
+FREE deterministic repair before ever burning a second LLM call: if the
+grader's own last printed line is a bare number (`GRADE:0.5`) instead of
+the required `GRADE:{"score": 0.5}` JSON — the #1 failure mode diagnosed
+live — it's wrapped and re-validated without another `generate_skill` call
+(see `_repair_bare_grade_grader`). Only a genuine self-consistency miss
+(reference_code doesn't satisfy its own grader) triggers a fresh LLM
+attempt, with the concrete failure reason fed back as a corrective turn.
+After 3 exhausted attempts the LAST attempt's content is still persisted as
+`status='invalid'` with the reason logged — kept for audit, never silently
+dropped, and never aborts the role.
+
+```bash
+# 2) run verify for each of the 5 gallery agents, so their receipts show up
+#    on GET /api/gallery[/{slug}] — run this AFTER step 1 has given each
+#    gallery role at least one 'ready' battery item, else exec_skills stays 0
+sudo docker exec team247-prod python -c "
+from app import db
+from app.services import verify_service
+
+rows = db.query('SELECT slug, team_id, agent_id FROM gallery_agents')
+for r in rows:
+    try:
+        out = verify_service.verify(r['team_id'], r['agent_id'])
+        print(f\"[{r['slug']}] coverage_pct={out['coverage_pct']} \"
+              f\"exec_skills={len(out['exec_results'])}\")
+    except Exception as e:
+        print(f\"[{r['slug']}] FAILED: {e}\")
+"
+```
+
+Cost/time: one `verify()` call per gallery agent — the executed track runs
+every 'ready' battery item for that agent's role (a few seconds each, same
+sandbox as above) plus the rubric track's `RUBRIC_CAP` (6) LLM-judged
+skills (`battery.rubric_score`, one call each). Expect roughly the same
+per-agent latency as a live user's "Try this agent" -> verify would see;
+5 agents total, so a few minutes end-to-end, not hours.
+
+There's no scheduled/automatic run for either step — re-run step 1 after a
+deploy that changes the framework dataset or the grader-generation prompt
+(`battery.generate_skill`), and re-run step 2 after any re-population that
+touched a gallery role's battery items (a stale verify run is otherwise
+silently left in place — `verify_runs` is one row per team+agent, replaced
+in full on each call). Verify with:
+
+```bash
+curl -s https://team247.io/api/gallery | python -m json.tool
+# -> each item now optionally carries "proven": true/false and "exec_skills": N
+#    (absent entirely for any agent that hasn't been through both steps yet —
+#    never a fabricated placeholder)
+```

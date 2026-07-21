@@ -97,16 +97,32 @@ export interface UserInputsSaveState {
 // full row, including the composed bundle_md and the team_id/agent_id used
 // to wire "Try this agent" (POST .../chat) and "Download" (POST
 // .../skill-bundles) against the existing team endpoints.
+//
+// Iteration 6 (battery top-20 + gallery receipts): both endpoints add a
+// receipts summary, read from verify_runs by app.services.verify_service,
+// ONLY when an admin has actually run verify for that agent — proven/
+// exec_skills (list) and the full GalleryReceipts (detail) are absent
+// otherwise. Never render a badge/strip when absent; never fake one.
 export interface GalleryListItem {
   slug: string;
   label: string;
   blurb: string;
+  proven?: boolean;
+  exec_skills?: number;
+}
+export interface GalleryReceipts {
+  proven: boolean;
+  exec_skills: number;
+  exec_avg_pct: number | null;
+  rubric_pct: number | null;
+  verified_at: string;
 }
 export interface GalleryDetail extends GalleryListItem {
   use_case: string;
   team_id: string;
   agent_id: string;
   bundle_md: string;
+  receipts?: GalleryReceipts;
 }
 
 // ── Skill-bundle JSON export (Iteration 5 — one-click export) ──────────────

@@ -522,7 +522,33 @@ export function Landing({
             {galleryItems.map((item) => (
               <div key={item.slug} style={{ display: "flex", flexDirection: "column" }}>
                 <button style={GALLERY_CARD} onClick={() => handleCardClick(item.slug)}>
-                  <div style={{ fontWeight: 650, fontSize: 13.5 }}>{item.label}</div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 8,
+                    }}
+                  >
+                    <div style={{ fontWeight: 650, fontSize: 13.5 }}>{item.label}</div>
+                    {item.proven && (
+                      <span
+                        title={`${item.exec_skills} skill(s) executed in a sandbox, graded`}
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          color: theme.accent,
+                          background: `${theme.accent}1a`,
+                          borderRadius: 999,
+                          padding: "2px 7px",
+                          flex: "none",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        ✓ proven
+                      </span>
+                    )}
+                  </div>
                   <div style={{ fontSize: 12, color: C.muted, marginTop: 4, lineHeight: 1.4 }}>
                     {item.blurb}
                   </div>
@@ -597,6 +623,28 @@ export function Landing({
                       {bundleTruncated ? "\n…" : ""}
                     </pre>
                   </div>
+
+                  {/* Receipts strip (Iteration 6 — battery top-20 + gallery receipts).
+                      Only rendered when an admin has actually run verify for this
+                      agent (GET /api/gallery/{slug}'s "receipts" key) — no strip,
+                      no fake proof, when absent. */}
+                  {detail.receipts && (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        fontSize: 11.5,
+                        color: C.dim,
+                      }}
+                    >
+                      {detail.receipts.proven && (
+                        <span style={{ color: theme.accent, fontWeight: 700 }}>✓ proven — </span>
+                      )}
+                      {detail.receipts.exec_skills} skill{detail.receipts.exec_skills === 1 ? "" : "s"}{" "}
+                      executed in sandbox
+                      {detail.receipts.rubric_pct != null &&
+                        ` · rubric coverage ${detail.receipts.rubric_pct}%`}
+                    </div>
+                  )}
 
                   <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
                     <button

@@ -40,7 +40,20 @@ Return STRICT JSON: {{"covered": [true or false, exactly {len(items)} entries, i
 
 _REQ_KEYS = {"task_prompt", "grader_code", "reference_code"}
 
-def generate_skill(role, skill, required_level, context, ka, task_material):
+def generate_skill(role, skill, required_level, context, ka, task_material,
+                    *, retry_hint=None, purpose="battery_grader"):
+    """`retry_hint` and `purpose` are additive, optional (Iteration 6 follow-up
+    2026-07-22 — battery-yield fix): both default to the exact prior behaviour,
+    so the original call site below (build_battery) and app.build_battery's
+    driver are unaffected unless they opt in.
+
+    `retry_hint`, when given, is the concrete reason a PRIOR attempt at this
+    same (role, skill, level) was rejected — appended as a corrective turn so
+    the model sees why and can fix that specific defect (mirrors config.py's
+    llm_json validate-and-retry pattern, just applied at the driver level
+    across whole generate+validate attempts instead of within one JSON call).
+    `purpose` lets a caller route this generation to its own LLM_MODEL_<X>
+    override (see config._model_for) independent of rubric_score's calls."""
     ka_lines = "\n".join(f"- [{it['kind']}] {it['item']}" for it in ka["items"][:10])
     key_tasks = "; ".join(kt for c in context["critical_work_functions"][:3]
                           for kt in c["key_tasks"][:2])
@@ -64,8 +77,17 @@ Return STRICT JSON with exactly these keys:
   GRADE:{{"score": <fraction of cases passed, 0..1>}}
 - "reference_code": a correct reference implementation of solve(...).
 Task must be solvable in <=60 lines and graded purely by running the code."""
+    if retry_hint:
+        prompt += f"""
+
+A PRIOR attempt at this EXACT task was rejected. Reason: {retry_hint}
+Fix this specific problem. In particular: grader_code's LAST printed line must
+be EXACTLY `GRADE:{{"score": <fraction>}}` — valid JSON with a "score" key,
+NEVER a bare number like `GRADE:0.5` — and reference_code must genuinely pass
+grader_code's own test cases (recompute each expected value by hand before
+finalizing; do not assume)."""
     return llm_json([{"role": "user", "content": prompt}], temperature=0.2,
-                     purpose="battery_grader",
+                     purpose=purpose,
                      validate=lambda o: _REQ_KEYS <= set(o), max_tokens=4096)
 
 def _validate_item(runner, item):

@@ -145,3 +145,48 @@ def get_verify(team_id, agent_id):
         "exec_results": json.loads(r["results_json"] or "[]"),
         "rubric_results": json.loads(r["rubric_json"] or "[]"),
     }
+
+
+def get_receipts(team_id, agent_id):
+    """Gallery receipts summary (Iteration 6 — battery top-20 + gallery
+    receipts): a small, honest read over verify_runs, shaped for
+    GET /api/gallery[/{slug}]:
+
+        {proven, exec_skills, exec_avg_pct, rubric_pct, verified_at}
+
+    Returns None when no *finished* verify run is stored for this
+    (team_id, agent_id) — the caller (app/routers/gallery.py) must render no
+    badge/strip in that case rather than fabricate one.
+
+    exec_avg_pct is the SAME coverage_pct verify() already computed from the
+    executed track only (never blended with the rubric track — see verify()'s
+    two_track_note). rubric_pct is a simple mean of the rubric track's
+    per-skill `pct` (LLM-judged coverage), skipping any skill that errored.
+
+    `proven` = at least one skill was actually EXECUTED in the sandbox and
+    produced a coverage_pct — i.e. real, run evidence exists. A role with
+    only rubric-judged (non-executable) skills verified is never "proven"
+    by this definition, however good its rubric_pct looks.
+    """
+    r = db.query(
+        "SELECT status, results_json, rubric_json, coverage_pct, finished_at, started_at "
+        "FROM verify_runs WHERE team_id = ? AND agent_id = ?",
+        (team_id, agent_id), one=True,
+    )
+    if not r or r["status"] != "done":
+        return None
+
+    exec_results = json.loads(r["results_json"] or "[]")
+    rubric_results = json.loads(r["rubric_json"] or "[]")
+
+    exec_skills = len(exec_results)
+    rubric_pcts = [rr["pct"] for rr in rubric_results if isinstance(rr.get("pct"), (int, float))]
+    rubric_pct = round(sum(rubric_pcts) / len(rubric_pcts), 1) if rubric_pcts else None
+
+    return {
+        "proven": exec_skills > 0 and r["coverage_pct"] is not None,
+        "exec_skills": exec_skills,
+        "exec_avg_pct": r["coverage_pct"],
+        "rubric_pct": rubric_pct,
+        "verified_at": r["finished_at"] or r["started_at"],
+    }
