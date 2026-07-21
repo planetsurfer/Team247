@@ -130,6 +130,10 @@ admin UI should read from.
 
 ---
 
+### 3b. Feedback + full beta proving (2026-07-21)
+- Feedback: `docker exec team247-prod python -m app.feedback --list [--recent N]` / `--stats` — one row per (token, team), upserted.
+- `/verify` now accepts BETA tokens (owner decision — full proving for testers), metered as one daily generation per prove; admin token remains a superset. The sandbox subprocess runs with a scrubbed env (no secrets inherited).
+
 ## 4. Admin token retrieval
 
 ```bash
