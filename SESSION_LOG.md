@@ -2,6 +2,11 @@
 
 _Newest first. Auto-stamped by the SessionEnd hook; fill in each Summary._
 
+## 2026-07-22 — Owner doc → four trades agents on the gallery (0e47239)
+- The owner's automation-opportunities one-pager (real client doc) distilled into 4 GENERIC gallery agents (variation-order-capturer, quote-followup-chaser, maintenance-agreement-converter, margin-by-job-reporter) — zero client identifiers (automated ban-test in test_gallery.py), all seeded with the doc's operating rules via new build_gallery seed_inputs (existing-tools-only; draft-then-a-person-sends; closing/pricing/site-judgement stays human).
+- Built on prod through the real pipeline (4/4, 172s); battery for their roles (1 executable role → 1 validated item, 3 honestly zero-executable); verify pass → margin-by-job-reporter PROVEN (sandbox score 1.0, held L3 = required L3). Gallery: 9 agents, 3 proven. Live chat honors the rules (capturer drafts an invoice pack for review, never auto-sends). Matrix PASS.
+- Offer open: HRD-specific private team versions (real names/tools/open-questions pre-seeded) for the client engagement on request.
+
 ## 2026-07-22 — OPERATIONS-INTAKE LOOP COMPLETE: final gate 9/9 PASS, loop stopped
 - **Iter 4 (3411fbb):** convergence polish — re-fetch after answer saves, "Nothing more to ask ✓" done state, SOFT-STOP at 8 saved inputs (fix for the generator's organic non-convergence, found by the worker across 8 live rounds), friendly cap message replacing the raw 422 dead-end, RUNBOOK §12 privacy posture + operator tripwire greps + purge SQL, §3c caps corrected. 102 tests; matrix PASS.
 - **FINAL GATE 9/9 on prod:** dual-path journey — question-sourced rule ("quotes >$10k countersigned by Priya") + transcript-sourced rule ($2,000 discount threshold from the fixture) both baked into ONE agent; chat enforced BOTH; export carried BOTH; ambiguity surfaced as open question; negatives held (transcript unauth 401, oversize 413). Feedback funnel at close: up=12 down=0 total=12.
