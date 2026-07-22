@@ -2,6 +2,12 @@
 
 _Newest first. Auto-stamped by the SessionEnd hook; fill in each Summary._
 
+## 2026-07-22 — OPERATIONS-INTAKE LOOP COMPLETE: final gate 9/9 PASS, loop stopped
+- **Iter 4 (3411fbb):** convergence polish — re-fetch after answer saves, "Nothing more to ask ✓" done state, SOFT-STOP at 8 saved inputs (fix for the generator's organic non-convergence, found by the worker across 8 live rounds), friendly cap message replacing the raw 422 dead-end, RUNBOOK §12 privacy posture + operator tripwire greps + purge SQL, §3c caps corrected. 102 tests; matrix PASS.
+- **FINAL GATE 9/9 on prod:** dual-path journey — question-sourced rule ("quotes >$10k countersigned by Priya") + transcript-sourced rule ($2,000 discount threshold from the fixture) both baked into ONE agent; chat enforced BOTH; export carried BOTH; ambiguity surfaced as open question; negatives held (transcript unauth 401, oversize 413). Feedback funnel at close: up=12 down=0 total=12.
+- **The loop delivered the owner-commissioned vision end-to-end:** the app now asks extraction-grade questions after the team reveal (skippable, converging, soft-stopped), accepts full meeting transcripts (extract → user-confirmed → raw provably discarded, PII tripwire 0/0/0 on prod), and every captured rule is enforced by the agents in chat and travels with every export.
+- **Noted for future work (not blockers):** generate_ops_questions prompt could be tuned toward organic zero-question convergence; per-item edit of saved inputs (currently save-only); transcript >30KB chunking is functional but merge quality on very long transcripts untested beyond fixtures.
+
 ## 2026-07-22 — Ops-intake iter 3: TRANSCRIPT EXTRACTION live (c144814)
 - POST /api/team/{id}/transcript (beta-gated, generation-priced, 200KB cap, 30KB chunking): extract-confirm-discard — raw transcript NEVER persisted/logged (request+llm logs verified content-free; sentinel-absence tests + prod tripwire grep 0/0/0). UI: paste panel → editable confirmation list → confirm via merged user_inputs → ops-questions regenerate with extraction open-questions pre-seeded.
 - Fictional fixture (planted $2,000 threshold, Dana→billing handoff, SOP, unresolved refund dispute): extraction found the facts, the dispute surfaced as an OPEN QUESTION not a fact; chat refused a $2,500 discount citing the $2,000 rule. 34 new tests (172 green). Prod: 5 items + 1 open question extracted live; matrix PASS.
