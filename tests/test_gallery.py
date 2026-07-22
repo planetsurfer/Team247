@@ -152,13 +152,19 @@ def test_gallery_detail_404_unknown_slug(beta_client):
 @pytest.fixture()
 def stub_pipeline(monkeypatch):
     """Replace team_service.recommend / handoff_service.wire /
-    skill_bundle_service.compose_bundle with canned fast fakes — no real LLM
-    call anywhere in this fixture. compose_bundle's canned content changes
-    on every call (a call counter baked into the body) so a rebuild is
-    observably different from the first build."""
+    team_service.set_user_inputs / skill_bundle_service.compose_bundle with
+    canned fast fakes — no real LLM call anywhere in this fixture.
+    compose_bundle's canned content changes on every call (a call counter
+    baked into the body) so a rebuild is observably different from the
+    first build.
+
+    `calls["set_user_inputs_args"]` records every (team_id, items) pair
+    passed to set_user_inputs, in order — used to assert the seed_inputs
+    archetypes call it, with the right payload, before compose runs."""
     from app import build_gallery
 
-    calls = {"recommend": 0, "wire": 0, "compose": 0}
+    calls = {"recommend": 0, "wire": 0, "set_user_inputs": 0, "compose": 0,
+              "set_user_inputs_args": [], "order": []}
 
     def _fake_recommend(use_case=None, brief=None, intake_session_id=None):
         calls["recommend"] += 1
@@ -171,8 +177,15 @@ def stub_pipeline(monkeypatch):
         calls["wire"] += 1
         return {"team_id": team_id, "handoffs": []}
 
+    def _fake_set_user_inputs(team_id, items):
+        calls["set_user_inputs"] += 1
+        calls["set_user_inputs_args"].append((team_id, items))
+        calls["order"].append("set_user_inputs")
+        return {"ok": True, "count": len(items), "bytes": 0}
+
     def _fake_compose(team_id, agent_id, use_case, artifacts_needed=None):
         calls["compose"] += 1
+        calls["order"].append("compose")
         return (
             "---\n"
             "name: test-gallery-skill\n"
@@ -183,6 +196,7 @@ def stub_pipeline(monkeypatch):
 
     monkeypatch.setattr(build_gallery.team_service, "recommend", _fake_recommend)
     monkeypatch.setattr(build_gallery.handoff_service, "wire", _fake_wire)
+    monkeypatch.setattr(build_gallery.team_service, "set_user_inputs", _fake_set_user_inputs)
     monkeypatch.setattr(build_gallery.skill_bundle_service, "compose_bundle", _fake_compose)
     return calls
 
@@ -242,11 +256,11 @@ def test_build_gallery_force_rebuilds(tmp_db, stub_pipeline):
     assert stub_pipeline["compose"] == 2
 
 
-def test_build_gallery_builds_all_five_by_default(tmp_db, stub_pipeline):
+def test_build_gallery_builds_all_by_default(tmp_db, stub_pipeline):
     from app import build_gallery, db
 
     stats = build_gallery.run()
-    assert stats["built"] == 5
+    assert stats["built"] == len(build_gallery.ARCHETYPES)
     assert stats["failed"] == 0
     rows = db.query("SELECT slug FROM gallery_agents")
     assert {r["slug"] for r in rows} == {a["slug"] for a in build_gallery.ARCHETYPES}
@@ -264,6 +278,10 @@ def test_build_gallery_one_failure_does_not_abort_others(tmp_db, monkeypatch):
 
     monkeypatch.setattr(build_gallery.team_service, "recommend", _fake_recommend)
     monkeypatch.setattr(build_gallery.handoff_service, "wire", lambda *a, **k: None)
+    # _fake_recommend never inserts a `teams` row (unlike the real recommend),
+    # so the seed_inputs archetypes' real set_user_inputs would 404 (TeamNotFound)
+    # looking it up — stub it too, same as stub_pipeline does.
+    monkeypatch.setattr(build_gallery.team_service, "set_user_inputs", lambda *a, **k: None)
     monkeypatch.setattr(
         build_gallery.skill_bundle_service, "compose_bundle",
         lambda *a, **k: (
@@ -277,3 +295,155 @@ def test_build_gallery_one_failure_does_not_abort_others(tmp_db, monkeypatch):
     rows = db.query("SELECT slug FROM gallery_agents")
     assert build_gallery.ARCHETYPES[0]["slug"] not in {r["slug"] for r in rows}
     assert len(rows) == len(build_gallery.ARCHETYPES) - 1
+
+
+# ── trades/renovation archetypes — seed_inputs wiring ───────────────────────
+_TRADES_SLUGS = (
+    "variation-order-capturer",
+    "quote-followup-chaser",
+    "maintenance-agreement-converter",
+    "margin-by-job-reporter",
+)
+
+
+def test_seed_inputs_archetypes_call_set_user_inputs_before_compose(tmp_db, stub_pipeline):
+    """Each of the 4 trades archetypes carries seed_inputs; building it must
+    call team_service.set_user_inputs with exactly that payload, and that
+    call must happen BEFORE compose_bundle so the stored bundle_md's
+    '### Your provided inputs' section reflects it."""
+    from app import build_gallery
+
+    for slug in _TRADES_SLUGS:
+        archetype = next(a for a in build_gallery.ARCHETYPES if a["slug"] == slug)
+        assert archetype.get("seed_inputs"), f"{slug} must carry seed_inputs"
+
+    stats = build_gallery.run(only=set(_TRADES_SLUGS))
+    assert stats["built"] == len(_TRADES_SLUGS)
+    assert stats["failed"] == 0
+
+    assert stub_pipeline["set_user_inputs"] == len(_TRADES_SLUGS)
+    called_items = [items for _team_id, items in stub_pipeline["set_user_inputs_args"]]
+    expected_items = [
+        next(a for a in build_gallery.ARCHETYPES if a["slug"] == slug)["seed_inputs"]
+        for slug in _TRADES_SLUGS
+    ]
+    assert called_items == expected_items
+
+    # order: every set_user_inputs call precedes its compose call
+    order = stub_pipeline["order"]
+    assert order.count("set_user_inputs") == order.count("compose") == len(_TRADES_SLUGS)
+    su_positions = [i for i, ev in enumerate(order) if ev == "set_user_inputs"]
+    compose_positions = [i for i, ev in enumerate(order) if ev == "compose"]
+    for su_i, compose_i in zip(su_positions, compose_positions):
+        assert su_i < compose_i
+
+
+def test_archetypes_without_seed_inputs_never_call_set_user_inputs(tmp_db, stub_pipeline):
+    from app import build_gallery
+
+    build_gallery.run(only={"collections-chaser"})
+    assert stub_pipeline["set_user_inputs"] == 0
+
+
+def test_original_five_archetypes_are_byte_identical(tmp_db):
+    """The first 5 archetypes (pre-existing) must be untouched: same slugs,
+    in the same order, with no seed_inputs key added."""
+    from app import build_gallery
+
+    original = [
+        {
+            "slug": "collections-chaser",
+            "label": "Collections Chaser",
+            "blurb": "Chases overdue invoices with the right urgency per account",
+            "use_case": "chase up customers who owe us money",
+        },
+        {
+            "slug": "contract-reviewer",
+            "label": "Contract Reviewer",
+            "blurb": "Clause-by-clause risk review of vendor contracts before you sign",
+            "use_case": "review a vendor contract before signing",
+        },
+        {
+            "slug": "quotation-writer",
+            "label": "Quotation Writer",
+            "blurb": "Formal quotations from an RFQ and your price list",
+            "use_case": "prepare a quotation for a corporate client",
+        },
+        {
+            "slug": "onboarding-coordinator",
+            "label": "Onboarding Coordinator",
+            "blurb": "Structured onboarding plans for new hires",
+            "use_case": "onboard a new hire",
+        },
+        {
+            "slug": "campaign-planner",
+            "label": "Campaign Planner",
+            "blurb": "Launch campaign plans that respect your brand rules",
+            "use_case": "run a social media campaign for a product launch",
+        },
+    ]
+    assert build_gallery.ARCHETYPES[:5] == original
+
+
+def test_trades_archetypes_present_with_required_fields(tmp_db):
+    from app import build_gallery
+
+    by_slug = {a["slug"]: a for a in build_gallery.ARCHETYPES}
+    assert set(_TRADES_SLUGS) <= set(by_slug.keys())
+    assert len(build_gallery.ARCHETYPES) == 9
+
+    shared_names = {"Tools we already use", "Human review rule", "What stays human"}
+    for slug in _TRADES_SLUGS:
+        a = by_slug[slug]
+        assert a["label"] and isinstance(a["label"], str)
+        assert a["blurb"] and isinstance(a["blurb"], str)
+        assert a["use_case"] and isinstance(a["use_case"], str)
+        seed_inputs = a["seed_inputs"]
+        assert isinstance(seed_inputs, list) and len(seed_inputs) == 4
+        for item in seed_inputs:
+            assert set(item.keys()) == {"kind", "name", "content"}
+            assert item["kind"] in build_gallery.team_service.USER_INPUT_KINDS
+            assert item["name"].strip()
+            assert item["content"].strip()
+        names = {item["name"] for item in seed_inputs}
+        assert shared_names <= names
+        # the one archetype-specific input beyond the 3 shared ones
+        assert len(names - shared_names) == 1
+
+
+# ── no client-identifying text anywhere in app/ or web/ source ─────────────
+def test_no_client_identifying_strings_in_source():
+    """The trades/renovation archetypes must be framed generically — no
+    company names, UEN, or person names leaked in from whatever source
+    document informed them. Cheap deterministic grep across app/ and
+    web/ source (excluding node_modules/build output/caches). Deliberately
+    excludes SkillsFuture/SSOC from the banned list — those legitimately
+    appear elsewhere in the app (the framework's own K&A grounding) and
+    are not client-identifying."""
+    import pathlib
+
+    repo_root = pathlib.Path(__file__).resolve().parent.parent
+    banned = ("HRD", "UEN", "Raye", "Matthew")
+    skip_dir_names = {"node_modules", "__pycache__", ".git", "dist", "build", ".venv"}
+    scan_roots = [repo_root / "app", repo_root / "web" / "src"]
+
+    offenders = []
+    for root in scan_roots:
+        if not root.exists():
+            continue
+        for path in root.rglob("*"):
+            if not path.is_file():
+                continue
+            if any(part in skip_dir_names for part in path.parts):
+                continue
+            if path.suffix not in {".py", ".ts", ".tsx", ".js", ".jsx", ".md", ".json", ".sql"}:
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            for term in banned:
+                if term in text:
+                    offenders.append(f"{path.relative_to(repo_root)}: {term!r}")
+
+    assert not offenders, "client-identifying / skill-code strings found:\n" + "\n".join(offenders)

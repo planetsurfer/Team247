@@ -2,18 +2,27 @@
 
     python -m app.build_gallery [--force] [--only SLUG ...]
 
-For each of 5 fixed archetype use cases, this drives the SAME pipeline a real
+For each fixed archetype use case, this drives the SAME pipeline a real
 user's first task does: team_service.recommend -> handoff_service.wire
 (best-effort — a wiring failure is reported and the build continues unwired)
--> skill_bundle_service.compose_bundle for the primary (first-listed) agent
--> one row persisted to `gallery_agents` (migration 0007). Idempotent by
-slug: an existing row is left untouched unless --force. One archetype
-failing (LLM hiccup, guardrail miss, ...) is reported and skipped — it must
-never abort the remaining archetypes.
+-> (optional) team_service.set_user_inputs, when the archetype carries
+`seed_inputs` -> skill_bundle_service.compose_bundle for the primary
+(first-listed) agent -> one row persisted to `gallery_agents` (migration
+0007). Idempotent by slug: an existing row is left untouched unless --force.
+One archetype failing (LLM hiccup, guardrail miss, ...) is reported and
+skipped — it must never abort the remaining archetypes.
+
+An archetype may optionally carry `seed_inputs`: a list of
+{kind, name, content} dicts in the same shape PUT /api/team/{team_id}/inputs
+accepts (see team_service.USER_INPUT_KINDS). When present, they're written
+via team_service.set_user_inputs AFTER wire and BEFORE compose_bundle, so
+the stored gallery bundle_md carries a "### Your provided inputs" section
+seeded with realistic ops guidance instead of shipping empty. Archetypes
+without `seed_inputs` behave exactly as before (no call, no section).
 
 --only bounds cost when iterating or smoke-testing locally: pass a slug
 (repeatably, or comma-separated) to build/rebuild just that subset instead of
-all 5.
+all archetypes.
 
 Read by:
   GET /api/gallery         (open, metadata only)       app/routers/gallery.py
@@ -61,6 +70,124 @@ ARCHETYPES = [
     },
 ]
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Trades & renovation business archetypes — shared seed_inputs (see module
+# docstring) plus one archetype-specific input each. Framed generically for
+# ANY trades/renovation business: no company names, no person names, no
+# skill/qualification codes.
+# ──────────────────────────────────────────────────────────────────────────────
+_TRADES_SHARED_SEED_INPUTS = [
+    {
+        "kind": "constraint",
+        "name": "Tools we already use",
+        "content": (
+            "Work within the business's existing tools only (accounting, "
+            "payroll, job management, CRM) — never propose adopting new "
+            "software platforms."
+        ),
+    },
+    {
+        "kind": "procedure",
+        "name": "Human review rule",
+        "content": (
+            "Anything money-related or customer-facing is prepared as a "
+            "DRAFT for a person to review and send — never sent "
+            "automatically."
+        ),
+    },
+    {
+        "kind": "constraint",
+        "name": "What stays human",
+        "content": (
+            "Closing, negotiation, pricing decisions, site assessment and "
+            "technical judgement stay with people; provide analysis, never "
+            "the final call."
+        ),
+    },
+]
+
+ARCHETYPES += [
+    {
+        "slug": "variation-order-capturer",
+        "label": "Variation-Order Capturer",
+        "blurb": (
+            "Captures on-site scope additions so they reach the invoice — "
+            "the biggest leak in renovation work"
+        ),
+        "use_case": "capture on-site variation orders and scope additions so they get invoiced",
+        "seed_inputs": _TRADES_SHARED_SEED_INPUTS + [
+            {
+                "kind": "workaround",
+                "name": "Why this matters",
+                "content": (
+                    "On-site scope additions that never reach an invoice are "
+                    "typically the largest single revenue leak in renovation "
+                    "work; record each addition with dimensions, specs and "
+                    "agreed price the moment it is agreed."
+                ),
+            },
+        ],
+    },
+    {
+        "slug": "quote-followup-chaser",
+        "label": "Quote Follow-Up Chaser",
+        "blurb": (
+            "Makes a forgotten quote structurally unlikely — chases every "
+            "no-response quote with drafted follow-ups"
+        ),
+        "use_case": "follow up on quotes that received no response",
+        "seed_inputs": _TRADES_SHARED_SEED_INPUTS + [
+            {
+                "kind": "procedure",
+                "name": "Follow-up cadence",
+                "content": (
+                    "Acknowledge new enquiries immediately; chase quotes "
+                    "with no response on a steady cadence; every chase "
+                    "message is a draft for a person to send."
+                ),
+            },
+        ],
+    },
+    {
+        "slug": "maintenance-agreement-converter",
+        "label": "Maintenance Agreement Converter",
+        "blurb": "Turns one-off jobs into recurring maintenance revenue",
+        "use_case": "convert one-off customers into recurring maintenance agreements",
+        "seed_inputs": _TRADES_SHARED_SEED_INPUTS + [
+            {
+                "kind": "procedure",
+                "name": "Conversion moments",
+                "content": (
+                    "Use the warranty period as a scheduled contact point; "
+                    "reactivate past customers systematically; ask for "
+                    "referrals; business customers are repeat buyers by "
+                    "nature."
+                ),
+            },
+        ],
+    },
+    {
+        "slug": "margin-by-job-reporter",
+        "label": "Margin-by-Job Reporter",
+        "blurb": (
+            "Shows whether project work genuinely out-earns handyman work "
+            "— margin by job type, discounting made visible"
+        ),
+        "use_case": "report margin by job type and make discounting visible",
+        "seed_inputs": _TRADES_SHARED_SEED_INPUTS + [
+            {
+                "kind": "metric",
+                "name": "What to measure",
+                "content": (
+                    "Margin by job type (project vs handyman), costing "
+                    "accuracy against quotes to reduce under-quoting, and "
+                    "visibility of all discounting."
+                ),
+            },
+        ],
+    },
+]
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -95,6 +222,10 @@ def _build_one(archetype: dict, *, force: bool) -> tuple[bool, float]:
         handoff_service.wire(team_id, use_case)
     except Exception as e:  # noqa: BLE001 — best-effort; bundle still composes fine unwired
         print(f"  [{slug}] wire failed (continuing unwired): {e}")
+
+    seed_inputs = archetype.get("seed_inputs")
+    if seed_inputs:
+        team_service.set_user_inputs(team_id, seed_inputs)
 
     bundle_md = skill_bundle_service.compose_bundle(team_id, primary_agent_id, use_case)
 
@@ -159,7 +290,7 @@ def main() -> None:
                          help="rebuild even if a slug already exists")
     parser.add_argument("--only", action="append", default=None, metavar="SLUG",
                          help="only build this slug (repeatable, or comma-separated); "
-                              "default: all 5 archetypes")
+                              "default: all archetypes")
     args = parser.parse_args()
 
     db.bootstrap()  # safe no-op if the schema (incl. gallery_agents) already exists
