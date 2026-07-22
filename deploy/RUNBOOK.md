@@ -141,7 +141,7 @@ via `PUT /api/team/{team_id}/inputs`; the raw text is stored verbatim in a
 new nullable column, `teams.user_inputs` (JSON `[{kind, name, content}]`,
 migration `0006_user_inputs.py`), and gets baked into that team's generated
 SKILL.md — no separate table, no separate retention clock from the rest of
-the `teams` row. Caps: <=5 items, <=100-char name, <=20KB total content per
+the `teams` row. Caps: <=10 items, <=100-char name, <=40KB total content per
 team (enforced server-side, `app/services/team_service.py`
 `_validate_user_inputs`).
 
@@ -536,3 +536,131 @@ curl -s https://team247.io/api/gallery | python -m json.tool
 #    (absent entirely for any agent that hasn't been through both steps yet —
 #    never a fabricated placeholder)
 ```
+
+---
+
+## 12. Ops intake (questions + transcripts) (Iteration 4, 2026-07-22)
+
+Two post-reveal intake paths feed the same store: `POST /api/team/{tid}/ops-questions`
+(the "make it yours" question card, Iteration 1) and `POST /api/team/{tid}/transcript`
+(the "paste a meeting transcript instead" panel, Iteration 3). Both end at a user
+Confirm/Save that goes through the one existing write path, `PUT
+/api/team/{tid}/inputs` (`app.routers.team.set_team_inputs` ->
+`team_service.set_user_inputs`) — there is no separate table or column for
+either path; everything lands in the same `teams.user_inputs` JSON column
+introduced for the real-inputs intake in §3c.
+
+### Privacy posture: extract-and-discard
+
+- **What IS stored**: short structured items — `{kind, name, content}`, `kind`
+  one of `team_service.USER_INPUT_KINDS` (the artifact kinds plus the
+  extraction-taxonomy kinds `procedure` / `threshold` / `constraint` /
+  `handoff` / `metric` / `workaround`) — capped at `MAX_USER_INPUTS` = 10
+  items, `MAX_USER_INPUT_NAME_CHARS` = 100 per name, `MAX_USER_INPUT_TOTAL_BYTES`
+  = 40KB combined content across all items for the team
+  (`app/services/team_service.py::_validate_user_inputs`; these are the
+  CURRENT caps — §3c above still quotes the pre-Iteration-1 numbers of 5
+  items / 20KB, now stale since the ops-question kinds were added and the
+  caps were widened to make room for them).
+- **What is NEVER stored**: the raw pasted meeting transcript. `POST
+  .../transcript` (`app/routers/team.py::extract_transcript`) reads it off
+  the request body, hands it to `llm_contracts.extract_ops_brief` to build the
+  LLM prompt, and returns only the extraction RESULT (the same short
+  structured shape as above, plus any unresolved `open_questions`) — no DB
+  column, no file, ever. It exists only in-flight: this one request's body,
+  the LLM prompt/response for its duration, and the browser tab's in-memory
+  state (`transcriptByTeam` in `web/src/useChat.ts`) until the panel is
+  closed/confirmed/cancelled, at which point the hook discards `text`
+  entirely (`emptyTranscriptState`) — nothing client-side persists it either
+  (no localStorage, no analytics event). See the module-level "ABSOLUTE PII
+  RULE" notes at `app/routers/team.py` (`extract_transcript` docstring) and
+  `app/llm_contracts.py` (top of the "transcript extraction" section) for the
+  full accounting this section summarizes.
+- **Why logging can't leak it either**: `app/logging_setup.py`'s
+  `request_logging_middleware` only ever emits `{method, path, status_code,
+  latency_ms}` per request, and `log_llm` only ever emits `{purpose, model,
+  attempt, latency_ms, status[, error[:200]]}` per LLM call — neither logs a
+  request/response body, so the transcript text has no logging path to leak
+  through even transiently.
+
+### Operator tripwire check
+
+Spot-check this after any change that touches the transcript/ops-questions
+path, or periodically as a beta-trust check — same on-box access pattern as
+§3/§10/§11:
+
+```bash
+# 1) DB: confirm there's no column/table anywhere holding raw transcript text
+#    — only the short structured `user_inputs` JSON on `teams` should exist
+sudo docker exec team247-prod python -c "
+from app import db
+print('teams columns:', [c['name'] for c in db.query('PRAGMA table_info(teams)')])
+print('all tables:   ', [t['name'] for t in db.query(
+    \"SELECT name FROM sqlite_master WHERE type='table'\")])
+"
+# -> 'teams columns' includes user_inputs (JSON); 'all tables' has no
+#    transcript / transcripts / raw_transcript table anywhere
+
+# 2) docker logs: a real pasted transcript is never logged, so grepping the
+#    app container's stdout for a giveaway word from a test paste (or just
+#    "transcript") should return NOTHING — logging_setup only ever emits the
+#    two event shapes described above, never body content
+sudo docker logs team247-prod --since 24h 2>&1 | grep -i "transcript"
+# -> no output
+
+# 3) CloudWatch — same check against the shipped log group
+aws logs tail /team247/beta --since 1d --filter-pattern "transcript" \
+  --region ap-southeast-1
+# -> no output
+```
+
+All three should come back empty/absent. If (1) ever shows a new column or
+table, or (2)/(3) ever produce a hit, treat it as a PII regression — stop and
+fix the leak before the next deploy, don't just note it.
+
+### Purge
+
+Ops-question answers and confirmed transcript extractions are just more
+`user_inputs` entries, so the blanket purge already documented in §3c (`UPDATE
+teams SET user_inputs = NULL ...`) already covers them — no separate
+"transcript purge" step exists or is needed, because nothing transcript-shaped
+is ever stored in the first place (see privacy posture above).
+
+To purge only the ops/transcript-DERIVED entries for one team while keeping
+anything manually pasted via the "paste it now" artifact panel (kinds
+`sample`/`blank_format`/`past_documents`/`database`), filter by kind instead
+of nulling the whole column:
+
+```bash
+sudo docker exec team247-prod python -c "
+import json
+from app import db
+
+OPS_KINDS = {'procedure', 'threshold', 'constraint', 'handoff', 'metric', 'workaround'}
+row = db.query('SELECT user_inputs FROM teams WHERE team_id = ?', ('<team_id>',), one=True)
+items = json.loads(row['user_inputs']) if row and row['user_inputs'] else []
+kept = [it for it in items if it.get('kind') not in OPS_KINDS]
+db.execute('UPDATE teams SET user_inputs = ? WHERE team_id = ?',
+           (json.dumps(kept) if kept else None, '<team_id>'))
+print(f'dropped {len(items) - len(kept)} ops-derived item(s), kept {len(kept)}')
+"
+```
+
+### Cost note
+
+- `POST .../ops-questions` — `require_beta` + `llm_rate_limit` only, no
+  `consume_quota` (`app/routers/team.py::ops_questions`): free of the daily
+  generation quota, both on the initial call and every convergence re-fetch
+  (Iteration 4 — see `saveOpsAnswers`/`confirmTranscriptItems` in
+  `web/src/useChat.ts`). Only the sliding 60s/`RATE_LIMIT_PER_MIN` rate limit
+  applies.
+- `POST .../transcript` — `require_beta` + `llm_rate_limit` +
+  `consume_quota`, same guard combo as `/recommend`
+  (`app/routers/team.py::extract_transcript`): metered as ONE generation
+  against the token's daily quota, regardless of how many chunks
+  `_chunk_transcript` splits a long paste into internally
+  (`TRANSCRIPT_CHUNK_BYTES` = 30KB per chunk, merged before returning) — the
+  UI's "Uses one generation" caption next to Extract is accurate.
+- `PUT .../inputs` (the actual save/confirm, either path) — `require_beta`
+  only, no LLM call at all: a pure validate+store write, uncounted against
+  quota or rate limit.

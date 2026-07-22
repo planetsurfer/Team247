@@ -69,7 +69,13 @@ export function OpsQuestionsCard({
   onTranscriptCancel,
 }: OpsQuestionsCardProps) {
   const [hovered, setHovered] = useState(false);
-  if (ops.dismissed || ops.questions.length === 0) return null;
+  // Iteration 4 (convergence + polish): an empty question list still renders
+  // when `done` — the converged "nothing more to ask" state — so the user
+  // sees the loop close instead of the card just silently vanishing. The
+  // ordinary empty-on-first-load case (no questions were ever asked at all)
+  // never sets `done` — see useChat's loadOpsQuestions — so it still renders
+  // nothing, unchanged from Iteration 2.
+  if (ops.dismissed || (ops.questions.length === 0 && !ops.done)) return null;
 
   const hasAnswer = ops.questions.some((_, i) => (ops.answers[i] ?? "").trim().length > 0);
   const busy = ops.busy;
@@ -95,80 +101,93 @@ export function OpsQuestionsCard({
           ✕
         </button>
       </div>
-      <div style={{ marginTop: 6, fontSize: 12.5, color: C.muted }}>
-        Answer a couple of quick questions so your agents follow YOUR rules — or skip.
-      </div>
-      <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
-        {ops.questions.map((q, i) => (
-          <div key={i}>
-            <label
-              htmlFor={`ops-q-${i}`}
-              style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#3c3a33" }}
-            >
-              {q.question}
-            </label>
-            <input
-              id={`ops-q-${i}`}
-              value={ops.answers[i] ?? ""}
-              onChange={(e) => onAnswer(i, e.target.value)}
-              placeholder={q.name}
-              disabled={busy}
-              style={{
-                width: "100%",
-                marginTop: 5,
-                boxSizing: "border-box",
-                fontSize: 12.5,
-                fontFamily: "inherit",
-                padding: "7px 9px",
-                borderRadius: 8,
-                border: `1px solid ${C.divider}`,
-                color: C.ink,
-                background: "#fff",
-              }}
-            />
-          </div>
-        ))}
-      </div>
-      <div
-        style={{
-          marginTop: 12,
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          flexWrap: "wrap",
-        }}
-      >
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={!hasAnswer || busy}
-          style={{
-            border: "none",
-            background: hasAnswer && !busy ? accent : C.disabledSend,
-            color: "#fff",
-            borderRadius: 8,
-            padding: "7px 14px",
-            fontSize: 12.5,
-            fontWeight: 600,
-            cursor: !hasAnswer || busy ? "not-allowed" : "pointer",
-          }}
-        >
-          {busy ? "Saving…" : "Save answers"}
-        </button>
-        {ops.saved && !busy && (
-          <span style={{ fontSize: 11.5, color: C.success }}>
-            ✓ {ops.savedCount ?? 0} answer{(ops.savedCount ?? 0) === 1 ? "" : "s"} saved — they'll
-            be baked into your agents
-          </span>
-        )}
-        {ops.error && !busy && (
-          <span style={{ fontSize: 11.5, color: C.gap }}>{ops.error}</span>
-        )}
-      </div>
-      {ops.saved && !busy && (
-        <div style={{ marginTop: 4, fontSize: 11, color: C.dim }}>
-          Generating now includes your answers.
+      {ops.done ? (
+        // Iteration 4 (convergence + polish) — done state: replaces the
+        // question list + Save row entirely (nothing left to answer), so the
+        // card collapses down to a single muted line instead of holding its
+        // full height. Still dismissible via the ✕ above; the transcript
+        // entry point below stays available in case something new comes up.
+        <div style={{ marginTop: 6, fontSize: 12, color: C.dim }}>
+          Nothing more to ask — your agents have what they need ✓
         </div>
+      ) : (
+        <>
+          <div style={{ marginTop: 6, fontSize: 12.5, color: C.muted }}>
+            Answer a couple of quick questions so your agents follow YOUR rules — or skip.
+          </div>
+          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+            {ops.questions.map((q, i) => (
+              <div key={i}>
+                <label
+                  htmlFor={`ops-q-${i}`}
+                  style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#3c3a33" }}
+                >
+                  {q.question}
+                </label>
+                <input
+                  id={`ops-q-${i}`}
+                  value={ops.answers[i] ?? ""}
+                  onChange={(e) => onAnswer(i, e.target.value)}
+                  placeholder={q.name}
+                  disabled={busy}
+                  style={{
+                    width: "100%",
+                    marginTop: 5,
+                    boxSizing: "border-box",
+                    fontSize: 12.5,
+                    fontFamily: "inherit",
+                    padding: "7px 9px",
+                    borderRadius: 8,
+                    border: `1px solid ${C.divider}`,
+                    color: C.ink,
+                    background: "#fff",
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+          <div
+            style={{
+              marginTop: 12,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              flexWrap: "wrap",
+            }}
+          >
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={!hasAnswer || busy}
+              style={{
+                border: "none",
+                background: hasAnswer && !busy ? accent : C.disabledSend,
+                color: "#fff",
+                borderRadius: 8,
+                padding: "7px 14px",
+                fontSize: 12.5,
+                fontWeight: 600,
+                cursor: !hasAnswer || busy ? "not-allowed" : "pointer",
+              }}
+            >
+              {busy ? "Saving…" : "Save answers"}
+            </button>
+            {ops.saved && !busy && (
+              <span style={{ fontSize: 11.5, color: C.success }}>
+                ✓ {ops.savedCount ?? 0} answer{(ops.savedCount ?? 0) === 1 ? "" : "s"} saved —
+                they'll be baked into your agents
+              </span>
+            )}
+            {ops.error && !busy && (
+              <span style={{ fontSize: 11.5, color: C.gap }}>{ops.error}</span>
+            )}
+          </div>
+          {ops.saved && !busy && (
+            <div style={{ marginTop: 4, fontSize: 11, color: C.dim }}>
+              Generating now includes your answers.
+            </div>
+          )}
+        </>
       )}
       {enableTranscript && (
         <div style={{ marginTop: 10 }}>

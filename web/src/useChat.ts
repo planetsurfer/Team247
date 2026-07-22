@@ -800,10 +800,13 @@ export function useChat() {
       const merged = mergeUserInputsByName(existing, items);
       const r = await putTeamInputs(teamId, merged, stateRef.current.adminToken);
       if (isApiError(r)) {
+        const raw = typeof r.detail === "string" ? r.detail : "";
         const msg =
-          typeof r.detail === "string" && r.status === 422
-            ? r.detail
-            : "Could not save — try again";
+          r.status === 422 && raw.includes("at most")
+            ? "You've reached the limit of saved details for this team — your agents already have plenty to work with."
+            : r.status === 422 && raw
+              ? raw
+              : "Could not save — try again";
         setState((s) => ({
           ...s,
           userInputsByTeam: { ...s.userInputsByTeam, [teamId]: { saving: false, error: msg } },
@@ -844,6 +847,20 @@ export function useChat() {
   // team (the "paste it now" panel's items, if any), and PUTs the full
   // merged list — PUT /inputs REPLACES, so a naive send-only-the-answers
   // call would silently drop any real inputs already saved via TeamCard.
+  //
+  // Iteration 4 (convergence + polish): once the PUT lands, re-fetch
+  // /ops-questions — same convergence check confirmTranscriptItems already
+  // does below — so the card reflects what the server now sees as still
+  // missing, rather than sitting on the stale pre-save question list. The
+  // fresh server set is authoritative; any prior question the server no
+  // longer proposes AND that's still unanswered locally is carried forward
+  // too (covers extraction-derived open_questions merged in client-side by
+  // confirmTranscriptItems, which the server has no way to know about) — an
+  // already-answered entry never lingers just because the server hasn't
+  // caught up. Answer drafts are matched forward by question name so a
+  // still-open question's typed-but-unsaved text isn't lost across the
+  // re-fetch. If the fresh set comes back empty, the card converges to the
+  // "done" state (see OpsQuestionsState.done / OpsQuestionsCard).
   const saveOpsAnswers = useCallback((teamId: string) => {
     const ops = stateRef.current.opsQuestionsByTeam[teamId];
     if (!ops || ops.busy) return;
@@ -863,10 +880,13 @@ export function useChat() {
       const merged = mergeUserInputsByName(existing, newItems);
       const r = await putTeamInputs(teamId, merged, stateRef.current.adminToken);
       if (isApiError(r)) {
+        const raw = typeof r.detail === "string" ? r.detail : "";
         const msg =
-          typeof r.detail === "string" && r.status === 422
-            ? r.detail
-            : "Could not save — try again";
+          r.status === 422 && raw.includes("at most")
+            ? "You've reached the limit of saved details for this team — your agents already have plenty to work with."
+            : r.status === 422 && raw
+              ? raw
+              : "Could not save — try again";
         setState((s) => ({
           ...s,
           opsQuestionsByTeam: {
@@ -878,21 +898,87 @@ export function useChat() {
       }
       setState((s) => ({
         ...s,
-        opsQuestionsByTeam: {
-          ...s.opsQuestionsByTeam,
-          [teamId]: {
-            ...s.opsQuestionsByTeam[teamId],
-            busy: false,
-            saved: true,
-            savedCount: newItems.length,
-            error: undefined,
-          },
-        },
         userInputsByTeam: {
           ...s.userInputsByTeam,
           [teamId]: { saving: false, saved: { count: r.count, bytes: r.bytes }, items: merged },
         },
       }));
+
+      // Soft-stop: with this many saved details, the agents have plenty —
+      // declare the interview complete rather than asking forever (the
+      // generator rarely returns zero organically) or running users into
+      // the 10-item cap.
+      if (merged.length >= 8) {
+        setState((s) => ({
+          ...s,
+          opsQuestionsByTeam: {
+            ...s.opsQuestionsByTeam,
+            [teamId]: {
+              ...s.opsQuestionsByTeam[teamId],
+              busy: false, saved: true, questions: [], done: true,
+            },
+          },
+        }));
+        return;
+      }
+
+      // Best-effort re-check: a failed re-fetch just leaves the question
+      // list as it was pre-save (still accurate, just not re-verified)
+      // rather than blocking or erroring the save that already succeeded.
+      const refreshed = await opsQuestions(teamId);
+      if (isApiError(refreshed)) {
+        setState((s) => ({
+          ...s,
+          opsQuestionsByTeam: {
+            ...s.opsQuestionsByTeam,
+            [teamId]: {
+              ...s.opsQuestionsByTeam[teamId],
+              busy: false,
+              saved: true,
+              savedCount: newItems.length,
+              error: undefined,
+            },
+          },
+        }));
+        return;
+      }
+      const serverQs: OpsQuestion[] = refreshed.questions ?? [];
+
+      setState((s) => {
+        const cur = s.opsQuestionsByTeam[teamId];
+        const priorQuestions = cur?.questions ?? [];
+        const priorAnswers = cur?.answers ?? {};
+        const seen = new Set(serverQs.map((q) => q.name.trim().toLowerCase()));
+        const leftover = priorQuestions.filter((q, i) => {
+          const key = q.name.trim().toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return !(priorAnswers[i] ?? "").trim();
+        });
+        const questions = [...serverQs, ...leftover];
+        const answers: Record<number, string> = {};
+        questions.forEach((q, i) => {
+          const key = q.name.trim().toLowerCase();
+          const oldIdx = priorQuestions.findIndex((pq) => pq.name.trim().toLowerCase() === key);
+          if (oldIdx >= 0 && priorAnswers[oldIdx]) answers[i] = priorAnswers[oldIdx];
+        });
+        return {
+          ...s,
+          opsQuestionsByTeam: {
+            ...s.opsQuestionsByTeam,
+            [teamId]: {
+              questions,
+              answers,
+              saved: true,
+              savedCount: newItems.length,
+              dismissed: cur?.dismissed ?? false,
+              busy: false,
+              error: undefined,
+              done: questions.length === 0 && !!s.userInputsByTeam[teamId]?.saved,
+            },
+          },
+        };
+      });
     })();
   }, []);
 
@@ -1128,6 +1214,12 @@ export function useChat() {
               // only when there's something new to show.
               dismissed: toAppend.length > 0 ? false : (cur?.dismissed ?? false),
               busy: false,
+              // Iteration 4 (convergence + polish) — same done semantics as
+              // saveOpsAnswers: converged only if the merged set is actually
+              // empty AND something has ever been saved for this team (a
+              // transcript with only unconfirmed open_questions and nothing
+              // saved yet should never show "done").
+              done: questions.length === 0 && !!s.userInputsByTeam[teamId]?.saved,
             },
           },
           transcriptByTeam: { ...s.transcriptByTeam, [teamId]: emptyTranscriptState(false) },

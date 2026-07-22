@@ -123,6 +123,13 @@ export interface OpsQuestionsState {
   dismissed: boolean;
   busy: boolean;
   error?: string;
+  // Iteration 4 (convergence + polish) — true once a post-save re-fetch of
+  // /ops-questions comes back empty AND at least one input has ever been
+  // saved for this team (userInputsByTeam[teamId].saved is the source of
+  // truth for "ever saved"). Distinguishes real convergence ("nothing more
+  // to ask") from the ordinary empty-on-first-load case (no card at all —
+  // see loadOpsQuestions), which never sets this flag.
+  done?: boolean;
 }
 
 // ── Transcript extraction (Iteration 3 — OPERATIONS-INTAKE loop) ────────────
