@@ -14,6 +14,7 @@ import {
   authStatus,
   catalogCard,
   catalogSearch,
+  extractTranscript,
   getAdminToken,
   isApiError,
   opsQuestions,
@@ -38,10 +39,12 @@ import type {
   ChatThreadState,
   FeedbackState,
   Message,
+  OpsQuestion,
   OpsQuestionsState,
   ProveState,
   RoleRow,
   SkillState,
+  TranscriptState,
   UserInputItem,
   UserInputsSaveState,
   VerifyResult,
@@ -89,6 +92,10 @@ interface ChatState {
   // revealed; absent entirely if the fetch is still in flight, failed, or
   // came back with zero questions (OpsQuestionsCard renders nothing either way).
   opsQuestionsByTeam: Record<string, OpsQuestionsState>;
+  // transcript extraction (Iteration 3 — OPERATIONS-INTAKE loop), keyed by
+  // teamId. The OpsQuestionsCard's "paste a meeting transcript instead"
+  // panel — populated on toggle, not eagerly like opsQuestionsByTeam.
+  transcriptByTeam: Record<string, TranscriptState>;
   // beta-access gate (closed beta — PRODUCTION_ROADMAP.md P0 #1)
   betaChecked: boolean;        // has the initial /api/auth/status probe resolved?
   betaAuth: boolean;           // server has BETA_AUTH on
@@ -113,6 +120,7 @@ const INITIAL: ChatState = {
   chatByAgent: {},
   userInputsByTeam: {},
   opsQuestionsByTeam: {},
+  transcriptByTeam: {},
   betaChecked: false,
   betaAuth: false,
   betaAuthenticated: true,
@@ -898,6 +906,236 @@ export function useChat() {
     }));
   }, []);
 
+  // ── transcript extraction (Iteration 3 — OPERATIONS-INTAKE loop) ────────
+  // "Or paste a meeting transcript instead": an alternative to answering the
+  // ops-questions one at a time. POSTs the pasted text to
+  // POST /api/team/{tid}/transcript, which returns a PROPOSAL only — nothing
+  // is saved server-side by that call. The raw transcript text lives only in
+  // this local `text` field (never sent anywhere except that one POST body)
+  // until the panel is closed/confirmed/cancelled, at which point it's
+  // discarded from state entirely — this hook never persists it.
+  const emptyTranscriptState = (open: boolean): TranscriptState => ({
+    open,
+    text: "",
+    busy: false,
+    itemDrafts: {},
+    removedItems: {},
+  });
+
+  const toggleTranscriptPanel = useCallback((teamId: string) => {
+    setState((s) => {
+      const cur = s.transcriptByTeam[teamId];
+      return {
+        ...s,
+        transcriptByTeam: {
+          ...s.transcriptByTeam,
+          [teamId]: cur ? { ...cur, open: !cur.open } : emptyTranscriptState(true),
+        },
+      };
+    });
+  }, []);
+
+  const setTranscriptText = useCallback((teamId: string, text: string) => {
+    setState((s) => {
+      const cur = s.transcriptByTeam[teamId] ?? emptyTranscriptState(true);
+      return {
+        ...s,
+        transcriptByTeam: { ...s.transcriptByTeam, [teamId]: { ...cur, text, error: undefined } },
+      };
+    });
+  }, []);
+
+  const runTranscriptExtract = useCallback((teamId: string) => {
+    const t = stateRef.current.transcriptByTeam[teamId];
+    if (!t || t.busy) return;
+    const text = t.text.trim();
+    if (!text) return;
+    setState((s) => ({
+      ...s,
+      transcriptByTeam: {
+        ...s.transcriptByTeam,
+        [teamId]: { ...t, busy: true, error: undefined, proposal: undefined },
+      },
+    }));
+    void (async () => {
+      const r = await extractTranscript(teamId, text, stateRef.current.adminToken);
+      if (isApiError(r)) {
+        const msg =
+          r.status === 413
+            ? "Transcript is too long — trim it and try again"
+            : r.status === 422
+              ? "Transcript text is required"
+              : r.status === 401
+                ? "beta token required"
+                : "Could not extract from this transcript — try again";
+        setState((s) => ({
+          ...s,
+          transcriptByTeam: {
+            ...s.transcriptByTeam,
+            [teamId]: { ...s.transcriptByTeam[teamId], busy: false, error: msg },
+          },
+        }));
+        return;
+      }
+      const itemDrafts: Record<number, string> = {};
+      r.items.forEach((it, i) => {
+        itemDrafts[i] = it.content;
+      });
+      setState((s) => ({
+        ...s,
+        transcriptByTeam: {
+          ...s.transcriptByTeam,
+          [teamId]: {
+            ...s.transcriptByTeam[teamId],
+            busy: false,
+            proposal: r,
+            itemDrafts,
+            removedItems: {},
+          },
+        },
+      }));
+    })();
+  }, []);
+
+  const editTranscriptItem = useCallback((teamId: string, idx: number, text: string) => {
+    setState((s) => {
+      const cur = s.transcriptByTeam[teamId];
+      if (!cur) return s;
+      return {
+        ...s,
+        transcriptByTeam: {
+          ...s.transcriptByTeam,
+          [teamId]: { ...cur, itemDrafts: { ...cur.itemDrafts, [idx]: text } },
+        },
+      };
+    });
+  }, []);
+
+  const removeTranscriptItem = useCallback((teamId: string, idx: number) => {
+    setState((s) => {
+      const cur = s.transcriptByTeam[teamId];
+      if (!cur) return s;
+      return {
+        ...s,
+        transcriptByTeam: {
+          ...s.transcriptByTeam,
+          [teamId]: {
+            ...cur,
+            removedItems: { ...cur.removedItems, [idx]: !cur.removedItems[idx] },
+          },
+        },
+      };
+    });
+  }, []);
+
+  const cancelTranscript = useCallback((teamId: string) => {
+    setState((s) => ({
+      ...s,
+      transcriptByTeam: { ...s.transcriptByTeam, [teamId]: emptyTranscriptState(false) },
+    }));
+  }, []);
+
+  // confirmTranscriptItems: the non-removed proposal items (with any inline
+  // edits applied) save via the SAME merge path as saveOpsAnswers/
+  // saveUserInputs — PUT /inputs REPLACES, so this merges client-side with
+  // whatever's already saved. After saving, it re-fetches ops-questions
+  // (convergence — the server may now see fewer/zero gaps) AND merges the
+  // extraction's own open_questions into the ops-questions card's question
+  // list by name, so they become answerable through the exact same
+  // answer/save flow as any other ops question — never dropping a question
+  // the user may have already answered.
+  const confirmTranscriptItems = useCallback((teamId: string) => {
+    const t = stateRef.current.transcriptByTeam[teamId];
+    if (!t || !t.proposal || t.busy) return;
+
+    const items: UserInputItem[] = t.proposal.items
+      .map((it, i) => ({
+        kind: it.kind,
+        name: it.name,
+        content: (t.itemDrafts[i] ?? it.content).trim(),
+      }))
+      .filter((_, i) => !t.removedItems[i])
+      .filter((it) => it.content.length > 0);
+    const extractedOpenQs: OpsQuestion[] = t.proposal.open_questions.map((q) => ({
+      kind: q.kind,
+      name: q.name,
+      question: q.question,
+    }));
+
+    setState((s) => ({
+      ...s,
+      transcriptByTeam: {
+        ...s.transcriptByTeam,
+        [teamId]: { ...t, busy: true, error: undefined },
+      },
+    }));
+
+    void (async () => {
+      if (items.length > 0) {
+        const existing = stateRef.current.userInputsByTeam[teamId]?.items ?? [];
+        const merged = mergeUserInputsByName(existing, items);
+        const r = await putTeamInputs(teamId, merged, stateRef.current.adminToken);
+        if (isApiError(r)) {
+          const msg =
+            typeof r.detail === "string" && r.status === 422
+              ? r.detail
+              : "Could not save — try again";
+          setState((s) => ({
+            ...s,
+            transcriptByTeam: {
+              ...s.transcriptByTeam,
+              [teamId]: { ...s.transcriptByTeam[teamId], busy: false, error: msg },
+            },
+          }));
+          return;
+        }
+        setState((s) => ({
+          ...s,
+          userInputsByTeam: {
+            ...s.userInputsByTeam,
+            [teamId]: { saving: false, saved: { count: r.count, bytes: r.bytes }, items: merged },
+          },
+        }));
+      }
+
+      // Convergence check: ask the server again now that the confirmed items
+      // are saved — best-effort, a failed re-check just means we fall back
+      // to the transcript's own open_questions below instead of blocking.
+      const refreshed = await opsQuestions(teamId);
+      const serverQs: OpsQuestion[] = !isApiError(refreshed) ? refreshed.questions ?? [] : [];
+
+      setState((s) => {
+        const cur = s.opsQuestionsByTeam[teamId];
+        const base = cur?.questions ?? [];
+        const seen = new Set(base.map((q) => q.name.trim().toLowerCase()));
+        const toAppend: OpsQuestion[] = [];
+        for (const q of [...serverQs, ...extractedOpenQs]) {
+          const key = q.name.trim().toLowerCase();
+          if (seen.has(key)) continue;
+          seen.add(key);
+          toAppend.push(q);
+        }
+        const questions = [...base, ...toAppend];
+        return {
+          ...s,
+          opsQuestionsByTeam: {
+            ...s.opsQuestionsByTeam,
+            [teamId]: {
+              questions,
+              answers: cur?.answers ?? {},
+              saved: false,
+              // un-dismiss so newly-merged questions are actually visible —
+              // only when there's something new to show.
+              dismissed: toAppend.length > 0 ? false : (cur?.dismissed ?? false),
+              busy: false,
+            },
+          },
+          transcriptByTeam: { ...s.transcriptByTeam, [teamId]: emptyTranscriptState(false) },
+        };
+      });
+    })();
+  }, []);
+
   // ── starter gallery (Iteration 4 — user-value loop) ──────────────────────
   // "Customize for my business": prefills the landing task input with a
   // gallery archetype's use_case. Landing.tsx focuses its input field itself
@@ -970,6 +1208,13 @@ export function useChat() {
     answerOpsQuestion,
     saveOpsAnswers,
     dismissOpsCard,
+    toggleTranscriptPanel,
+    setTranscriptText,
+    runTranscriptExtract,
+    editTranscriptItem,
+    removeTranscriptItem,
+    cancelTranscript,
+    confirmTranscriptItems,
     customizeFromGallery,
     onInput,
     onKey,

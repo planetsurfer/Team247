@@ -1,0 +1,69 @@
+Meridian Office Supplies — Weekly Ops Sync (transcript, fictional company, all names invented)
+Attendees: Priya (Sales Lead), Dana (Sales Associate), Marcus (Billing Manager), Lena (Sales Director)
+
+Priya: Morning everyone. Let's run through the quote-to-cash flow since we had
+a couple of new hires shadow it this week and they had questions.
+
+Dana: Sure. So walking through it end to end — step one, I qualify the lead.
+I confirm the company is a real business, get their tax ID, and check they're
+not already an existing account in the system. Step two, once qualified I
+build the quote in the quoting tool using the current price sheet — line
+items, quantities, and the standard tiered pricing. Step three, I send the
+draft quote to the customer for a first read before it's finalized, so they
+can flag anything before we lock it in. That's the three-step process for
+getting a quote out the door.
+
+Priya: Good summary. And after that?
+
+Dana: After qualification and the quote is accepted, I hand the whole file
+over to Marcus's team in billing — they take it from there for invoicing and
+setting up the payment terms. So Dana hands the file to billing once
+qualification and quote sign-off are done.
+
+Marcus: Right, and once it lands with billing we open the account in the
+finance system and issue the first invoice within two business days.
+
+Priya: One thing that keeps coming up — discount approvals. Can we restate
+the rule for the new hires?
+
+Lena: Yes. Any discount above $2,000 needs written approval from the sales
+director before it goes out. That's me. Anything under that, Dana and the
+sales team can approve on their own judgment. Anything above $2,000 in
+discount value, no exceptions, it has to come to me in writing — an email is
+fine, but it has to be in writing, not just a verbal okay in the hallway.
+
+Dana: Got it, that matches what I tell new hires. Discounts above $2,000
+always go to Lena first.
+
+Priya: Perfect, let's make sure that's written down somewhere for onboarding.
+
+Marcus: While we're on policy — can we settle the refund policy question?
+Priya and I disagree on this one. I think refunds should only be issued
+against the original payment method, full stop, no exceptions, because
+that's what our processor recommends.
+
+Priya: I don't think that's settled though. I think for repeat customers with
+an account in good standing, we should be able to issue store credit instead
+of a refund to the original method, especially for international customers
+where card refunds take weeks. We've never actually agreed on this — it's
+come up three times this quarter and every time we've handled it differently
+depending on who picks up the ticket.
+
+Marcus: Right, and I still don't think that's the right call, but I agree we
+haven't actually decided as a team. It's genuinely unresolved — we should get
+it on the agenda for next week and actually decide one way or the other
+instead of everyone guessing.
+
+Priya: Agreed, that one's still open. Let's not pretend we have a policy when
+we don't.
+
+Lena: Put it on next week's agenda, I'll make the final call if you two can't
+agree beforehand.
+
+Priya: Works for me. Anything else before we wrap?
+
+Dana: Oh — small thing, not really ops-related, but a reminder that it's
+Deshawn's week for the ficus schedule, so if you see the office plant looking
+dry that's why, he's on it Thursday.
+
+Priya: Noted, thanks Dana. Okay, that's everything for today. Thanks all.

@@ -125,6 +125,38 @@ export interface OpsQuestionsState {
   error?: string;
 }
 
+// ── Transcript extraction (Iteration 3 — OPERATIONS-INTAKE loop) ────────────
+// POST /api/team/{team_id}/transcript {text}. Returns a PROPOSAL only —
+// nothing is stored server-side by this call; the same {kind, name, question}
+// shape as OpsQuestion is reused for open_questions so they merge straight
+// into the same answer flow. `content` in items maps 1:1 onto UserInputItem.
+export interface TranscriptExtractItem {
+  kind: string;
+  name: string;
+  content: string;
+}
+export interface TranscriptExtractOpenQuestion {
+  kind: string;
+  name: string;
+  question: string;
+}
+export interface TranscriptExtractResp {
+  items: TranscriptExtractItem[];
+  open_questions: TranscriptExtractOpenQuestion[];
+}
+// Local UI state for the OpsQuestionsCard's transcript panel, keyed by teamId
+// in ChatState.transcriptByTeam. `itemDrafts`/`removedItems` are keyed by the
+// index into `proposal.items` (stable for the lifetime of one proposal).
+export interface TranscriptState {
+  open: boolean;
+  text: string;
+  busy: boolean;
+  error?: string;
+  proposal?: TranscriptExtractResp;
+  itemDrafts: Record<number, string>;
+  removedItems: Record<number, boolean>;
+}
+
 // ── Starter gallery (Iteration 4 — user-value loop) ─────────────────────────
 // GET /api/gallery (open, no auth) — metadata only, so the gallery renders on
 // Landing before the beta gate. GET /api/gallery/{slug} (beta-gated) — the

@@ -760,3 +760,299 @@ def generate_ops_questions(use_case, team_roles, known_inputs):
         max_tokens=1024,
     )
     return raw
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Iteration 3 (OPERATIONS-INTAKE loop) — transcript extraction.
+# ──────────────────────────────────────────────────────────────────────────────
+# ABSOLUTE PII RULE: the raw transcript text handled by this section is NEVER
+# persisted (no DB column, no file) and NEVER logged — it exists only in this
+# request's body, in the LLM prompt built below (necessary for extraction),
+# and in the caller's own in-memory state. call_llm_json's log_llm call only
+# ever logs {purpose, model, attempt, latency_ms, status[, error[:200]]} — it
+# never sees or logs prompt/response content — and the request-logging
+# middleware (app/logging_setup.py) never logs request bodies. Only the
+# extraction RESULT (short structured items) is returned to the caller, and
+# THAT is only ever persisted if/when the user confirms via the existing
+# PUT /api/team/{team_id}/inputs path (app.routers.team.set_team_inputs) —
+# nothing in this module writes to the DB.
+
+# Every `kind` this contract can propose is a valid team_service.USER_INPUT_KINDS
+# value. Reconstructed here (not imported) to avoid a team_service -> llm_contracts
+# circular import (team_service already imports this module): OPS_QUESTION_KINDS
+# (procedure/threshold/constraint/handoff/metric/workaround) plus the artifact
+# kinds (sample/blank_format/past_documents/database — "none" excluded, it's a
+# placeholder for "nothing needed", meaningless for an extracted item) for when
+# the transcript names a specific system, template, or document by name.
+TRANSCRIPT_ITEM_KINDS = OPS_QUESTION_KINDS + tuple(k for k in ARTIFACT_KINDS if k != "none")
+
+# Matches app.services.team_service.MAX_USER_INPUT_NAME_CHARS so an extracted
+# item's name always fits the PUT /inputs shape unchanged.
+TRANSCRIPT_ITEM_NAME_MAX_CHARS = 100
+TRANSCRIPT_ITEM_CONTENT_MAX_CHARS = 500
+TRANSCRIPT_MAX_ITEMS = 8
+TRANSCRIPT_MAX_OPEN_QUESTIONS = 3
+# Split point for chunking a long transcript (see _chunk_transcript below).
+TRANSCRIPT_CHUNK_BYTES = 30 * 1024  # 30KB
+
+
+def _validate_ops_brief(o):
+    """Validate the raw dict the LLM returns for one extract_ops_brief chunk call.
+
+    Shape: {"items": [{kind, name, content}], "open_questions": [{kind, name,
+    question}]}. `items` uses the extraction taxonomy (TRANSCRIPT_ITEM_KINDS);
+    `open_questions` reuses the exact ops-question shape/limits (OPS_QUESTION_*)
+    since they flow straight into the same OpsQuestionsCard answer UI. Caps:
+    <= TRANSCRIPT_MAX_ITEMS items, <= TRANSCRIPT_MAX_OPEN_QUESTIONS open
+    questions (per chunk — extract_ops_brief re-caps after merging chunks).
+    De-dupes both lists by name (case-insensitive), keeping the first
+    occurrence, same convention as _validate_ops_questions.
+    """
+    if not isinstance(o, dict):
+        raise ValueError("expected an object")
+    items_raw = o.get("items")
+    oq_raw = o.get("open_questions")
+    if not isinstance(items_raw, list):
+        raise ValueError('expected {"items": [...]}')
+    if not isinstance(oq_raw, list):
+        raise ValueError('expected {"open_questions": [...]}')
+    if len(items_raw) > TRANSCRIPT_MAX_ITEMS:
+        raise ValueError(f"items must be <= {TRANSCRIPT_MAX_ITEMS} (got {len(items_raw)})")
+    if len(oq_raw) > TRANSCRIPT_MAX_OPEN_QUESTIONS:
+        raise ValueError(
+            f"open_questions must be <= {TRANSCRIPT_MAX_OPEN_QUESTIONS} (got {len(oq_raw)})"
+        )
+
+    items = []
+    seen_names = set()
+    for i, it in enumerate(items_raw):
+        if not isinstance(it, dict):
+            raise ValueError(f"items[{i}] must be an object")
+        kind = (it.get("kind") or "").strip()
+        name = (it.get("name") or "").strip()
+        content = (it.get("content") or "").strip()
+        if kind not in TRANSCRIPT_ITEM_KINDS:
+            raise ValueError(
+                f"items[{i}].kind must be one of {TRANSCRIPT_ITEM_KINDS} (got {kind!r})"
+            )
+        if not name:
+            raise ValueError(f"items[{i}].name is required")
+        if len(name) > TRANSCRIPT_ITEM_NAME_MAX_CHARS:
+            raise ValueError(
+                f"items[{i}].name must be <= {TRANSCRIPT_ITEM_NAME_MAX_CHARS} chars"
+            )
+        if not content:
+            raise ValueError(f"items[{i}].content is required")
+        if len(content) > TRANSCRIPT_ITEM_CONTENT_MAX_CHARS:
+            raise ValueError(
+                f"items[{i}].content must be <= {TRANSCRIPT_ITEM_CONTENT_MAX_CHARS} chars"
+            )
+        key = name.lower()
+        if key in seen_names:
+            continue
+        seen_names.add(key)
+        items.append({"kind": kind, "name": name, "content": content})
+
+    open_questions = []
+    seen_oq = set()
+    for i, q in enumerate(oq_raw):
+        if not isinstance(q, dict):
+            raise ValueError(f"open_questions[{i}] must be an object")
+        kind = (q.get("kind") or "").strip()
+        name = (q.get("name") or "").strip()
+        question = (q.get("question") or "").strip()
+        if kind not in TRANSCRIPT_ITEM_KINDS:
+            raise ValueError(
+                f"open_questions[{i}].kind must be one of {TRANSCRIPT_ITEM_KINDS} (got {kind!r})"
+            )
+        if not name:
+            raise ValueError(f"open_questions[{i}].name is required")
+        if len(name) > OPS_QUESTION_NAME_MAX_CHARS:
+            raise ValueError(
+                f"open_questions[{i}].name must be <= {OPS_QUESTION_NAME_MAX_CHARS} chars"
+            )
+        if not question:
+            raise ValueError(f"open_questions[{i}].question is required")
+        if len(question) > OPS_QUESTION_TEXT_MAX_CHARS:
+            raise ValueError(
+                f"open_questions[{i}].question must be <= {OPS_QUESTION_TEXT_MAX_CHARS} chars"
+            )
+        key = name.lower()
+        if key in seen_oq:
+            continue
+        seen_oq.add(key)
+        open_questions.append({"kind": kind, "name": name, "question": question})
+
+    return {"items": items, "open_questions": open_questions}
+
+
+def _chunk_transcript(text, max_bytes=TRANSCRIPT_CHUNK_BYTES):
+    """Split `text` into UTF-8 chunks of at most `max_bytes`, splitting ONLY on
+    line boundaries (never mid-sentence) — each chunk is later extracted
+    independently and the results merged (see extract_ops_brief /
+    _merge_extractions).
+
+    - Empty/whitespace-only text -> [].
+    - Text that already fits in one chunk -> a single-element list (the
+      common case — most pasted transcripts are well under 30KB).
+    - A single line that itself exceeds max_bytes (pathological — no normal
+      transcript line is this long) is hard-split on raw bytes so the
+      chunker always makes forward progress rather than looping forever.
+    """
+    if not text or not text.strip():
+        return []
+    if len(text.encode("utf-8")) <= max_bytes:
+        return [text]
+
+    lines = text.splitlines(keepends=True)
+    chunks: list[str] = []
+    cur: list[str] = []
+    cur_bytes = 0
+    for line in lines:
+        lb = len(line.encode("utf-8"))
+        if lb > max_bytes:
+            if cur:
+                chunks.append("".join(cur))
+                cur, cur_bytes = [], 0
+            encoded = line.encode("utf-8")
+            for start in range(0, len(encoded), max_bytes):
+                chunks.append(encoded[start:start + max_bytes].decode("utf-8", errors="ignore"))
+            continue
+        if cur and cur_bytes + lb > max_bytes:
+            chunks.append("".join(cur))
+            cur, cur_bytes = [], 0
+        cur.append(line)
+        cur_bytes += lb
+    if cur:
+        chunks.append("".join(cur))
+    return chunks
+
+
+def _merge_extractions(results):
+    """Merge multiple per-chunk {"items": [...], "open_questions": [...]}
+    dicts: de-dupe each list by name (case-insensitive, first occurrence —
+    i.e. earliest chunk — wins), then cap totals at TRANSCRIPT_MAX_ITEMS /
+    TRANSCRIPT_MAX_OPEN_QUESTIONS. Pure function, no LLM/DB — unit-testable
+    on plain dicts.
+    """
+    items, seen_items = [], set()
+    for r in results:
+        for it in (r or {}).get("items", []):
+            key = it["name"].strip().lower()
+            if key in seen_items:
+                continue
+            seen_items.add(key)
+            items.append(it)
+
+    open_questions, seen_oq = [], set()
+    for r in results:
+        for q in (r or {}).get("open_questions", []):
+            key = q["name"].strip().lower()
+            if key in seen_oq:
+                continue
+            seen_oq.add(key)
+            open_questions.append(q)
+
+    return {
+        "items": items[:TRANSCRIPT_MAX_ITEMS],
+        "open_questions": open_questions[:TRANSCRIPT_MAX_OPEN_QUESTIONS],
+    }
+
+
+def _extract_ops_brief_chunk(use_case, transcript_chunk):
+    """One LLM call over a single (already-sized) transcript chunk. See
+    extract_ops_brief for the public, chunking entrypoint."""
+    prompt = (
+        "Below is an excerpt of a REAL transcript of a team discussing how "
+        "their operation actually runs (not a spec, not a summary — a "
+        "conversation). Extract ONLY the operational knowledge that is "
+        "relevant to running the task/team below — the specific rules, "
+        "numbers, roles, and know-how of how THIS operation actually works. "
+        "Ignore small talk, pleasantries, and anything unrelated to how the "
+        "work gets done.\n\n"
+        f"Task/team:\n\"\"\"\n{use_case or '(unspecified)'}\n\"\"\"\n\n"
+        f"Transcript excerpt:\n\"\"\"\n{transcript_chunk}\n\"\"\"\n\n"
+        "Every item you extract MUST be directly traceable to something "
+        "actually said in this excerpt — never invent, never infer beyond "
+        "what's said, never generalize from silence. If the speakers "
+        "DISAGREE, leave something UNDECIDED, or explicitly say a policy "
+        "isn't settled, that goes into open_questions instead of items — do "
+        "NOT resolve a disagreement yourself or pick a side.\n\n"
+        "`kind` MUST be one of:\n"
+        "  procedure      = the steps, decision rules, escalation path, or "
+        "approval flow for how a task gets done;\n"
+        "  handoff        = which role does what, and who hands off to whom;\n"
+        "  threshold      = a specific number that changes what happens — a "
+        "cutoff, a limit, an approval trigger;\n"
+        "  constraint     = a hard rule the team must never break — "
+        "compliance, policy, a must-not;\n"
+        "  metric         = a target or turnaround time the work is measured "
+        "against (an SLA, a deadline);\n"
+        "  workaround     = tribal knowledge — an exception or \"what we "
+        "actually do\" that isn't written down anywhere;\n"
+        "  sample         = a specific worked example/document named in the "
+        "transcript;\n"
+        "  blank_format   = a specific blank template/form/format named in "
+        "the transcript;\n"
+        "  past_documents = a corpus of past documents named in the "
+        "transcript;\n"
+        "  database       = a live database/system of record named in the "
+        "transcript.\n\n"
+        "Writing rules — items are shown DIRECTLY to a business owner to "
+        "confirm before anything is saved, not a technical audience:\n"
+        "  - plain business language only; no jargon, no framework names, no "
+        "internal codes;\n"
+        "  - `name` is a short label (<=100 chars); `content` is the "
+        f"extracted knowledge itself, <={TRANSCRIPT_ITEM_CONTENT_MAX_CHARS} "
+        "chars, self-contained (a reader who never saw the transcript must "
+        "understand it standalone);\n"
+        f"  - at most {TRANSCRIPT_MAX_ITEMS} items total; at most "
+        f"{TRANSCRIPT_MAX_OPEN_QUESTIONS} open_questions total — pick the "
+        "highest-value ones if there are more candidates than that;\n"
+        "  - if nothing in this excerpt is operationally relevant, return "
+        "empty lists — never invent content to fill a slot.\n\n"
+        'Return STRICT JSON: {"items": [{"kind": "<kind>", "name": '
+        '"<short label>", "content": "<extracted knowledge, <='
+        f'{TRANSCRIPT_ITEM_CONTENT_MAX_CHARS} chars>"}}], "open_questions": '
+        '[{"kind": "<kind>", "name": "<short label>", "question": "<what '
+        f'needs deciding, <={OPS_QUESTION_TEXT_MAX_CHARS} chars>"}}]}}'
+    )
+    return call_llm_json(
+        "ops_extract",
+        [{"role": "user", "content": prompt}],
+        validate=_validate_ops_brief,
+        temperature=0.2,
+        max_tokens=2000,
+    )
+
+
+def extract_ops_brief(use_case, transcript_text):
+    """Iteration 3 (OPERATIONS-INTAKE loop) — transcript extraction: pull short
+    structured operational-knowledge ITEMS (and any unresolved OPEN_QUESTIONS)
+    out of a pasted meeting transcript, as an alternative to answering the
+    ops-questions one at a time.
+
+    use_case: str — the team's task, for grounding relevance (same role it
+    plays in generate_ops_questions).
+    transcript_text: str — the raw pasted transcript. The router validates
+    size/emptiness before calling this; this function itself tolerates any
+    string (including "").
+
+    ABSOLUTE PII RULE: see the module-level note above this section — nothing
+    here persists or logs `transcript_text`; it is used only to build the LLM
+    prompt in _extract_ops_brief_chunk.
+
+    Returns {"items": [{kind, name, content}], "open_questions": [{kind,
+    name, question}]}. Transcripts over TRANSCRIPT_CHUNK_BYTES are split on
+    line boundaries (_chunk_transcript), extracted chunk-by-chunk, and merged
+    (_merge_extractions: de-dupe by name, cap totals) so a long transcript
+    still produces one coherent, capped proposal instead of one truncated
+    LLM call over the tail of the transcript.
+    """
+    chunks = _chunk_transcript(transcript_text)
+    if not chunks:
+        return {"items": [], "open_questions": []}
+    results = [_extract_ops_brief_chunk(use_case, c) for c in chunks]
+    if len(results) == 1:
+        return results[0]
+    return _merge_extractions(results)

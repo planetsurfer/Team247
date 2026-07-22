@@ -71,6 +71,10 @@ class ChatMessageIn(BaseModel):
     content: str
 
 
+class TranscriptIn(BaseModel):
+    text: str
+
+
 class AgentChatIn(BaseModel):
     messages: List[ChatMessageIn]
 
@@ -185,6 +189,61 @@ def ops_questions(team_id: str):
         )
     except Exception as e:  # noqa: BLE001 — surface as a friendly 502, never a 500
         raise HTTPException(status_code=502, detail=f"ops-questions failed: {e}")
+
+    return result
+
+
+# Iteration 3 (OPERATIONS-INTAKE loop) — transcript extraction. Client-side
+# cap is 200KB (see web/src/components/messages/OpsQuestionsCard.tsx); this is
+# the authoritative server-side cap (UTF-8 bytes, matching set_team_inputs'
+# byte-based sizing convention).
+TRANSCRIPT_MAX_BYTES = 200_000
+
+
+@router.post(
+    "/api/team/{team_id}/transcript",
+    dependencies=[Depends(require_beta), Depends(llm_rate_limit), Depends(consume_quota)],
+)
+def extract_transcript(team_id: str, body: TranscriptIn):
+    """Iteration 3 (OPERATIONS-INTAKE loop) — the user pastes a meeting
+    transcript instead of answering the ops-questions one at a time. Returns
+    an extraction PROPOSAL only: short structured items (+ any unresolved
+    open_questions) for the UI to show as an EDITABLE confirmation list.
+    Nothing is saved by this call — the user must Confirm client-side, which
+    goes through the existing PUT /api/team/{team_id}/inputs merge path
+    unchanged.
+
+    ABSOLUTE PII RULE: the raw transcript text (`body.text`) is NEVER
+    persisted — no DB column, no file — and NEVER logged. It exists only in
+    this request's body and inside the LLM prompt built by
+    llm_contracts.extract_ops_brief. Only the extraction RESULT (short
+    structured items) is returned here; see llm_contracts.py's module-level
+    note on this section for the full accounting of every place the
+    transcript text does/doesn't flow.
+
+    require_beta + llm_rate_limit + consume_quota (same guard combo as
+    /recommend): this drives one or more real LLM calls, so it's metered as
+    a generation, same as any other team-build LLM call.
+    """
+    text = body.text or ""
+    if not text.strip():
+        raise HTTPException(status_code=422, detail="text is required")
+    if len(text.encode("utf-8")) > TRANSCRIPT_MAX_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"transcript must be <= {TRANSCRIPT_MAX_BYTES} bytes",
+        )
+
+    try:
+        team = team_service.get_team(team_id)
+    except TeamNotFound:
+        raise HTTPException(status_code=404, detail="team not found")
+
+    try:
+        result = llm_contracts.extract_ops_brief(team.get("use_case"), text)
+    except Exception as e:  # noqa: BLE001 — friendly 502, never a 500; `e` carries
+        # no transcript content (it's the LLM/validation failure reason only)
+        raise HTTPException(status_code=502, detail=f"transcript extraction failed: {e}")
 
     return result
 

@@ -13,6 +13,7 @@ import type {
   RecommendResp,
   SkillBundlesResp,
   TeamSkills,
+  TranscriptExtractResp,
   UserInputItem,
   UserInputsResp,
   VerifyResult,
@@ -288,6 +289,18 @@ export const putTeamInputs = (
 // 0..OPS_QUESTIONS_MAX questions (0 is valid — nothing left worth asking).
 export const opsQuestions = (teamId: string) =>
   api<OpsQuestionsResp>(`/team/${teamId}/ops-questions`, { method: "POST" });
+
+// Iteration 3 (OPERATIONS-INTAKE loop) — POST /api/team/{tid}/transcript
+// {text}. Beta-gated + metered as a generation (same guard combo as
+// /recommend), so this goes through apiVerify's "adminToken wins, else
+// stored beta token" fallback like putTeamInputs/skillBundleMd above.
+// Returns an extraction PROPOSAL only — nothing is saved server-side by this
+// call; the caller must Confirm (PUT /inputs) to persist anything.
+export const extractTranscript = (teamId: string, text: string, adminToken: string) =>
+  apiVerify<TranscriptExtractResp>(`/team/${teamId}/transcript`, adminToken, {
+    method: "POST",
+    body: JSON.stringify({ text }),
+  });
 
 export const renderAsync = (teamId: string) =>
   api<{ job_id: string; poll: string; async: boolean }>(

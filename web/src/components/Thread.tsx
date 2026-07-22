@@ -73,10 +73,24 @@ export function Thread({ chat, accent }: ThreadProps) {
                     <OpsQuestionsCard
                       ops={opsState}
                       accent={accent}
-                      enableTranscript={false}
+                      enableTranscript={true}
+                      transcript={state.transcriptByTeam[state.teamId]}
                       onAnswer={(idx, text) => chat.answerOpsQuestion(state.teamId!, idx, text)}
                       onSave={() => chat.saveOpsAnswers(state.teamId!)}
                       onDismiss={() => chat.dismissOpsCard(state.teamId!)}
+                      onTranscriptToggle={() => chat.toggleTranscriptPanel(state.teamId!)}
+                      onTranscriptTextChange={(text) =>
+                        chat.setTranscriptText(state.teamId!, text)
+                      }
+                      onTranscriptExtract={() => chat.runTranscriptExtract(state.teamId!)}
+                      onTranscriptItemEdit={(idx, text) =>
+                        chat.editTranscriptItem(state.teamId!, idx, text)
+                      }
+                      onTranscriptItemRemove={(idx) =>
+                        chat.removeTranscriptItem(state.teamId!, idx)
+                      }
+                      onTranscriptConfirm={() => chat.confirmTranscriptItems(state.teamId!)}
+                      onTranscriptCancel={() => chat.cancelTranscript(state.teamId!)}
                     />
                   )}
                 </div>
