@@ -2,6 +2,11 @@
 
 _Newest first. Auto-stamped by the SessionEnd hook; fill in each Summary._
 
+## 2026-07-22 — Ops-intake iter 3: TRANSCRIPT EXTRACTION live (c144814)
+- POST /api/team/{id}/transcript (beta-gated, generation-priced, 200KB cap, 30KB chunking): extract-confirm-discard — raw transcript NEVER persisted/logged (request+llm logs verified content-free; sentinel-absence tests + prod tripwire grep 0/0/0). UI: paste panel → editable confirmation list → confirm via merged user_inputs → ops-questions regenerate with extraction open-questions pre-seeded.
+- Fictional fixture (planted $2,000 threshold, Dana→billing handoff, SOP, unresolved refund dispute): extraction found the facts, the dispute surfaced as an OPEN QUESTION not a fact; chat refused a $2,500 discount citing the $2,000 rule. 34 new tests (172 green). Prod: 5 items + 1 open question extracted live; matrix PASS.
+- Remaining: iter 4 convergence polish + RUNBOOK privacy posture + export ops sections → iter 5 FINAL GATE.
+
 ## 2026-07-22 — Ops-intake iter 2: MAKE-IT-YOURS card live (b2a67c8)
 - Skippable ops-questions card after the team reveal: 1-3 targeted questions rendered from the live endpoint, answers saved as tagged user_inputs (merge-by-name; paste panel + card coexist), regenerate bakes them in; invisible transcript stub for iter 3; dismiss keeps old flow identical.
 - Rule enforcement verified twice on separate scenarios: "escalate >$5k to Sarah" (worker) and "refunds >$250 need Marcus" (independent) — chat refused a $400 refund citing the limit. Matrix PASS.
